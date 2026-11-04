@@ -34,3 +34,4 @@ export interface JobOrderFormData {
   deadline: string
   artwork_url: string
 }
+
