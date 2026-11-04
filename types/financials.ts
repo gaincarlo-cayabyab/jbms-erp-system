@@ -36,3 +36,4 @@ export interface FinancialMetrics {
   paidOrdersCount: number
   pendingOrdersCount: number
 }
+

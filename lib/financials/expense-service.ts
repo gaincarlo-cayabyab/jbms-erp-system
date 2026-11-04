@@ -191,3 +191,4 @@ export async function removeExpense(id: string): Promise<boolean> {
   saveLocalExpenses(updated)
   return true
 }
+
