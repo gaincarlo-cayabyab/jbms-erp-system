@@ -42,7 +42,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
           </button>
 
           <div className="hidden text-sm font-semibold text-zinc-700 lg:block">
-            JBMS ERP System
+            JAPA Core ERP System
           </div>
 
           <div className="flex items-center gap-2 ml-auto">

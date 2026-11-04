@@ -64,7 +64,7 @@ export default function Sidebar() {
           <Building2 className="h-5 w-5" />
         </div>
         <div>
-          <p className="text-sm font-bold leading-none text-zinc-900">JBMS ERP</p>
+          <p className="text-sm font-bold leading-none text-zinc-900">JAPA Core ERP</p>
           <p className="mt-0.5 text-xs text-zinc-500">Enterprise Resource Planning</p>
         </div>
       </div>
@@ -117,7 +117,7 @@ export default function Sidebar() {
           </div>
           <div className="min-w-0">
             <p className="truncate text-xs font-semibold text-zinc-800">Admin User</p>
-            <p className="truncate text-[10px] text-zinc-500">admin@jbms.com</p>
+            <p className="truncate text-[10px] text-zinc-500">admin@japacore.com</p>
           </div>
         </div>
       </div>

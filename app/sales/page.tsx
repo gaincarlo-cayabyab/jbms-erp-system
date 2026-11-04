@@ -4,7 +4,7 @@ import DashboardShell from '@/components/dashboard-shell'
 
 export const metadata = {
   title: 'Sales & Quotations',
-  description: 'Manage sales orders, quotations, itemized pricing, and billing in JBMS ERP.',
+  description: 'Manage sales orders, quotations, itemized pricing, and billing in JAPA Core ERP.',
 }
 
 function SalesFallback() {
@@ -30,3 +30,4 @@ export default function SalesPage() {
     </Suspense>
   )
 }
+

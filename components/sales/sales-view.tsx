@@ -617,7 +617,7 @@ export default function SalesView() {
               <span className="font-semibold text-zinc-700">{orders.length}</span> orders
             </span>
             <span className="text-[11px] text-zinc-400">
-              JBMS Sales & Quotation Engine
+              JAPA Core Sales & Quotation Engine
             </span>
           </div>
         </div>
@@ -639,3 +639,4 @@ export default function SalesView() {
     </DashboardShell>
   )
 }
+

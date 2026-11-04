@@ -14,10 +14,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "JBMS ERP",
-    template: "%s | JBMS ERP",
+    default: "JAPA Core ERP",
+    template: "%s | JAPA Core ERP",
   },
-  description: "JBMS Enterprise Resource Planning System — CRM, Sales, Production, Inventory, Financials & Payroll",
+  description: "JAPA Core ERP System — CRM, Sales, Production, Inventory, Financials & Payroll",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

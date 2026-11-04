@@ -51,3 +51,4 @@ BEGIN
       TO anon USING (TRUE);
   END IF;
 END $$;
+

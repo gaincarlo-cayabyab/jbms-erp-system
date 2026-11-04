@@ -4,7 +4,7 @@ import DashboardShell from '@/components/dashboard-shell'
 
 export const metadata = {
   title: 'CRM & Customer Management',
-  description: 'Manage customers, contact information, credit limits, and balances in JBMS ERP.',
+  description: 'Manage customers, contact information, credit limits, and balances in JAPA Core ERP.',
 }
 
 function CustomersFallback() {

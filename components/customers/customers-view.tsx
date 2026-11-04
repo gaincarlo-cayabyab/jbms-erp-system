@@ -500,7 +500,7 @@ export default function CustomersView() {
             </span>
             {filteredCustomers.length > 0 && (
               <span className="text-[11px] text-zinc-400">
-                JBMS CRM • Real-time Supabase sync
+                JAPA Core CRM • Real-time Supabase sync
               </span>
             )}
           </div>

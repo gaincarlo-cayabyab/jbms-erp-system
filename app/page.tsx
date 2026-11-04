@@ -64,7 +64,7 @@ export default function DashboardPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-zinc-900">Dashboard Overview</h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Welcome to JBMS ERP — your central hub for business operations.
+            Welcome to JAPA Core ERP — your central hub for business operations.
           </p>
         </div>
 
