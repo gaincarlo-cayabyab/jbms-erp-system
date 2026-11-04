@@ -52,7 +52,7 @@ const stats = [
 const quickLinks = [
   { label: 'Create New Sales Order', href: '/sales/new', color: 'text-blue-600 bg-blue-50 hover:bg-blue-100' },
   { label: 'Add Job Order', href: '/production/new', color: 'text-violet-600 bg-violet-50 hover:bg-violet-100' },
-  { label: 'Register Customer', href: '/crm/new', color: 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100' },
+  { label: 'Register Customer', href: '/customers?new=true', color: 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100' },
   { label: 'Update Inventory', href: '/inventory', color: 'text-amber-600 bg-amber-50 hover:bg-amber-100' },
 ]
 
@@ -139,7 +139,7 @@ export default function DashboardPage() {
           </p>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
             {[
-              { label: 'CRM', href: '/crm', status: 'Ready' },
+              { label: 'CRM', href: '/customers', status: 'Ready' },
               { label: 'Sales', href: '/sales', status: 'Ready' },
               { label: 'Production', href: '/production', status: 'Ready' },
               { label: 'Inventory', href: '/inventory', status: 'Ready' },
