@@ -251,3 +251,4 @@ export default function StockAdjustmentModal({
     </div>
   )
 }
+

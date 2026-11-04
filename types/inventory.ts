@@ -26,3 +26,4 @@ export interface StockAdjustmentData {
   quantity: number
   reason: string
 }
+
