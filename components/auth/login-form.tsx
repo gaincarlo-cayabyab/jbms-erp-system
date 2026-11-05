@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, Loader2, LogIn, AlertCircle } from 'lucide-react'
@@ -17,9 +17,19 @@ export default function LoginForm() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [showVideoOverlay, setShowVideoOverlay] = useState(false)
+  const redirectedRef = useRef(false)
+
   const [emailError, setEmailError] = useState<string | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [generalError, setGeneralError] = useState<string | null>(null)
+
+  const handleVideoComplete = useCallback(() => {
+    if (redirectedRef.current) return
+    redirectedRef.current = true
+    router.push(redirectTo)
+    router.refresh()
+  }, [router, redirectTo])
 
   function validate(): boolean {
     let isValid = true
@@ -70,11 +80,13 @@ export default function LoginForm() {
         return
       }
 
-      toast.success('Signed in successfully. Launching workspace…')
-      // Allow loading animation to play smoothly before route switch
-      await new Promise((r) => setTimeout(r, 1800))
-      router.push(redirectTo)
-      router.refresh()
+      // Show full loading animation video
+      setShowVideoOverlay(true)
+
+      // Fallback timer: 10.5 seconds in case onEnded does not fire
+      setTimeout(() => {
+        handleVideoComplete()
+      }, 10500)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'An unexpected error occurred'
       setGeneralError(msg)
@@ -218,38 +230,31 @@ export default function LoginForm() {
         </p>
       </div>
 
-      {/* Video Loading Animation Overlay */}
-      {loading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <div className="relative flex flex-col items-center justify-center max-w-sm w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl text-center text-white overflow-hidden">
-            <div className="absolute inset-0 bg-radial from-indigo-500/20 via-transparent to-transparent pointer-events-none" />
+      {/* ── Full 10-Second Video Loading Animation Overlay ────────────────── */}
+      {showVideoOverlay && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black animate-in fade-in duration-300">
+          <div className="relative w-full h-full flex items-center justify-center p-2 sm:p-6">
+            <video
+              autoPlay
+              muted
+              playsInline
+              onEnded={handleVideoComplete}
+              onError={handleVideoComplete}
+              className="max-w-full max-h-full w-auto h-auto object-contain shadow-2xl"
+            >
+              <source src="/assets/video/JAPA_loading_animation.mp4" type="video/mp4" />
+              <source src="/assets/video/loading.mp4" type="video/mp4" />
+              <source src="/assets/video/transaction_loading.mp4" type="video/mp4" />
+            </video>
 
-            {/* Video Player */}
-            <div className="relative w-48 h-48 mb-5 rounded-2xl overflow-hidden shadow-inner bg-slate-950 border border-slate-800">
-              <video
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="w-full h-full object-cover"
-              >
-                <source src="/assets/video/JAPA_loading_animation.mp4" type="video/mp4" />
-                <source src="/assets/video/loading.mp4" type="video/mp4" />
-                <source src="/assets/video/transaction_loading.mp4" type="video/mp4" />
-              </video>
-            </div>
-
-            <h3 className="text-lg font-bold text-white tracking-tight mb-1">
-              Authenticating Credentials
-            </h3>
-            <p className="text-xs text-indigo-300 font-medium mb-3">
-              {email || 'JAPA Core Workspace'}
-            </p>
-
-            <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Initializing secure session & workspace…</span>
-            </div>
+            {/* Quick Skip Button */}
+            <button
+              type="button"
+              onClick={handleVideoComplete}
+              className="absolute bottom-6 right-6 z-20 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 hover:text-white px-4 py-2 text-xs font-semibold backdrop-blur-md border border-white/15 transition active:scale-95"
+            >
+              Skip →
+            </button>
           </div>
         </div>
       )}

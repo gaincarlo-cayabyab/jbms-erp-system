@@ -87,7 +87,7 @@ export default function POSTransactionModal({ transaction, onComplete }: Props) 
               loop
               muted
               playsInline
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
               onError={() => setVideoFailed(true)}
             >
               <source src="/assets/video/JAPA_loading_animation.mp4" type="video/mp4" />
