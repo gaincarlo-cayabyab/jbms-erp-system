@@ -92,9 +92,10 @@ const navItems: NavItem[] = [
 interface SidebarProps {
   userEmail?: string
   userInitial?: string
+  onNavigate?: () => void
 }
 
-export default function Sidebar({ userEmail, userInitial }: SidebarProps) {
+export default function Sidebar({ userEmail, userInitial, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [email, setEmail] = useState(userEmail || '')
@@ -193,6 +194,7 @@ export default function Sidebar({ userEmail, userInitial }: SidebarProps) {
                 <li key={item.href}>
                   <Link
                     href={item.href}
+                    onClick={onNavigate}
                     className={cn(
                       'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
                       isActive

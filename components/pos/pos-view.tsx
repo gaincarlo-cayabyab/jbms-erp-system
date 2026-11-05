@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { toast } from 'sonner'
 import DashboardShell from '@/components/dashboard-shell'
 import POSProductCatalog from './pos-product-catalog'
@@ -11,9 +11,11 @@ import POSReceiptModal from './pos-receipt-modal'
 import { createClient } from '@/lib/supabase/client'
 import type { POSProduct, CartItem, CartDiscount, PaymentMethod, Transaction } from '@/types/pos'
 import { DEFAULT_POS_PRODUCTS } from '@/types/pos'
-import { Maximize2, Minimize2 } from 'lucide-react'
+import { Package, ShoppingCart, CreditCard, ArrowRight, Plus } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-// ─── VAT Rate ─────────────────────────────────────────────────────────────────
+// ─── Currency & VAT Rate ──────────────────────────────────────────────────────
+const PHP = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' })
 const VAT_RATE = 0.12
 
 function generateInvoiceNo(): string {
@@ -28,16 +30,16 @@ export default function POSView() {
   const [isLoading, setIsLoading] = useState(true)
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [cartDiscount, setCartDiscount] = useState<CartDiscount | null>(null)
-  const [isFullscreen, setIsFullscreen] = useState(false)
   const [activeBranch, setActiveBranch] = useState<'JAPA Dagupan (Main Branch)' | 'JAPA Manila'>('JAPA Dagupan (Main Branch)')
+
+  // Tablet Portrait / Mobile Navigation State (< 1024px)
+  const [tabletTab, setTabletTab] = useState<'catalog' | 'cart' | 'checkout'>('catalog')
 
   // Transaction flow state
   const [processingTransaction, setProcessingTransaction] = useState<Transaction | null>(null)
   const [completedTransaction, setCompletedTransaction] = useState<Transaction | null>(null)
   const [showTransactionModal, setShowTransactionModal] = useState(false)
   const [showReceiptModal, setShowReceiptModal] = useState(false)
-
-  const containerRef = useRef<HTMLDivElement>(null)
 
   // ── Load products from Supabase ───────────────────────────────────────────
   const loadProducts = useCallback(async () => {
@@ -64,23 +66,6 @@ export default function POSView() {
   useEffect(() => {
     loadProducts()
   }, [loadProducts])
-
-  // ── Fullscreen API ─────────────────────────────────────────────────────────
-  function toggleFullscreen() {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen?.().then(() => setIsFullscreen(true)).catch(() => {})
-    } else {
-      document.exitFullscreen?.().then(() => setIsFullscreen(false)).catch(() => {})
-    }
-  }
-
-  useEffect(() => {
-    function onFSChange() {
-      setIsFullscreen(!!document.fullscreenElement)
-    }
-    document.addEventListener('fullscreenchange', onFSChange)
-    return () => document.removeEventListener('fullscreenchange', onFSChange)
-  }, [])
 
   // ── Cart Operations ────────────────────────────────────────────────────────
   function addToCart(product: POSProduct) {
@@ -167,6 +152,10 @@ export default function POSView() {
     return { subtotal, discountAmount, vatAmount, grandTotal }
   }, [cartItems, cartDiscount])
 
+  const totalItemCount = useMemo(() => {
+    return cartItems.reduce((acc, i) => acc + i.quantity, 0)
+  }, [cartItems])
+
   // ── Checkout ───────────────────────────────────────────────────────────────
   function handleCheckout(paymentMethod: PaymentMethod, amountTendered: number) {
     if (cartItems.length === 0) { toast.error('Cart is empty.'); return }
@@ -198,6 +187,7 @@ export default function POSView() {
     setCompletedTransaction(transaction)
     setShowReceiptModal(true)
     clearCart()
+    setTabletTab('catalog')
     // Refresh products to reflect deducted stock
     loadProducts()
   }
@@ -205,26 +195,23 @@ export default function POSView() {
   function onNewSale() {
     setShowReceiptModal(false)
     setCompletedTransaction(null)
+    setTabletTab('catalog')
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <DashboardShell>
-      <div
-        ref={containerRef}
-        className="flex flex-col h-full bg-slate-50 relative"
-      >
-        {/* POS Header Bar */}
-        <div className="flex items-center justify-between px-4 py-2.5 bg-white border-b border-slate-200 shadow-xs shrink-0">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-bold text-slate-800">Cashier / POS Terminal</span>
-            {/* Branch Toggle */}
+      <div className="flex flex-col h-full bg-slate-50 relative select-none">
+        {/* POS Subheader Bar */}
+        <div className="flex flex-wrap items-center justify-between px-3 sm:px-4 py-2 bg-white border-b border-slate-200 shadow-xs shrink-0 gap-2">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xs sm:text-sm font-bold text-slate-800">POS Terminal</span>
+            {/* Branch Selector Pills */}
             <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs font-semibold">
               {(['JAPA Dagupan (Main Branch)', 'JAPA Manila'] as const).map((branch) => (
                 <button
                   key={branch}
                   onClick={() => setActiveBranch(branch)}
-                  className={`px-3 py-1.5 transition ${
+                  className={`px-2.5 sm:px-3 py-1 transition ${
                     activeBranch === branch
                       ? 'bg-indigo-600 text-white'
                       : 'bg-white text-slate-600 hover:bg-slate-50'
@@ -236,24 +223,63 @@ export default function POSView() {
             </div>
           </div>
 
-          {/* Fullscreen Toggle */}
-          <button
-            onClick={toggleFullscreen}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition"
-            title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen (Kiosk Mode)'}
-          >
-            {isFullscreen ? (
-              <><Minimize2 className="h-3.5 w-3.5" /> Exit Fullscreen</>
-            ) : (
-              <><Maximize2 className="h-3.5 w-3.5" /> Fullscreen</>
-            )}
-          </button>
+          {/* Quick Tablet Portrait View Selector (visible below lg: 1024px) */}
+          <div className="flex lg:hidden rounded-lg bg-slate-100 p-0.5 text-xs font-semibold">
+            <button
+              onClick={() => setTabletTab('catalog')}
+              className={cn(
+                'flex items-center gap-1 rounded-md px-2.5 py-1 transition',
+                tabletTab === 'catalog'
+                  ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              )}
+            >
+              <Package className="h-3.5 w-3.5" />
+              <span>Catalog</span>
+            </button>
+
+            <button
+              onClick={() => setTabletTab('cart')}
+              className={cn(
+                'flex items-center gap-1 rounded-md px-2.5 py-1 transition relative',
+                tabletTab === 'cart'
+                  ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              )}
+            >
+              <ShoppingCart className="h-3.5 w-3.5" />
+              <span>Cart</span>
+              {totalItemCount > 0 && (
+                <span className="rounded-full bg-indigo-600 px-1.5 py-0.2 text-[10px] font-bold text-white">
+                  {totalItemCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setTabletTab('checkout')}
+              className={cn(
+                'flex items-center gap-1 rounded-md px-2.5 py-1 transition',
+                tabletTab === 'checkout'
+                  ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              )}
+            >
+              <CreditCard className="h-3.5 w-3.5" />
+              <span>Pay</span>
+              {totals.grandTotal > 0 && (
+                <span className="hidden sm:inline font-mono text-[10px] text-indigo-700 font-extrabold">
+                  {PHP.format(totals.grandTotal)}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
-        {/* Three-Panel POS Layout */}
-        <div className="flex flex-1 overflow-hidden">
+        {/* ── Desktop & Tablet Landscape View (>= 1024px / Samsung Tab A8 Landscape 1280x800) ── */}
+        <div className="hidden lg:flex flex-1 overflow-hidden">
           {/* Left: Product Catalog */}
-          <div className="w-[42%] border-r border-slate-200 overflow-hidden flex flex-col">
+          <div className="w-[45%] xl:w-[48%] border-r border-slate-200 overflow-hidden flex flex-col">
             <POSProductCatalog
               products={products}
               isLoading={isLoading}
@@ -262,8 +288,8 @@ export default function POSView() {
             />
           </div>
 
-          {/* Center: Cart */}
-          <div className="flex-1 border-r border-slate-200 overflow-hidden flex flex-col">
+          {/* Center: Active Cart */}
+          <div className="flex-1 border-r border-slate-200 overflow-hidden flex flex-col min-w-[280px]">
             <POSCart
               items={cartItems}
               cartDiscount={cartDiscount}
@@ -277,7 +303,7 @@ export default function POSView() {
           </div>
 
           {/* Right: Order Summary & Checkout */}
-          <div className="w-72 shrink-0 overflow-hidden flex flex-col">
+          <div className="w-72 xl:w-80 shrink-0 overflow-hidden flex flex-col">
             <POSCheckoutPanel
               totals={totals}
               itemCount={cartItems.length}
@@ -285,6 +311,91 @@ export default function POSView() {
               onCheckout={handleCheckout}
             />
           </div>
+        </div>
+
+        {/* ── Tablet Portrait & Mobile View (< 1024px / Samsung Tab A8 Portrait 800x1280) ── */}
+        <div className="flex-1 lg:hidden overflow-hidden flex flex-col relative">
+          {/* Tab 1: Catalog */}
+          {tabletTab === 'catalog' && (
+            <div className="flex-1 overflow-hidden flex flex-col pb-16">
+              <POSProductCatalog
+                products={products}
+                isLoading={isLoading}
+                onAddToCart={addToCart}
+                cartItems={cartItems}
+              />
+
+              {/* Floating Bottom Action Bar on Catalog when items exist */}
+              {cartItems.length > 0 && (
+                <div className="absolute bottom-0 inset-x-0 bg-indigo-700 text-white px-4 py-2.5 shadow-lg flex items-center justify-between z-20 border-t border-indigo-500">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20">
+                      <ShoppingCart className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium text-indigo-100">
+                        {totalItemCount} {totalItemCount === 1 ? 'item' : 'items'} in cart
+                      </p>
+                      <p className="text-sm font-extrabold tabular-nums">
+                        {PHP.format(totals.grandTotal)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setTabletTab('cart')}
+                    className="flex items-center gap-1.5 rounded-lg bg-white px-3.5 py-1.5 text-xs font-bold text-indigo-700 shadow-sm active:scale-95 transition"
+                  >
+                    <span>View Cart</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab 2: Cart */}
+          {tabletTab === 'cart' && (
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <div className="p-2 bg-slate-100 border-b border-slate-200 flex items-center justify-between shrink-0">
+                <button
+                  onClick={() => setTabletTab('catalog')}
+                  className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Add More Products</span>
+                </button>
+                <span className="text-xs text-slate-500 font-medium">
+                  {cartItems.length} lines • {totalItemCount} units
+                </span>
+              </div>
+              <POSCart
+                items={cartItems}
+                cartDiscount={cartDiscount}
+                onRemove={removeFromCart}
+                onUpdateQuantity={updateQuantity}
+                onOverridePrice={overridePrice}
+                onApplyLineDiscount={applyLineDiscount}
+                onSetCartDiscount={setCartDiscount}
+                onClearCart={clearCart}
+                onProceedToCheckout={() => setTabletTab('checkout')}
+                grandTotal={totals.grandTotal}
+              />
+            </div>
+          )}
+
+          {/* Tab 3: Checkout */}
+          {tabletTab === 'checkout' && (
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <POSCheckoutPanel
+                totals={totals}
+                itemCount={cartItems.length}
+                cartDiscount={cartDiscount}
+                onCheckout={handleCheckout}
+                onBackToCart={() => setTabletTab('cart')}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -306,4 +417,3 @@ export default function POSView() {
     </DashboardShell>
   )
 }
-

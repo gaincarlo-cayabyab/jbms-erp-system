@@ -18,6 +18,8 @@ interface Props {
   onApplyLineDiscount: (productId: string, discountAmt: number) => void
   onSetCartDiscount: (discount: CartDiscount | null) => void
   onClearCart: () => void
+  onProceedToCheckout?: () => void
+  grandTotal?: number
 }
 
 interface InlineEdit {
@@ -35,6 +37,8 @@ export default function POSCart({
   onApplyLineDiscount,
   onSetCartDiscount,
   onClearCart,
+  onProceedToCheckout,
+  grandTotal,
 }: Props) {
   const confirm = useConfirm()
   const [inlineEdit, setInlineEdit] = useState<InlineEdit | null>(null)
@@ -215,22 +219,22 @@ export default function POSCart({
                 </div>
               </div>
 
-              {/* Qty Stepper — 48px touch targets per spec */}
+              {/* Qty Stepper — Touch-friendly targets */}
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => onUpdateQuantity(item.product.id, item.quantity - 1)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600 hover:bg-indigo-100 hover:text-indigo-700 transition active:scale-90 font-bold"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-700 hover:bg-indigo-100 hover:text-indigo-700 transition active:scale-90 font-bold"
                   aria-label="Decrease quantity"
                 >
-                  <Minus className="h-3.5 w-3.5" />
+                  <Minus className="h-4 w-4" />
                 </button>
                 <span className="w-8 text-center text-sm font-bold text-slate-900 tabular-nums">{item.quantity}</span>
                 <button
                   onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600 hover:bg-indigo-100 hover:text-indigo-700 transition active:scale-90 font-bold"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-700 hover:bg-indigo-100 hover:text-indigo-700 transition active:scale-90 font-bold"
                   aria-label="Increase quantity"
                 >
-                  <Plus className="h-3.5 w-3.5" />
+                  <Plus className="h-4 w-4" />
                 </button>
               </div>
 
@@ -331,6 +335,23 @@ export default function POSCart({
             className="w-full rounded-lg bg-indigo-600 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 transition active:scale-[0.98]"
           >
             Apply Discount
+          </button>
+        </div>
+      )}
+
+      {/* Proceed to Checkout action (for Tablet Portrait & Mobile) */}
+      {onProceedToCheckout && items.length > 0 && (
+        <div className="p-3 border-t border-slate-200 bg-white shrink-0">
+          <button
+            type="button"
+            onClick={onProceedToCheckout}
+            className="w-full min-h-[48px] rounded-xl bg-indigo-600 text-white font-bold text-sm shadow-sm hover:bg-indigo-700 transition active:scale-[0.98] flex items-center justify-center gap-2"
+          >
+            <span>Proceed to Payment</span>
+            {grandTotal !== undefined && (
+              <span className="font-extrabold font-mono">({PHP.format(grandTotal)})</span>
+            )}
+            <span>→</span>
           </button>
         </div>
       )}

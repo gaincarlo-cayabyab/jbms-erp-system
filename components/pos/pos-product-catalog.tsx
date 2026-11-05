@@ -76,9 +76,9 @@ export default function POSProductCatalog({ products, isLoading, onAddToCart, ca
       </div>
 
       {/* Product Grid */}
-      <div className="flex-1 overflow-y-auto p-3">
+      <div className="flex-1 overflow-y-auto p-2.5 sm:p-3">
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-2.5">
             {Array.from({ length: 12 }).map((_, i) => (
               <div key={i} className="h-28 rounded-xl bg-slate-100 animate-pulse" />
             ))}
@@ -89,7 +89,7 @@ export default function POSProductCatalog({ products, isLoading, onAddToCart, ca
             <p className="text-sm font-medium">No products found</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-2.5">
             {filtered.map((product) => {
               const inCart = cartMap[product.id] ?? 0
               const outOfStock = product.stock_quantity <= 0
