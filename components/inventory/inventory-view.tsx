@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useTransition } from 'react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import DashboardShell from '@/components/dashboard-shell'
@@ -26,6 +27,7 @@ import {
   Tag,
   Barcode,
   Eye,
+  Receipt,
 } from 'lucide-react'
 
 export default function InventoryView() {
@@ -264,6 +266,16 @@ export default function InventoryView() {
               <Plus className="h-4 w-4" />
               <span>+ Add New Record</span>
             </button>
+
+            {/* Direct Link to Cashier POS */}
+            <Link
+              href="/pos"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 shadow-2xs hover:bg-rose-100 transition active:scale-95"
+              title="Sell inventory products via POS Cashier terminal"
+            >
+              <Receipt className="h-3.5 w-3.5" />
+              <span>🛒 Cashier POS</span>
+            </Link>
 
             {/* [ 🖊️ Quick Batch Edit ] (Secondary Blue) */}
             <button

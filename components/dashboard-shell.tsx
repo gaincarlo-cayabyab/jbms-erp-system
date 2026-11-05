@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Sidebar from './sidebar'
-import { Menu, X, Bell, ChevronRight, Store } from 'lucide-react'
+import { Menu, X, Bell, ChevronRight, Store, Receipt } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { FullscreenToggle } from '@/components/ui/auto-fullscreen'
 
 // Map pathnames → readable breadcrumb titles
 const BREADCRUMB_MAP: Record<string, string> = {
@@ -89,15 +91,30 @@ export default function DashboardShell({ children }: { children: React.ReactNode
             </nav>
           </div>
 
-          {/* Right: branch selector + notifications */}
-          <div className="flex items-center gap-3">
+          {/* Right: Cashier shortcut + branch selector + fullscreen + notifications */}
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Direct Cashier / POS Launcher */}
+            <Link
+              href="/pos"
+              className={cn(
+                'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition active:scale-95 shadow-2xs',
+                pathname === '/pos'
+                  ? 'border-indigo-600 bg-indigo-600 text-white'
+                  : 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:border-rose-300'
+              )}
+              title="Launch Cashier / POS Terminal"
+            >
+              <Receipt className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Cashier POS</span>
+            </Link>
+
             {/* Branch / Store Selector */}
             <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 shadow-2xs">
               <Store className="h-3.5 w-3.5 text-indigo-600" />
               <select
                 value={activeBranch}
                 onChange={(e) => setActiveBranch(e.target.value)}
-                className="bg-transparent text-xs font-semibold text-slate-700 outline-none cursor-pointer"
+                className="bg-transparent text-xs font-semibold text-slate-700 outline-none cursor-pointer max-w-[130px] sm:max-w-none truncate"
               >
                 {BRANCH_OPTIONS.map((b) => (
                   <option key={b.value} value={b.value} className="bg-white text-slate-900">
@@ -106,6 +123,9 @@ export default function DashboardShell({ children }: { children: React.ReactNode
                 ))}
               </select>
             </div>
+
+            {/* Global Fullscreen Toggle */}
+            <FullscreenToggle />
 
             {/* Notification bell */}
             <button

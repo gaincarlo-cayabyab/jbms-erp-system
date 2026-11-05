@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+import AutoFullscreenManager from "@/components/ui/auto-fullscreen";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} light h-full antialiased`}
     >
       <body className="min-h-screen flex flex-col bg-slate-50 text-slate-900 antialiased">
+        <AutoFullscreenManager />
         {children}
         {/* Global Sonner toast notifications — bottom-right */}
         <Toaster

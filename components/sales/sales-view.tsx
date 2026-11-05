@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useTransition } from 'react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import DashboardShell from '@/components/dashboard-shell'
@@ -25,6 +26,7 @@ import {
   X,
   Eye,
   FileCheck,
+  Receipt,
 } from 'lucide-react'
 
 export default function SalesView() {
@@ -36,7 +38,7 @@ export default function SalesView() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [paymentFilter, setPaymentFilter] = useState<string>('all')
-  const [activeTab, setActiveTab] = useState<'all' | 'quotes' | 'orders'>('all')
+  const [activeTab, setActiveTab] = useState<'all' | 'quotes' | 'orders' | 'pos'>('all')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<SalesOrder | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -109,6 +111,10 @@ export default function SalesView() {
           order.order_status !== 'Pending' &&
           !order.order_number.startsWith('QT')
         if (!isOrder) return false
+      }
+      if (activeTab === 'pos') {
+        const isPos = order.order_number.startsWith('INV-') || order.branch?.includes('POS')
+        if (!isPos) return false
       }
 
       // Text search
@@ -215,7 +221,7 @@ export default function SalesView() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => {
@@ -224,17 +230,26 @@ export default function SalesView() {
                 })
               }}
               disabled={isLoading || isPending}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 hover:text-zinc-900 transition disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 shadow-2xs hover:bg-zinc-50 hover:text-zinc-900 transition disabled:opacity-50"
               title="Refresh Sales Orders"
             >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Refresh</span>
             </button>
+
+            {/* Direct Link to POS Cashier */}
+            <Link
+              href="/pos"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 shadow-2xs hover:bg-rose-100 transition active:scale-95"
+            >
+              <Receipt className="h-3.5 w-3.5" />
+              <span>🛒 Open POS Cashier</span>
+            </Link>
 
             <button
               type="button"
               onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-blue-700 transition active:scale-95"
             >
               <Plus className="h-4 w-4" />
               <span>Draft Order / Quote</span>
@@ -312,6 +327,24 @@ export default function SalesView() {
                       o.order_status !== 'Draft' &&
                       o.order_status !== 'Pending' &&
                       !o.order_number.startsWith('QT')
+                  ).length
+                }
+                )
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('pos')}
+                className={`border-b-2 px-4 py-2.5 text-xs font-semibold transition flex items-center gap-1.5 ${
+                  activeTab === 'pos'
+                    ? 'border-rose-600 text-rose-600 font-bold'
+                    : 'border-transparent text-zinc-500 hover:text-rose-600'
+                }`}
+              >
+                <Receipt className="h-3 w-3" />
+                POS Counter Sales (
+                {
+                  orders.filter(
+                    (o) => o.order_number.startsWith('INV-') || o.branch?.includes('POS')
                   ).length
                 }
                 )

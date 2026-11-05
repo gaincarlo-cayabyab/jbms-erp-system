@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useTransition } from 'react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import DashboardShell from '@/components/dashboard-shell'
@@ -22,6 +23,7 @@ import {
   SlidersHorizontal,
   X,
   FileSpreadsheet,
+  Receipt,
 } from 'lucide-react'
 
 export default function CustomersView() {
@@ -149,7 +151,7 @@ export default function CustomersView() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => {
@@ -158,17 +160,27 @@ export default function CustomersView() {
                 })
               }}
               disabled={isLoading || isPending}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 hover:text-zinc-900 transition disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 shadow-2xs hover:bg-zinc-50 hover:text-zinc-900 transition disabled:opacity-50"
               title="Refresh Customer Records"
             >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Refresh</span>
             </button>
+
+            {/* Direct Link to Cashier POS */}
+            <Link
+              href="/pos"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 shadow-2xs hover:bg-rose-100 transition active:scale-95"
+              title="Open POS Terminal for retail checkout"
+            >
+              <Receipt className="h-3.5 w-3.5" />
+              <span>🛒 New POS Sale</span>
+            </Link>
 
             <button
               type="button"
               onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-blue-700 transition active:scale-95"
             >
               <UserPlus className="h-4 w-4" />
               <span>Add Customer</span>

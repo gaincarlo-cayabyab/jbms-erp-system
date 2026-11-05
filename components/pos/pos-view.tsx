@@ -68,7 +68,7 @@ export default function POSView() {
   // ── Fullscreen API ─────────────────────────────────────────────────────────
   function toggleFullscreen() {
     if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen?.().then(() => setIsFullscreen(true)).catch(() => {})
+      document.documentElement.requestFullscreen?.().then(() => setIsFullscreen(true)).catch(() => {})
     } else {
       document.exitFullscreen?.().then(() => setIsFullscreen(false)).catch(() => {})
     }

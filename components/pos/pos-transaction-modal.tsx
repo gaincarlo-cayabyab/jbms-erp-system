@@ -36,16 +36,17 @@ export default function POSTransactionModal({ transaction, onComplete }: Props) 
           setStatusText('Finalizing digital receipt & invoice records...')
         }
 
-        // 3. Optional order record insertion if sales_orders exists
+        // 3. Insert into sales_orders to link Cashier transaction with Sales & Financials
         try {
           await supabase.from('sales_orders').insert({
             order_number: transaction.invoiceNo,
             total_amount: transaction.grandTotal,
-            status: 'COMPLETED',
-            notes: `POS Cashier Transaction - ${transaction.branchName} (${transaction.paymentMethod})`,
+            payment_status: 'Paid',
+            order_status: 'Delivered',
+            branch: transaction.branchName,
           })
-        } catch {
-          // Table structure might vary; gracefully handle
+        } catch (salesErr) {
+          console.warn('Could not auto-insert to sales_orders:', salesErr)
         }
 
         // Ensure user sees the high-end animation smoothly (at least 2.2 seconds)
