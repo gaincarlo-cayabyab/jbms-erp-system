@@ -16,10 +16,12 @@ import {
   LogOut,
   Lock,
   Receipt,
+  Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useConfirm } from '@/components/ui/confirm-dialog'
+import { performSignOut } from '@/lib/auth'
 
 interface NavItem {
   label: string
@@ -138,10 +140,7 @@ export default function Sidebar({ userEmail, userInitial, onNavigate }: SidebarP
     })
     if (!ok) return
     setSignOutLoading(true)
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
+    await performSignOut()
   }
 
   const displayEmail = email || userEmail || 'admin@japacore.com'
@@ -268,7 +267,11 @@ export default function Sidebar({ userEmail, userInitial, onNavigate }: SidebarP
             aria-label="Sign out"
             title="Sign out"
           >
-            <LogOut className="h-4 w-4" />
+            {signOutLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin text-rose-600" />
+            ) : (
+              <LogOut className="h-4 w-4" />
+            )}
           </button>
         </div>
       </div>

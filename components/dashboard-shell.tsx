@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Sidebar from './sidebar'
-import { Menu, X, Bell, ChevronRight, Store, Receipt, AlertTriangle, Layers } from 'lucide-react'
+import { Menu, X, Bell, ChevronRight, Store, Receipt, AlertTriangle, Layers, LogOut, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { FullscreenToggle } from '@/components/ui/auto-fullscreen'
+import { useConfirm } from '@/components/ui/confirm-dialog'
+import { performSignOut } from '@/lib/auth'
 
 // Map pathnames → readable breadcrumb titles
 const BREADCRUMB_MAP: Record<string, string> = {
@@ -34,7 +36,21 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true)
   const [activeBranch, setActiveBranch] = useState('all')
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [headerSignOutLoading, setHeaderSignOutLoading] = useState(false)
+  const confirm = useConfirm()
   const pathname = usePathname()
+
+  async function handleHeaderSignOut() {
+    const ok = await confirm({
+      title: 'Sign Out of JAPA Core ERP?',
+      message: 'You will need to sign in again to access the operations workspace.',
+      confirmText: 'Sign Out',
+      variant: 'warning',
+    })
+    if (!ok) return
+    setHeaderSignOutLoading(true)
+    await performSignOut()
+  }
 
   // Detect screen size and initialize sidebar preference
   useEffect(() => {
@@ -296,6 +312,23 @@ export default function DashboardShell({ children }: { children: React.ReactNode
                 </>
               )}
             </div>
+
+            {/* Direct Header Sign Out (Accessible on all devices & when sidebar is collapsed) */}
+            <button
+              type="button"
+              onClick={handleHeaderSignOut}
+              disabled={headerSignOutLoading}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 sm:px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition active:scale-95 shadow-2xs disabled:opacity-50"
+              title="Sign Out of JAPA Core ERP"
+              aria-label="Sign Out"
+            >
+              {headerSignOutLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-rose-600" />
+              ) : (
+                <LogOut className="h-3.5 w-3.5 text-slate-500" />
+              )}
+              <span className="hidden md:inline">Sign Out</span>
+            </button>
           </div>
         </header>
 

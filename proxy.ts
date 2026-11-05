@@ -39,8 +39,23 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Authenticated user trying to access /login -> redirect to home
-  if (pathname.startsWith('/login') && user) {
+  // Explicit signout query parameter check — strip cookies & allow login view without redirecting to /
+  const isExplicitLogout = request.nextUrl.searchParams.has('logout')
+  if (isExplicitLogout) {
+    const allCookies = request.cookies.getAll()
+    for (const cookie of allCookies) {
+      if (
+        cookie.name.startsWith('sb-') ||
+        cookie.name.includes('supabase') ||
+        cookie.name.includes('auth') ||
+        cookie.name.includes('token')
+      ) {
+        response.cookies.delete(cookie.name)
+        response.cookies.set(cookie.name, '', { maxAge: 0, path: '/' })
+      }
+    }
+  } else if (pathname.startsWith('/login') && user) {
+    // Authenticated user trying to access /login -> redirect to home
     return NextResponse.redirect(new URL('/', request.url))
   }
 
