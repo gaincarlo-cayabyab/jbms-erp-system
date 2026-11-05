@@ -21,6 +21,7 @@ import {
   DollarSign,
   ChevronRight,
   Sparkles,
+  Receipt,
 } from 'lucide-react'
 import StatCard from '@/components/stat-card'
 import { cn } from '@/lib/utils'
@@ -282,6 +283,13 @@ export default function ExecutiveDashboard() {
   // Quick navigation items
   const quickActions = [
     {
+      label: 'Open Cashier POS',
+      desc: 'Point of sale terminal',
+      href: '/pos',
+      icon: Receipt,
+      color: 'bg-rose-50 text-rose-700 hover:bg-rose-100 border-rose-200',
+    },
+    {
       label: 'Create Sales Order',
       desc: 'Quote & invoice client',
       href: '/sales',
@@ -526,7 +534,7 @@ export default function ExecutiveDashboard() {
             </div>
           </div>
           <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-800">
-            Main • North • South
+            Dagupan (Main) • Manila
           </span>
         </Link>
       </div>

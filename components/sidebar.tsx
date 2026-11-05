@@ -15,6 +15,7 @@ import {
   ChevronRight,
   LogOut,
   Lock,
+  Receipt,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -33,6 +34,13 @@ const navItems: NavItem[] = [
     label: 'Dashboard Overview',
     href: '/',
     icon: LayoutDashboard,
+  },
+  {
+    label: 'Cashier / POS',
+    href: '/pos',
+    icon: Receipt,
+    badge: 'POS',
+    badgeClass: 'bg-rose-50 text-rose-700 border border-rose-200',
   },
   {
     label: 'CRM / Customers',

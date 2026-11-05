@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 // Map pathnames → readable breadcrumb titles
 const BREADCRUMB_MAP: Record<string, string> = {
   '/':           'Executive Dashboard',
+  '/pos':        'Cashier / POS Terminal',
   '/customers':  'CRM / Customers',
   '/crm':        'CRM / Customers',
   '/sales':      'Sales & Quotations',
@@ -19,10 +20,9 @@ const BREADCRUMB_MAP: Record<string, string> = {
 }
 
 const BRANCH_OPTIONS = [
-  { value: 'all',   label: 'All Stores — Consolidated' },
-  { value: 'main',  label: 'Main Branch' },
-  { value: 'north', label: 'North Branch' },
-  { value: 'south', label: 'South Branch' },
+  { value: 'all',     label: 'All Stores — Consolidated' },
+  { value: 'dagupan', label: 'JAPA Dagupan (Main Branch)' },
+  { value: 'manila',  label: 'JAPA Manila' },
 ]
 
 export default function DashboardShell({ children }: { children: React.ReactNode }) {

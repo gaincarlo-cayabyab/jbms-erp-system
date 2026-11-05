@@ -25,6 +25,7 @@ import {
   Trash2,
   Tag,
   Barcode,
+  Eye,
 } from 'lucide-react'
 
 export default function InventoryView() {
@@ -41,8 +42,36 @@ export default function InventoryView() {
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null)
   const [adjustingProduct, setAdjustingProduct] = useState<ProductItem | null>(null)
+  const [isDetailedView, setIsDetailedView] = useState(false)
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([])
 
   const [isPending, startTransition] = useTransition()
+
+  // Batch delete selected items
+  const handleBatchDelete = async () => {
+    if (selectedProductIds.length === 0) return
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${selectedProductIds.length} selected product(s)? This action cannot be undone.`
+    )
+    if (!confirmed) return
+
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('products_and_inventory')
+        .delete()
+        .in('id', selectedProductIds)
+
+      if (error) throw new Error(error.message)
+
+      setProducts((prev) => prev.filter((p) => !selectedProductIds.includes(p.id)))
+      setSelectedProductIds([])
+      toast.success(`Successfully deleted ${selectedProductIds.length} product(s).`)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to delete selected products'
+      toast.error(`Error deleting products: ${msg}`)
+    }
+  }
 
   // URL query check (e.g. /inventory?new=true)
   useEffect(() => {
@@ -206,7 +235,8 @@ export default function InventoryView() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Unified Action Bar (Section 7.1 CRUD Standard) */}
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => {
@@ -215,23 +245,67 @@ export default function InventoryView() {
                 })
               }}
               disabled={isLoading || isPending}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 hover:text-zinc-900 transition disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 shadow-2xs hover:bg-zinc-50 hover:text-zinc-900 transition disabled:opacity-50"
               title="Refresh Inventory"
             >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Refresh</span>
             </button>
 
+            {/* [ + Add New Record ] (Primary Green) */}
             <button
               type="button"
               onClick={() => {
                 setEditingProduct(null)
                 setIsProductModalOpen(true)
               }}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-emerald-700 transition active:scale-95"
             >
               <Plus className="h-4 w-4" />
-              <span>Add Product</span>
+              <span>+ Add New Record</span>
+            </button>
+
+            {/* [ 🖊️ Quick Batch Edit ] (Secondary Blue) */}
+            <button
+              type="button"
+              onClick={() => {
+                if (selectedProductIds.length === 1) {
+                  const prod = products.find((p) => p.id === selectedProductIds[0])
+                  if (prod) {
+                    setEditingProduct(prod)
+                    setIsProductModalOpen(true)
+                  }
+                } else if (selectedProductIds.length > 1) {
+                  toast.info(`Batch editing ${selectedProductIds.length} items. Select one item to edit all fields.`)
+                } else {
+                  toast.info('Select one or more items using checkboxes to edit.')
+                }
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-indigo-700 transition active:scale-95"
+            >
+              <Edit2 className="h-3.5 w-3.5" />
+              <span>🖊️ Quick Batch Edit</span>
+            </button>
+
+            {/* [ 🗑️ Delete Selected ] (Danger Red, with double confirmation) */}
+            <button
+              type="button"
+              onClick={handleBatchDelete}
+              disabled={selectedProductIds.length === 0}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 shadow-2xs hover:bg-rose-100 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>🗑️ Delete Selected {selectedProductIds.length > 0 ? `(${selectedProductIds.length})` : ''}</span>
+            </button>
+
+            {/* [ 👁️ Toggle Detailed View ] (Neutral Dark) */}
+            <button
+              type="button"
+              onClick={() => setIsDetailedView((prev) => !prev)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3.5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-slate-900 transition active:scale-95"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              <span>{isDetailedView ? '👁️ Standard View' : '👁️ Detailed View'}</span>
             </button>
           </div>
         </div>
@@ -351,25 +425,47 @@ export default function InventoryView() {
             <table className="w-full text-left text-sm text-zinc-600">
               <thead className="border-b border-zinc-200 bg-zinc-50 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
                 <tr>
-                  <th scope="col" className="px-6 py-3.5">
+                  <th scope="col" className="pl-6 pr-2 py-3.5 w-10">
+                    <input
+                      type="checkbox"
+                      checked={
+                        filteredProducts.length > 0 &&
+                        selectedProductIds.length === filteredProducts.length
+                      }
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedProductIds(filteredProducts.map((p) => p.id))
+                        } else {
+                          setSelectedProductIds([])
+                        }
+                      }}
+                      className="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    />
+                  </th>
+                  <th scope="col" className="px-4 py-3.5">
                     SKU & Product Name
                   </th>
-                  <th scope="col" className="px-6 py-3.5">
+                  <th scope="col" className="px-4 py-3.5">
                     Category
                   </th>
-                  <th scope="col" className="px-6 py-3.5 text-right">
+                  <th scope="col" className="px-4 py-3.5 text-right">
                     Stock Level
                   </th>
-                  <th scope="col" className="px-6 py-3.5">
+                  <th scope="col" className="px-4 py-3.5">
                     Stock Status
                   </th>
-                  <th scope="col" className="px-6 py-3.5 text-right">
+                  <th scope="col" className="px-4 py-3.5 text-right">
                     Cost Price
                   </th>
-                  <th scope="col" className="px-6 py-3.5 text-right">
+                  <th scope="col" className="px-4 py-3.5 text-right">
                     Retail Price
                   </th>
-                  <th scope="col" className="px-6 py-3.5 text-right">
+                  {isDetailedView && (
+                    <th scope="col" className="px-4 py-3.5 text-right">
+                      Margin %
+                    </th>
+                  )}
+                  <th scope="col" className="px-4 py-3.5 text-right">
                     Total Valuation
                   </th>
                   <th scope="col" className="px-6 py-3.5 text-center">
@@ -381,16 +477,18 @@ export default function InventoryView() {
                 {isLoading ? (
                   Array.from({ length: 4 }).map((_, i) => (
                     <tr key={i} className="animate-pulse">
-                      <td className="px-6 py-4">
+                      <td className="pl-6 pr-2 py-4"><div className="h-4 w-4 rounded bg-zinc-200" /></td>
+                      <td className="px-4 py-4">
                         <div className="h-4 w-28 rounded bg-zinc-200 mb-1" />
                         <div className="h-3 w-44 rounded bg-zinc-100" />
                       </td>
-                      <td className="px-6 py-4"><div className="h-4 w-24 rounded bg-zinc-200" /></td>
-                      <td className="px-6 py-4 text-right"><div className="h-4 w-16 rounded bg-zinc-200 ml-auto" /></td>
-                      <td className="px-6 py-4"><div className="h-5 w-20 rounded-full bg-zinc-200" /></td>
-                      <td className="px-6 py-4 text-right"><div className="h-4 w-16 rounded bg-zinc-200 ml-auto" /></td>
-                      <td className="px-6 py-4 text-right"><div className="h-4 w-16 rounded bg-zinc-200 ml-auto" /></td>
-                      <td className="px-6 py-4 text-right"><div className="h-4 w-20 rounded bg-zinc-200 ml-auto" /></td>
+                      <td className="px-4 py-4"><div className="h-4 w-24 rounded bg-zinc-200" /></td>
+                      <td className="px-4 py-4 text-right"><div className="h-4 w-16 rounded bg-zinc-200 ml-auto" /></td>
+                      <td className="px-4 py-4"><div className="h-5 w-20 rounded-full bg-zinc-200" /></td>
+                      <td className="px-4 py-4 text-right"><div className="h-4 w-16 rounded bg-zinc-200 ml-auto" /></td>
+                      <td className="px-4 py-4 text-right"><div className="h-4 w-16 rounded bg-zinc-200 ml-auto" /></td>
+                      {isDetailedView && <td className="px-4 py-4 text-right"><div className="h-4 w-12 rounded bg-zinc-200 ml-auto" /></td>}
+                      <td className="px-4 py-4 text-right"><div className="h-4 w-20 rounded bg-zinc-200 ml-auto" /></td>
                       <td className="px-6 py-4 text-center"><div className="h-6 w-20 rounded bg-zinc-200 mx-auto" /></td>
                     </tr>
                   ))
@@ -401,23 +499,43 @@ export default function InventoryView() {
                     const cost = Number(product.cost_price) || 0
                     const price = Number(product.unit_price) || 0
                     const valuation = stock * cost
+                    const margin = price > 0 ? (((price - cost) / price) * 100).toFixed(1) : '0'
 
                     const isOutOfStock = stock <= 0
                     const isLowStock = !isOutOfStock && stock <= reorder
+                    const isSelected = selectedProductIds.includes(product.id)
 
                     return (
                       <tr
                         key={product.id}
                         className={`transition-colors ${
-                          isOutOfStock
+                          isSelected
+                            ? 'bg-indigo-50/60'
+                            : isOutOfStock
                             ? 'bg-red-50/30 hover:bg-red-50/50'
                             : isLowStock
                             ? 'bg-amber-50/30 hover:bg-amber-50/50'
                             : 'hover:bg-zinc-50/70'
                         }`}
                       >
+                        {/* Selection Checkbox */}
+                        <td className="pl-6 pr-2 py-4">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedProductIds((prev) => [...prev, product.id])
+                              } else {
+                                setSelectedProductIds((prev) => prev.filter((id) => id !== product.id))
+                              }
+                            }}
+                            className="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                          />
+                        </td>
+
                         {/* SKU & Product Name */}
-                        <td className="px-6 py-4">
+                        <td className="px-4 py-4">
                           <div className="flex items-center gap-2">
                             <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                               {product.sku}
@@ -467,6 +585,13 @@ export default function InventoryView() {
                         <td className="px-6 py-4 text-right font-medium text-zinc-900">
                           {formatCurrency(price)}
                         </td>
+
+                        {/* Margin % (Detailed View) */}
+                        {isDetailedView && (
+                          <td className="px-4 py-4 text-right font-semibold text-indigo-700 text-xs">
+                            {margin}%
+                          </td>
+                        )}
 
                         {/* Total Valuation */}
                         <td className="px-6 py-4 text-right font-bold text-zinc-900">
