@@ -15,20 +15,28 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "JAPA Global — Enterprise Operations",
-    template: "%s | JAPA Global",
+    default: "JAPA Core ERP — Enterprise Management System",
+    template: "%s | JAPA Core ERP",
   },
   description:
-    "JAPA Global Enterprise Operations — Multi-store CRM, 7-Stage Production, Inventory, Financials & Payroll",
+    "Enterprise Resource Planning System for JAPA Global Trading — Multi-store CRM, 7-Stage Production, Inventory, Financials & Payroll",
+  icons: {
+    icon: [
+      { url: "/assets/images/JAPA_favicon.ico", sizes: "any" },
+      { url: "/assets/images/JAPA_favicon.png", type: "image/png" },
+    ],
+    shortcut: "/assets/images/JAPA_favicon.png",
+    apple: "/assets/images/JAPA_favicon.png",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} light h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#F8FAFC]">
+      <body className="min-h-screen flex flex-col bg-slate-50 text-slate-900 antialiased">
         {children}
         {/* Global Sonner toast notifications — bottom-right */}
         <Toaster
@@ -39,7 +47,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             duration: 4000,
             classNames: {
               toast:
-                "font-sans text-sm shadow-lg border border-zinc-200 rounded-xl",
+                "font-sans text-sm shadow-modern border border-slate-200 rounded-xl",
             },
           }}
         />

@@ -1,42 +1,113 @@
 @import "tailwindcss";
 
-:root {
-  /* ── JAPA Global Brand Palette ───────────────────────────────────── */
-  --japa-blue:      #0B3BBE;
-  --japa-red:       #D3122A;
-  --japa-dark:      #101828;
-  --japa-surface:   #F8FAFC;
-  --japa-border:    #E2E8F0;
+@layer base {
+  :root {
+    --background: #F8FAFC;
+    --foreground: #0F172A;
 
-  --background: var(--japa-surface);
-  --foreground: var(--japa-dark);
+    --card: #FFFFFF;
+    --card-foreground: #0F172A;
+
+    --popover: #FFFFFF;
+    --popover-foreground: #0F172A;
+
+    --primary: #4F46E5;
+    --primary-foreground: #FFFFFF;
+
+    --secondary: #0D9488;
+    --secondary-foreground: #FFFFFF;
+
+    --muted: #F1F5F9;
+    --muted-foreground: #64748B;
+
+    --accent: #7C3AED;
+    --accent-foreground: #FFFFFF;
+
+    --destructive: #E11D48;
+    --destructive-foreground: #FFFFFF;
+
+    --border: #E2E8F0;
+    --input: #E2E8F0;
+    --ring: #4F46E5;
+
+    --radius: 0.75rem;
+
+    /* ── Vibrant Accent Color Tokens (Light Theme) ── */
+    --brand-indigo: #4F46E5;
+    --brand-teal: #0D9488;
+    --accent-amber: #D97706;
+    --accent-rose: #E11D48;
+    --accent-emerald: #059669;
+    --accent-violet: #7C3AED;
+    --accent-blue: #2563EB;
+    --bg-app-light: #F8FAFC;
+    --bg-card-light: #FFFFFF;
+    --border-subtle: #E2E8F0;
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+  }
 }
 
 @theme inline {
-  --color-background:   var(--background);
-  --color-foreground:   var(--foreground);
-  --color-japa-blue:    var(--japa-blue);
-  --color-japa-red:     var(--japa-red);
-  --color-japa-dark:    var(--japa-dark);
-  --color-japa-surface: var(--japa-surface);
-  --color-japa-border:  var(--japa-border);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand-indigo: #4F46E5;
+  --color-brand-teal: #0D9488;
+  --color-accent-amber: #D97706;
+  --color-accent-rose: #E11D48;
+  --color-accent-emerald: #059669;
+  --color-accent-violet: #7C3AED;
+  --color-accent-blue: #2563EB;
+  --color-bg-app-light: #F8FAFC;
+  --color-bg-card-light: #FFFFFF;
+  --color-border-subtle: #E2E8F0;
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #475569;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  background: #F8FAFC;
+  color: #0F172A;
+  font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-/* ── Tabular numeric formatting for currency & ID columns ─────────── */
+/* ── Glassmorphism & Modern Light Shadows ── */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.shadow-modern {
+  box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+}
+
+.shadow-modern-hover {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.shadow-modern-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 30px -5px rgba(79, 70, 229, 0.12), 0 10px 12px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* ── Micro-transitions ── */
+.transition-modern {
+  transition-property: color, background-color, border-color, box-shadow, transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* ── Tabular numeric formatting for currency & ID columns ── */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
 
-/* ── Shimmer skeleton animation ───────────────────────────────────── */
+/* ── Shimmer skeleton animation ── */
 @keyframes shimmer {
   0%   { background-position: -200% 0; }
   100% { background-position:  200% 0; }
@@ -45,23 +116,18 @@ body {
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
-    #f0f0f0 25%,
-    #e0e0e0 50%,
-    #f0f0f0 75%
+    #f1f5f9 25%,
+    #e2e8f0 50%,
+    #f1f5f9 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
-/* ── Grid pattern overlay for login left panel ────────────────────── */
+/* ── Grid pattern overlay ── */
 .bg-grid-overlay {
   background-image:
-    linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+    linear-gradient(rgba(255,255,255,0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.12) 1px, transparent 1px);
   background-size: 32px 32px;
-}
-
-/* ── Sidebar brand colors ─────────────────────────────────────────── */
-.sidebar-brand-bg {
-  background-color: var(--japa-dark);
 }

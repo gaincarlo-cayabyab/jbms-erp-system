@@ -44,14 +44,14 @@ export default function DashboardShell({ children }: { children: React.ReactNode
     })
   }
 
-  const pageTitle = BREADCRUMB_MAP[pathname] ?? 'JAPA Global'
+  const pageTitle = BREADCRUMB_MAP[pathname] ?? 'Workspace'
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: '#F8FAFC' }}>
+    <div className="flex h-screen overflow-hidden bg-slate-50">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-20 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-20 bg-slate-900/30 backdrop-blur-xs lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -68,16 +68,13 @@ export default function DashboardShell({ children }: { children: React.ReactNode
 
       {/* Main content area */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-        {/* Top header bar — JAPA brand dark */}
-        <header
-          className="flex h-14 shrink-0 items-center justify-between border-b px-4 sm:px-6"
-          style={{ background: '#101828', borderColor: '#1e293b' }}
-        >
+        {/* Top header bar — Light Theme */}
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6 shadow-xs">
           {/* Left: mobile toggle + breadcrumb */}
           <div className="flex items-center gap-3">
             <button
               type="button"
-              className="rounded-md p-1.5 text-zinc-400 hover:bg-white/10 lg:hidden"
+              className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 lg:hidden transition"
               onClick={toggleSidebar}
               aria-label="Toggle sidebar"
             >
@@ -86,24 +83,24 @@ export default function DashboardShell({ children }: { children: React.ReactNode
 
             {/* Breadcrumb */}
             <nav className="hidden items-center gap-1.5 text-xs lg:flex">
-              <span className="font-semibold text-white/50">JAPA Global</span>
-              <ChevronRight className="h-3 w-3 text-white/30" />
-              <span className="font-semibold text-white">{pageTitle}</span>
+              <span className="font-medium text-slate-400">JAPA Core ERP</span>
+              <ChevronRight className="h-3 w-3 text-slate-300" />
+              <span className="font-semibold text-slate-800">{pageTitle}</span>
             </nav>
           </div>
 
           {/* Right: branch selector + notifications */}
           <div className="flex items-center gap-3">
             {/* Branch / Store Selector */}
-            <div className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5">
-              <Store className="h-3.5 w-3.5 text-blue-400" />
+            <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 shadow-2xs">
+              <Store className="h-3.5 w-3.5 text-indigo-600" />
               <select
                 value={activeBranch}
                 onChange={(e) => setActiveBranch(e.target.value)}
-                className="bg-transparent text-xs font-semibold text-white/80 outline-none cursor-pointer"
+                className="bg-transparent text-xs font-semibold text-slate-700 outline-none cursor-pointer"
               >
                 {BRANCH_OPTIONS.map((b) => (
-                  <option key={b.value} value={b.value} className="bg-zinc-900 text-white">
+                  <option key={b.value} value={b.value} className="bg-white text-slate-900">
                     {b.label}
                   </option>
                 ))}
@@ -113,17 +110,17 @@ export default function DashboardShell({ children }: { children: React.ReactNode
             {/* Notification bell */}
             <button
               type="button"
-              className="relative rounded-md p-1.5 text-zinc-400 hover:bg-white/10 transition"
+              className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
               aria-label="Notifications"
             >
-              <Bell className="h-5 w-5" />
-              <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />
+              <Bell className="h-4 w-4" />
+              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" />
             </button>
           </div>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto bg-slate-50">
           {children}
         </main>
       </div>
