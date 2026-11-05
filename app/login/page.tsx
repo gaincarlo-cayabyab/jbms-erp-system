@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import Image from "next/image";
 import type { Metadata } from "next";
 import LoginForm from "@/components/auth/login-form";
-import { FullscreenToggle } from "@/components/ui/auto-fullscreen";
 
 export const metadata: Metadata = {
   title: "Sign In | JAPA Core ERP",
@@ -29,10 +28,6 @@ export default function LoginPage() {
   return (
     <Suspense fallback={<LoginLoading />}>
       <div className="min-h-screen w-full flex flex-col lg:flex-row bg-slate-100 text-slate-900 relative">
-        {/* Floating Kiosk / Fullscreen Toggle */}
-        <div className="absolute top-4 right-4 z-30">
-          <FullscreenToggle className="bg-white shadow-sm border-slate-200" />
-        </div>
         {/* Left Branding Panel */}
         <div className="hidden lg:flex flex-col justify-between w-1/2 bg-gradient-to-br from-indigo-600 via-violet-600 to-teal-500 p-12 text-white relative overflow-hidden">
           <div className="absolute -right-20 -bottom-20 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none" />

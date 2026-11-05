@@ -80,6 +80,11 @@ export default function LoginForm() {
         return
       }
 
+      // Trigger fullscreen automatically
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen?.().catch(() => {})
+      }
+
       // Show full loading animation video
       setShowVideoOverlay(true)
 
@@ -230,32 +235,21 @@ export default function LoginForm() {
         </p>
       </div>
 
-      {/* ── Full 10-Second Video Loading Animation Overlay ────────────────── */}
+      {/* ── Seamless Fullscreen White Video Loading Animation Overlay ─────── */}
       {showVideoOverlay && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black animate-in fade-in duration-300">
-          <div className="relative w-full h-full flex items-center justify-center p-2 sm:p-6">
-            <video
-              autoPlay
-              muted
-              playsInline
-              onEnded={handleVideoComplete}
-              onError={handleVideoComplete}
-              className="max-w-full max-h-full w-auto h-auto object-contain shadow-2xl"
-            >
-              <source src="/assets/video/JAPA_loading_animation.mp4" type="video/mp4" />
-              <source src="/assets/video/loading.mp4" type="video/mp4" />
-              <source src="/assets/video/transaction_loading.mp4" type="video/mp4" />
-            </video>
-
-            {/* Quick Skip Button */}
-            <button
-              type="button"
-              onClick={handleVideoComplete}
-              className="absolute bottom-6 right-6 z-20 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 hover:text-white px-4 py-2 text-xs font-semibold backdrop-blur-md border border-white/15 transition active:scale-95"
-            >
-              Skip →
-            </button>
-          </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white animate-in fade-in duration-300">
+          <video
+            autoPlay
+            muted
+            playsInline
+            onEnded={handleVideoComplete}
+            onError={handleVideoComplete}
+            className="w-full h-full object-contain bg-white"
+          >
+            <source src="/assets/video/JAPA_loading_animation.mp4" type="video/mp4" />
+            <source src="/assets/video/loading.mp4" type="video/mp4" />
+            <source src="/assets/video/transaction_loading.mp4" type="video/mp4" />
+          </video>
         </div>
       )}
     </div>
