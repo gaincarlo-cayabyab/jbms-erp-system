@@ -237,7 +237,12 @@ export default function LoginForm() {
 
       {/* ── Seamless Fullscreen White Video Loading Animation Overlay ─────── */}
       {showVideoOverlay && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white animate-in fade-in duration-300 p-4 sm:p-8">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center animate-in fade-in duration-300 p-4 sm:p-8"
+          style={{
+            background: 'radial-gradient(ellipse at center, #FFFFFF 0%, #FAFAFA 35%, #F2F2F2 70%, #ECECEC 100%)',
+          }}
+        >
           <div className="w-full max-w-xl sm:max-w-2xl flex items-center justify-center">
             <video
               autoPlay
@@ -245,7 +250,11 @@ export default function LoginForm() {
               playsInline
               onEnded={handleVideoComplete}
               onError={handleVideoComplete}
-              className="w-full h-auto max-h-[65vh] object-contain bg-white"
+              style={{
+                maskImage: 'radial-gradient(ellipse 92% 88% at center, black 65%, transparent 100%)',
+                WebkitMaskImage: 'radial-gradient(ellipse 92% 88% at center, black 65%, transparent 100%)',
+              }}
+              className="w-full h-auto max-h-[65vh] object-contain"
             >
               <source src="/assets/video/JAPA_loading_animation.mp4" type="video/mp4" />
               <source src="/assets/video/loading.mp4" type="video/mp4" />
