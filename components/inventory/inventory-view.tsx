@@ -10,6 +10,7 @@ import ProductFormModal from './product-form-modal'
 import StockAdjustmentModal from './stock-adjustment-modal'
 import { createClient } from '@/lib/supabase/client'
 import { ProductItem } from '@/types/inventory'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 import {
   Package,
   Plus,
@@ -49,12 +50,17 @@ export default function InventoryView() {
 
   const [isPending, startTransition] = useTransition()
 
+  const confirm = useConfirm()
+
   // Batch delete selected items
   const handleBatchDelete = async () => {
     if (selectedProductIds.length === 0) return
-    const confirmed = window.confirm(
-      `Are you sure you want to delete ${selectedProductIds.length} selected product(s)? This action cannot be undone.`
-    )
+    const confirmed = await confirm({
+      title: `Delete ${selectedProductIds.length} Selected Products?`,
+      message: 'This will permanently remove these catalog items and their stock records from the database.',
+      confirmText: 'Delete Items',
+      variant: 'danger',
+    })
     if (!confirmed) return
 
     try {
@@ -131,9 +137,13 @@ export default function InventoryView() {
 
   // Handle delete product
   const handleDeleteProduct = async (product: ProductItem) => {
-    if (!confirm(`Are you sure you want to delete "${product.item_name}" (${product.sku})?`)) {
-      return
-    }
+    const ok = await confirm({
+      title: `Delete "${product.item_name}"?`,
+      message: `Are you sure you want to delete SKU: ${product.sku}? This action cannot be reversed.`,
+      confirmText: 'Delete Product',
+      variant: 'danger',
+    })
+    if (!ok) return
 
     try {
       const supabase = createClient()

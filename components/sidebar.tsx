@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 
 interface NavItem {
   label: string
@@ -125,8 +126,16 @@ export default function Sidebar({ userEmail, userInitial }: SidebarProps) {
     loadUser()
   }, [])
 
+  const confirm = useConfirm()
+
   async function handleSignOut() {
-    if (!window.confirm('Are you sure you want to sign out of JAPA Core ERP?')) return
+    const ok = await confirm({
+      title: 'Sign Out of JAPA Core ERP?',
+      message: 'You will need to sign in again to access the operations workspace.',
+      confirmText: 'Sign Out',
+      variant: 'warning',
+    })
+    if (!ok) return
     setSignOutLoading(true)
     const supabase = createClient()
     await supabase.auth.signOut()

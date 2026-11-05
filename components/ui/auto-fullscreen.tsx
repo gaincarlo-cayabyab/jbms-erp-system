@@ -100,3 +100,4 @@ export function FullscreenToggle({ className }: { className?: string }) {
     </button>
   )
 }
+

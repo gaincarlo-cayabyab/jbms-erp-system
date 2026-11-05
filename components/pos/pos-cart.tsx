@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import { Trash2, Plus, Minus, Edit2, Tag, ShoppingCart, X, Percent, DollarSign, User } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 import type { CartItem, CartDiscount, DiscountType } from '@/types/pos'
 
 const PHP = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' })
@@ -34,6 +36,7 @@ export default function POSCart({
   onSetCartDiscount,
   onClearCart,
 }: Props) {
+  const confirm = useConfirm()
   const [inlineEdit, setInlineEdit] = useState<InlineEdit | null>(null)
   const [showDiscountPanel, setShowDiscountPanel] = useState(false)
   const [discountType, setDiscountType] = useState<DiscountType>('percentage')
@@ -65,7 +68,7 @@ export default function POSCart({
       if (!pinRequired) { setPinRequired(true); return }
       // Simple PIN check (in production this would be server-validated)
       if (managerPin !== '1234') {
-        alert('Invalid manager PIN. Use 1234 for demo.')
+        toast.error('Invalid manager authorization PIN. (Use 1234 for demo)')
         return
       }
     }
@@ -118,8 +121,16 @@ export default function POSCart({
             <Tag className="h-3.5 w-3.5" /> Discount
           </button>
           <button
-            onClick={() => { if (window.confirm('Clear all items from cart?')) onClearCart() }}
-            className="rounded-lg border border-rose-200 bg-rose-50 p-1.5 text-rose-600 hover:bg-rose-100 transition"
+            onClick={async () => {
+              const ok = await confirm({
+                title: 'Clear Active Cart?',
+                message: 'All line items and discounts in the current transaction will be cleared.',
+                confirmText: 'Clear Cart',
+                variant: 'danger',
+              })
+              if (ok) onClearCart()
+            }}
+            className="rounded-lg border border-rose-200 bg-rose-50 p-1.5 text-rose-600 hover:bg-rose-100 transition active:scale-95"
             title="Clear cart"
           >
             <Trash2 className="h-3.5 w-3.5" />

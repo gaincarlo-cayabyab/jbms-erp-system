@@ -70,7 +70,9 @@ export default function LoginForm() {
         return
       }
 
-      toast.success('Signed in successfully. Redirecting…')
+      toast.success('Signed in successfully. Launching workspace…')
+      // Allow loading animation to play smoothly before route switch
+      await new Promise((r) => setTimeout(r, 1800))
       router.push(redirectTo)
       router.refresh()
     } catch (err: unknown) {
@@ -215,6 +217,42 @@ export default function LoginForm() {
           Authorized personnel only. Contact system administrator for credential assistance.
         </p>
       </div>
+
+      {/* Video Loading Animation Overlay */}
+      {loading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="relative flex flex-col items-center justify-center max-w-sm w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl text-center text-white overflow-hidden">
+            <div className="absolute inset-0 bg-radial from-indigo-500/20 via-transparent to-transparent pointer-events-none" />
+
+            {/* Video Player */}
+            <div className="relative w-48 h-48 mb-5 rounded-2xl overflow-hidden shadow-inner bg-slate-950 border border-slate-800">
+              <video
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full h-full object-cover"
+              >
+                <source src="/assets/video/JAPA_loading_animation.mp4" type="video/mp4" />
+                <source src="/assets/video/loading.mp4" type="video/mp4" />
+                <source src="/assets/video/transaction_loading.mp4" type="video/mp4" />
+              </video>
+            </div>
+
+            <h3 className="text-lg font-bold text-white tracking-tight mb-1">
+              Authenticating Credentials
+            </h3>
+            <p className="text-xs text-indigo-300 font-medium mb-3">
+              {email || 'JAPA Core Workspace'}
+            </p>
+
+            <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Initializing secure session & workspace…</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

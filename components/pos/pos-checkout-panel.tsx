@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { Banknote, CreditCard, Smartphone, Building2, CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { PaymentMethod, CartDiscount } from '@/types/pos'
@@ -49,7 +50,7 @@ export default function POSCheckoutPanel({ totals, itemCount, cartDiscount, onCh
     if (totals.grandTotal <= 0) return
     const finalTendered = selectedMethod === 'CASH' ? tendered : totals.grandTotal
     if (selectedMethod === 'CASH' && finalTendered < totals.grandTotal) {
-      alert('Tendered amount must be greater than or equal to Grand Total.')
+      toast.error('Tendered amount must be greater than or equal to Grand Total.')
       return
     }
     onCheckout(selectedMethod, finalTendered)

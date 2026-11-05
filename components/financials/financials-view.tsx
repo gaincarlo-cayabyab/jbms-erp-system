@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getExpenses, removeExpense } from '@/lib/financials/expense-service'
 import { Expense } from '@/types/financials'
 import { SalesOrder } from '@/types/sales'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 import {
   DollarSign,
   TrendingUp,
@@ -89,8 +90,16 @@ export default function FinancialsView() {
     toast.success(`Expense of ₱${Number(newExp.amount).toLocaleString()} recorded.`)
   }
 
+  const confirm = useConfirm()
+
   const handleDeleteExpense = async (id: string, desc: string) => {
-    if (!confirm(`Are you sure you want to delete expense "${desc}"?`)) return
+    const ok = await confirm({
+      title: 'Delete Expense Voucher?',
+      message: `Are you sure you want to delete "${desc}"? This will update accounting totals.`,
+      confirmText: 'Delete Entry',
+      variant: 'danger',
+    })
+    if (!ok) return
     await removeExpense(id)
     setExpenses((prev) => prev.filter((e) => e.id !== id))
     toast.success('Expense entry removed.')
