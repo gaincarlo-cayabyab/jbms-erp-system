@@ -1,0 +1,545 @@
+
+JAPA BUSINESS MANAGEMENT SYSTEM
+JBMS
+SOFTWARE DEVELOPMENT, ERP IMPLEMENTATION AND FUNCTIONAL SCOPE AGREEMENT
+
+
+ERP Development & ImplementationPHP 350,000.00Site Visit & Process AssessmentPHP 20,000.00Total Contract ValuePHP 370,000.00Down PaymentPHP 170,000.00Estimated Implementation6 to 12 months
+
+Prepared for JAPA Management
+Prepared by Aldrin M. Perez | .NET Developer / ERP Systems Developer
+CONFIDENTIAL - FOR REVIEW AND SIGNATURE
+
+Document Control
+
+ProjectJAPA Business Management System (JBMS)DocumentSoftware Development, ERP Implementation and Functional Scope AgreementClientJAPA 	DeveloperAldrin M. PerezVersion1.0 - Initial Contract DraftEffective Date
+ConfidentialityConfidential - Client and Developer Use Only1. Parties
+This Agreement is entered into between the following parties:
+Client / Business Owner
+Business Name: JAPA 		 Authorized Representative: 			 Position: 	
+Address: 	
+Developer / System Provider
+Name: Aldrin M. Perez
+Role: .NET Developer / ERP Systems Developer Company: 		 Address: 	
+2. Project Overview
+The Developer shall design, develop, configure, test, deploy, and assist in the implementation of the JAPA Business Management System (JBMS).
+JBMS shall be developed as an integrated Enterprise Resource Planning and Business Management System supporting multiple stores or branches, multiple production areas or production sites, centralized management visibility, store-specific operations, production-area-specific operations, operational financial management, executive analytics, and future business expansion.
+The initial integrated scope includes the following major functional areas:
+• Customers and CRM
+• Quotations and Pricing
+• Sales Orders
+• Job Orders
+• Multi-Production Management
+• Inventory and Inventory Valuation
+• Purchasing and Suppliers
+• Collections and Accounts Receivable
+• Expenses and Operational Financial Management
+
+• Costing and Profitability
+• Employee Management
+• Attendance and Payroll
+• Reports, Dashboards and Business Analytics
+3. Primary Business Objective
+The primary purpose of JBMS is not only to digitize transactions, but to reduce the amount of time the Business Owner and management spend manually checking daily operations.
+
+
+The system is intended to provide timely visibility into:
+• Sales and collections
+• Available recorded funds
+• Customer receivables and overdue balances
+• Purchasing requirements and supplier obligations
+• Inventory valuation, low stock and restocking needs
+• Slow-moving and non-moving inventory
+• Job Order progress and production workload
+• At-risk and delayed production
+• Upcoming deadlines and material shortages
+• Product, service, customer, store and production-area performance
+• Operational profitability and management exceptions
+The intended result is to allow management to devote more time to marketing, customer acquisition, business development, strategic planning, expansion, and customer relationships rather than continuous manual operational monitoring.
+4. Business Structure
+4.1 Multiple Stores / Branches
+Each approved store or branch may maintain its own operational records, subject to authorized access and the approved configuration.
+• Sales and Sales Orders
+• Customers and collections
+• Expenses
+• Inventory and stock movements
+• Users and permissions
+• Store-level reports and analytics
+Management shall also have access to consolidated information across approved stores.
+4.2 Multiple Production Areas / Sites
+JBMS shall support more than one production area, production department, or production site. Each production area may maintain its own operational queue and performance data.
+• Assigned Job Orders
+• Production schedule and queue
+• Employees and teams
+• Machines where applicable
+• Production stages and work-in-progress
+• Material requirements and consumption
+
+• Delays, quality control and completion records
+• Production-area reports and analytics
+Production areas may represent different physical locations, departments, or specialized processes such as design, sublimation printing, DTF, cutting, heat press, sewing, embroidery, finishing, quality control, and packing.
+5. Business Process Flow
+5.1 Product / Printing Supply Sale
+
+
+5.2 Printing / Customized Production
+
+
+A Job Order may move through one or multiple production areas depending on the required product or service.
+6. Sales Order and Job Order Responsibilities
+6.1 Sales Order
+Sales Order represents what was sold to the customer. It may include printing supplies, merchandise, printing services, customized products, and other approved items. Sales Order shall not directly control detailed production stages.
+6.2 Job Order
+Job Order represents what must be produced or performed. A Sales Order requiring production may create or reference one or more Job Orders. A Job Order may be assigned to one production area, move through multiple areas, be partially completed, or generate reprint/replacement work where applicable.
+7. CRM and Customer Management
+JBMS shall provide centralized customer information and customer intelligence.
+• Individual and company customers
+• Contact information, addresses and contact persons
+• Customer classifications and assigned salesperson
+• Customer notes, special instructions and approved files
+• Customer pricing arrangements, credit terms and credit limits where applicable
+• Quotation, Sales Order, Job Order and payment history
+• Outstanding balances and account activity
+Customer Analytics
+• New, returning and repeat customers
+• Inactive customers
+• Top customers
+• Customer sales and average order value
+• Purchase frequency and last transaction
+• Outstanding balances
+• Customer profitability where sufficient costing data exists
+
+• Customer acquisition source such as Facebook, referral, walk-in, website, salesperson, campaign or other approved source
+8. Quotation and Pricing
+• Create, edit and print quotations
+• Quotation history
+• Conversion of approved quotation to Sales Order
+• Retail and wholesale pricing
+• Customer-specific and quantity-based pricing
+• Fabric-based or service-based pricing where applicable
+• Additional charges, rush charges, plus-size charges and design/layout charges
+• Discounts and remarks
+Pricing rules shall be configurable where practical within the approved initial scope.
+9. Sales Order Management
+• Automatic Sales Order numbering
+• Store/branch and customer
+• Order date, required date and customer reference
+• Salesperson
+• Products, printing supplies, services and customized items
+• Quantity, unit price, discounts, charges and total amount
+• Payment terms, amount paid and outstanding balance
+• Fulfillment, billing and release/delivery status
+• Cancellation and remarks
+• Generation or linkage of Job Orders where production is required
+10. Sales Analytics
+• Sales today, this week, this month and custom period
+• Sales by store, customer, salesperson, product, category and printing service
+• Product sales versus service sales
+• Number of orders and average order value
+• Cancelled and rush orders
+• New-customer and returning-customer sales
+• Current period versus previous period where applicable
+11. Job Order Management
+• Automatic Job Order numbering
+• Sales Order reference and originating store
+• Customer, product/service and production quantity
+• Size, line-up, names, jersey numbers and measurements where applicable
+• Artwork and reference files
+• Production specifications
+• Fabric and material requirements
+• Special instructions
+• Assigned designer, production area and production personnel
+• Priority, required completion date and rush identification
+• Status and partial completion
+• Reprint and replacement references
+• Remarks
+
+12. Design and Customer Approval
+• Designer assignment
+• Initial and revised artwork
+• Revision history and revision count
+• Customer comments and internal remarks
+• Approval status and approved artwork
+• Approval date and approval reference
+Production steps requiring approved artwork shall normally not proceed without recorded approval unless an authorized override is permitted by the approved workflow.
+13. Multi-Production Management
+• Production queue and production schedule
+• Assigned Job Orders and priority
+• Staff/team assignment
+• Machine assignment where applicable
+• Quantity required and quantity completed
+• Partial completion
+• Stage start and completion time
+• Required deadline
+• Delay recording and delay reason
+• Damaged and rejected output
+• Reprints and replacements
+• Outsourced work where applicable
+• Production remarks
+14. Production Routing
+A Job Order may move between multiple production areas based on the approved production workflow.
+
+
+• Current production area
+• Previous and next stage
+• Quantity received, completed and transferred
+• Date/time transferred
+• Assigned personnel
+• Delay and exception information
+15. Production Health and Deadline Analytics
+• Total active Job Orders
+• Active jobs by production area
+• On-schedule jobs
+• At-risk jobs
+• Delayed jobs
+• Jobs due today, tomorrow and this week
+• Rush jobs
+• Waiting for customer approval
+• Waiting for materials
+• Waiting for outsourced work
+• Ready for release
+
+• Completed on time
+• Reprints and rejected output
+Status Definitions
+
+StatusDefinitionOn ScheduleProduction is progressing normally and remains within the approved timeline.At RiskCurrent progress indicates a reasonable risk of missing the required completion date.DelayedThe approved deadline or production target has already been exceeded.16. Production Area Performance
+• Active workload
+• Completed Job Orders and completed quantity
+• Average completion time
+• On-time completion
+• Delayed jobs
+• Reprints and rejects
+• Wastage
+• Current queue
+• Upcoming deadlines
+The objective is to identify production bottlenecks, overloaded areas, and performance issues without requiring management to inspect every Job Order.
+17. Inventory Management
+JBMS shall support inventory for production materials, printing supplies, merchandise, consumables, and finished goods where applicable.
+• Item master, categories and units of measurement
+• Store inventory and production-area inventory where applicable
+• Warehouse / stockroom
+• Receiving
+• On-hand, reserved and available quantity
+• Stock issuance and production consumption
+• Sales fulfillment
+• Store-to-store, store-to-production and production-area transfers
+• Stock adjustments and physical inventory
+• Damaged inventory and wastage
+• Reorder levels and low-stock monitoring
+• Stock movement history
+18. Inventory Valuation
+The system shall provide monetary inventory visibility using approved costing methods and recorded inventory transactions.
+• Quantity On Hand
+• Average Cost
+• Inventory Value
+
+• Total Inventory Value
+• Inventory Value by store, warehouse, production area, category and item
+• Production material value
+• Printing supply inventory value
+19. Inventory Movement Analytics
+• Fast Moving
+• Normal Moving
+• Slow Moving
+• Non-Moving
+• Long-Inactive / Dead Stock
+Management may review fast-moving products, slow-moving products, non-moving products, high-consumption materials, excess stock, low stock, out-of-stock items, and the value tied up in slow-moving or non-moving inventory. Movement periods may be configurable.
+20. Restocking and Material Requirement Analytics
+The system shall assist management in identifying purchasing and replenishment requirements based on available operational data.
+• Quantity on hand
+• Reserved and available stock
+• Reorder level
+• Recent sales
+• Material consumption
+• Existing Job Order requirements
+• Production-area requirements
+• Pending Purchase Orders
+Management views may include critical stock, low stock, suggested restock, material requirements for upcoming Job Orders, items already on Purchase Order, and current available quantity.
+21. Purchasing and Supplier Management
+• Supplier master and contacts
+• Supplier items and prices
+• Purchase Request
+• Purchase Order
+• Purchase approval where applicable
+• Receiving and Purchase Return
+• Supplier balances and payments
+• Outstanding Purchase Orders
+• Supplier purchasing history
+• Supplier price comparison and material cost movement
+• Pending and delayed supplier deliveries
+22. Material Availability for Production
+Before or during Job Order production, the system may classify required materials as:
+• Materials Available
+• Partially Available
+• Insufficient Materials
+• Purchase Required
+The objective is to reduce production delays caused by material shortages and provide earlier visibility of purchasing needs.
+
+23. Outsourced Production
+Where applicable, JBMS may record outsourced work such as sewing, embroidery, DTF, silk screen, or other approved services.
+• Supplier
+• Related Job Order and process
+• Quantity and cost
+• Date sent and expected return
+• Actual return and quantity returned
+• Damaged/rejected output
+• Remarks
+• Outsourced cost included in Job Order costing where applicable
+24. Collections and Accounts Receivable
+• Cash, check, GCash, bank transfer and other approved payment modes
+• Down payment, partial payment and full payment
+• Payment reference and payment account
+• Receipt
+• Outstanding balance
+• Due date and credit terms
+Accounts Receivable Analytics
+• Total Accounts Receivable
+• Current receivables
+• Due today
+• Overdue receivables
+• Customer balances
+• Largest outstanding balances
+• Aging
+• Collections by period
+25. Expense Management
+• Expense date, category and amount
+• Store/branch
+• Production area and department where applicable
+• Payment account
+• Reference and receipt attachment
+• Production expense
+• General operating expense
+• Remarks
+Analytics may include expenses today, expenses this month, expense by category, branch, production area, and expense trend.
+26. Operational Financial Management
+JBMS shall provide operational financial information based on transactions recorded in the ERP. The initial financial-management scope may include:
+• Sales
+• Collections
+• Accounts Receivable
+• Purchases
+• Supplier balances
+
+• Expenses
+• Inventory valuation
+• Cost of goods
+• Production cost
+• Gross profit
+• Gross margin
+• Recorded cash/payment account balances
+27. Available Funds / Cash Position
+The system may maintain approved operational cash and payment accounts such as Cash on Hand, Bank Accounts, GCash / E-Wallet, and other approved accounts.
+• Opening balance
+• Collections and other cash-in
+• Supplier payments
+• Expenses and other cash-out
+• Current recorded balance
+
+28. Purchasing Capacity
+Management analytics may compare available recorded funds, critical purchase requirements, upcoming supplier obligations, and restocking requirements. The purpose is to support purchasing decisions based on recorded ERP information.
+29. Costing and Profitability
+Merchandise / Printing Supplies
+
+
+Printing / Production Work
+
+
+Profitability may be analyzed by Sales Order, Job Order, customer, product, printing supply, service, category, salesperson, store, production area where appropriate, and period.
+30. Executive Management Dashboard
+The Executive Dashboard shall consolidate approved information across stores and production areas and serve as the primary management command view.
+
+Dashboard AreaKey IndicatorsFinancialAvailable Recorded Funds; Sales Today/Month; Collections; AR; Overdue AR; Expenses; Gross Profit; Gross MarginInventoryTotal Inventory Value; Inventory by Store/Production Area; Low Stock; Out of Stock; Slow/Non-Moving; Restock RequirementsProductionActive Job Orders; Jobs by Production Area; On Schedule; At Risk; Delayed; Due Today/Week; Waiting for Materials/Approval; Ready for ReleaseCustomersNew Customers; Returning Customers; Top Customers; Customer Sales; Outstanding BalancesSalesProduct Sales; Service Sales; Best-Selling Products/Services; Sales by Store; Salesperson Performance31. Management Attention Center
+JBMS should emphasize business exceptions that require management attention rather than forcing management to inspect every normal transaction.
+• Delayed Job Orders
+• Jobs at risk of missing deadlines
+• Overloaded production areas
+• Critical inventory and insufficient materials
+• Large overdue customer balances
+• Slow-moving and non-moving inventory
+• Pending customer approvals
+• Outstanding outsourced work
+• Important upcoming deadlines
+• Purchasing requirements
+32. Employee Management
+• Employee master
+• Department and position
+• Employment information and status
+• Store assignment
+• Production area assignment
+• Designer / production / machine operator / QC assignments where applicable
+33. Attendance and Timekeeping
+• Employee schedules and work shifts
+• DTR / attendance
+• Time in and time out
+• Late and undertime
+• Overtime
+• Absence
+• Rest day
+
+• Holiday
+• Attendance adjustment under approved workflow
+34. Payroll
+Payroll shall be the final major development milestone under the initial implementation.
+• Employee Payroll Setup
+• Payroll periods
+• Compensation and approved daily/monthly rates
+• Attendance-based calculations
+• Basic pay
+• Overtime
+• Late, undertime and absence deductions
+• Other earnings and deductions
+• Cash advances
+• Payroll calculation
+• Payslip generation
+• Payroll posting
+• Payroll summary and reports
+Government-specific integrations or statutory electronic submissions are excluded unless expressly identified as included.
+35. Reports and Printed Documents
+Reports
+• Sales Reports
+• Customer Reports
+• Inventory Reports
+• Production and Production-Area Reports
+• Financial Reports
+• Purchasing Reports
+• Accounts Receivable Reports
+• Expense Reports
+• Payroll Reports
+• Management Reports
+Printed Documents
+• Quotation
+• Sales Order
+• Job Order
+• Production Worksheet
+• Size / Line-Up Sheet
+• Design Approval
+• Payment Receipt
+• Sales Invoice where applicable
+• Statement of Account
+• Material Issuance
+• Purchase Order
+• Delivery Receipt where approved
+• Payslip
+Additional custom reports or printed forms not included in the approved initial scope may be treated as a Change Request.
+
+36. Data Migration
+Initial migration may include approved master and opening-balance data such as customers, suppliers, products, services, price lists, employees, opening inventory, customer balances, and supplier balances.
+The Client shall provide source data in an agreed format and remains responsible for verifying its completeness and accuracy. Extensive data cleansing, historical reconstruction, or mass manual encoding is excluded unless separately agreed.
+37. Analytics and Data Accuracy
+All dashboards, balances, inventory valuations, production indicators, profitability reports, and analytics depend on the completeness and accuracy of information entered or imported into JBMS.
+Incorrect or incomplete recording of sales, collections, purchases, expenses, inventory, material usage, supplier payments, financial transactions, production progress, attendance, or other source transactions may result in inaccurate analytics.
+38. Contract Value
+
+ERP Development and ImplementationPHP 350,000.00Site Visit and Business Process AssessmentPHP 20,000.00TOTAL CONTRACT VALUEPHP 370,000.00Estimated Implementation6 to 12 monthsThe site-visit allocation covers agreed business-process observation, workflow validation, requirement clarification, implementation coordination, user consultation, and project assessment. Extraordinary travel or accommodation beyond the approved allocation shall require prior agreement.
+39. Payment Terms
+
+Payment StageAmountMain DeliverableDown PaymentPHP 170,000Contract signing, requirements validation, architecture, database and core system foundationMilestone 1PHP 40,000CRM, Quotation and Sales OrderMilestone 2PHP 40,000Multi-Store Inventory, Inventory Valuation, Purchasing and Supplier ManagementMilestone 3PHP 40,000Job Order and Multi-Production ManagementMilestone 4PHP 40,000Financial Management, Collections, AR, Expenses, Costing, Analytics and Executive Dashboard
+Payment StageAmountMain DeliverableMilestone 5PHP 20,000Employee Management, Attendance and PayrollFinal AcceptancePHP 20,000Final UAT, approved corrections, deployment, training and project acceptanceThe Down Payment is due upon signing and before project commencement. The remaining PHP 200,000.00 shall be payable according to the approved milestones. Minor defects that do not materially prevent normal use shall not automatically delay the applicable milestone payment.
+40. Estimated Implementation Period
+
+
+The implementation schedule may be affected by scope complexity, requirement clarification, Client feedback, data availability, User Acceptance Testing, approved Change Requests, site coordination, third-party dependencies, and technical dependencies.
+41. Client Responsibilities
+• Provide accurate and timely requirements
+• Assign authorized decision-makers
+• Provide customer, supplier, employee, pricing and inventory information
+• Validate opening balances and imported data
+• Provide accurate item costs
+• Ensure daily transactions are properly recorded
+• Participate in User Acceptance Testing
+• Provide timely feedback and approvals
+• Provide hardware and internet unless specifically included
+• Provide required third-party accounts, subscriptions and credentials
+• Ensure authorized users follow approved workflows
+Delays caused by missing Client information, prolonged approval, or non-participation may require adjustment of the project schedule.
+42. Developer Responsibilities
+• Develop JBMS according to the approved Initial Functional Scope
+• Maintain a modular and maintainable architecture
+• Perform reasonable system and functional testing
+• Correct verified software defects
+• Provide agreed demonstrations
+• Assist with UAT
+• Deploy the approved system
+• Provide agreed user training
+• Provide agreed warranty support
+• Maintain reasonable confidentiality of Client information
+
+43. Change Requests and Additional Features
+The Client may request additional functionality during or after the initial implementation. Any module, feature, report, dashboard, workflow, integration, calculation, automation, additional platform, new business rule, or significant redesign not expressly included in the approved Initial Scope may be treated as a Change Request.
+Additional requirements may result in additional cost, additional development time, revised milestones, and additional testing. No additional feature shall automatically become part of the original PHP 370,000.00 scope solely because it was discussed verbally or requested through chat, message, meeting, or demonstration. Written approval shall be required.
+44. Defect vs Enhancement
+Defect
+Approved functionality that does not operate according to the agreed requirement.
+Enhancement
+New or expanded functionality not included in the approved Initial Scope.
+Verified defects shall be handled according to the warranty terms. Enhancements may require additional evaluation, timeline, and payment.
+45. Third-Party Services and Integrations
+Third-party integrations are included only when specifically identified and approved in writing. Possible third-party services may include SMS, email, Messenger / Meta services, payment gateways, cloud services, external APIs, biometric devices, commercial software, barcode hardware, and accounting software.
+Unless specifically included, subscription fees, SMS credits, API charges, transaction fees, merchant fees, cloud fees, domain fees, hardware, commercial licenses, external service fees, and third-party storage fees are excluded from the contract price.
+Changes in third-party APIs, policies, pricing, or service availability that require redevelopment may be treated as a Change Request.
+46. Financial Management Limitation
+JBMS provides operational financial management and management analytics based on transactions recorded in the ERP. Unless specifically included, JBMS does not constitute a complete General Ledger accounting system, tax filing system, government-certified accounting platform, direct banking verification service, or replacement for the Client's professional accountant.
+The Client remains responsible for statutory accounting, tax obligations, regulatory reporting, and government submissions where applicable.
+47. User Acceptance Testing
+The Client shall participate in User Acceptance Testing (UAT) for delivered milestones. UAT shall determine whether approved functionality performs according to the agreed requirements.
+• Defect
+• Minor correction
+• Requirement clarification
+• Enhancement
+• Change Request
+UAT is not an unlimited period for introducing new functionality into the existing contract price.
+
+48. Milestone Acceptance
+Major milestones may be accepted independently. Acceptance may be documented through signed acceptance, email confirmation, approved UAT record, or other mutually accepted written confirmation.
+Minor defects that do not materially prevent normal use may be scheduled for correction without preventing milestone acceptance.
+49. Final Acceptance
+The initial JBMS project shall be considered substantially completed when the approved Initial Scope has been delivered, major modules have undergone agreed UAT, critical verified defects have been addressed, approved deployment has been completed, and agreed training has been conducted.
+Future enhancements shall not prevent final acceptance of the approved Initial Scope.
+50. Warranty
+Warranty shall cover verified defects affecting approved functionality during the agreed warranty period.
+• New features or modules
+• New reports or dashboards
+• Workflow or business-policy changes
+• New integrations
+• Third-party service or API changes
+• New devices
+• Unauthorized modifications
+• User misuse
+Warranty Period: 	
+
+51. Support and Maintenance
+Warranty, technical support, maintenance, and future development are separate services. After the warranty period, continued technical support or maintenance may be subject to a separate agreement. Enhancements and new modules may be separately evaluated and quoted. No lifetime free development or unlimited support is included unless expressly stated.
+52. Ownership of Client Data
+The Client shall retain ownership of its customer records, sales data, inventory data, employee records, supplier records, uploaded Client files, transaction records, and other Client-generated business data.
+53. Software and Intellectual Property
+Unless otherwise agreed in writing, the Developer shall retain ownership of source code, software architecture, reusable components, generic ERP modules, libraries, utilities, frameworks, development methods, templates, reusable technical assets, and pre-existing intellectual property.
+Any source-code transfer or assignment of intellectual property rights shall require a separate written agreement unless expressly included in this Agreement.
+54. Confidentiality
+Both parties shall use reasonable measures to protect confidential business and technical information obtained through the project and shall not intentionally disclose such information to unauthorized parties except where required by law or authorized by the owning party.
+
+55. System Availability
+System availability may depend on internet connectivity, network infrastructure, cloud hosting, third-party APIs, device condition, electricity, and external service availability. The Developer shall not guarantee uninterrupted availability of infrastructure or services outside the Developer's reasonable control.
+56. Project Suspension
+Development or implementation may be temporarily suspended due to material unpaid milestones, prolonged Client non-response, missing required information, failure to participate in required UAT, or material breach of this Agreement. The project schedule may be adjusted accordingly.
+57. Scope Baseline
+Upon signing, this Agreement shall establish the approved Initial Functional Scope Baseline. Features not expressly included shall not automatically become part of the project simply because they relate to an existing module.
+58. Prior Communications and Document Priority
+Where a conflict exists between this signed Agreement and verbal discussions, chat messages, preliminary checklists, previous drafts, meeting notes, demonstrations, or earlier proposals, the latest mutually signed Agreement and approved written amendments shall govern the final functional scope and commercial terms.
+59. Agreement Confirmation
+By signing this Agreement, both parties confirm that they have reviewed the project objectives, Initial Functional Scope, total project price, milestone payments, implementation approach, and change-request rules. Both parties understand that additional features may require additional payment and that analytics depend on accurate business data.
+
+SIGNATURE AND APPROVAL
+JAPA Business Management System (JBMS)
+By signing below, the parties acknowledge that they have reviewed and accepted this Software Development, ERP Implementation and Functional Scope Agreement, subject to any mutually signed amendments.
+
+CLIENT / BUSINESS OWNER
+Business Name: JAPA 				 Name: 	  Position: 		 Signature: 			 Date: 	DEVELOPER / SYSTEM PROVIDER
+Name: Aldrin M. Perez
+Position: .NET Developer / ERP Systems Developer Company: 		 Signature: 	
+Date: 	
+
+END OF AGREEMENT
+
+
+
+

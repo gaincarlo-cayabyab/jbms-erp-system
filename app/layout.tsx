@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,10 +15,11 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "JAPA Core ERP",
-    template: "%s | JAPA Core ERP",
+    default: "JAPA Global — Enterprise Operations",
+    template: "%s | JAPA Global",
   },
-  description: "JAPA Core ERP System — CRM, Sales, Production, Inventory, Financials & Payroll",
+  description:
+    "JAPA Global Enterprise Operations — Multi-store CRM, 7-Stage Production, Inventory, Financials & Payroll",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -26,7 +28,22 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col bg-[#F8FAFC]">
+        {children}
+        {/* Global Sonner toast notifications — bottom-right */}
+        <Toaster
+          position="bottom-right"
+          richColors
+          closeButton
+          toastOptions={{
+            duration: 4000,
+            classNames: {
+              toast:
+                "font-sans text-sm shadow-lg border border-zinc-200 rounded-xl",
+            },
+          }}
+        />
+      </body>
     </html>
   );
 }

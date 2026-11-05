@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useTransition } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { toast } from 'sonner'
 import DashboardShell from '@/components/dashboard-shell'
 import CustomerSummaryCards from './customer-summary-cards'
 import CustomerFormModal from './customer-form-modal'
@@ -33,7 +34,6 @@ export default function CustomersView() {
   const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'balance_desc' | 'newest'>('newest')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   // Check URL params e.g. /customers?new=true
   useEffect(() => {
@@ -70,18 +70,10 @@ export default function CustomersView() {
     loadCustomers()
   }, [])
 
-  // Auto-hide toast after 4s
-  useEffect(() => {
-    if (toastMessage) {
-      const timer = setTimeout(() => setToastMessage(null), 4000)
-      return () => clearTimeout(timer)
-    }
-  }, [toastMessage])
-
   // Handle successful customer creation
   const handleCustomerCreated = (newCustomer: Customer) => {
     setCustomers((prev) => [newCustomer, ...prev])
-    setToastMessage(`Customer "${newCustomer.name}" registered successfully.`)
+    toast.success(`Customer "${newCustomer.name}" registered successfully.`)
   }
 
   // Search & Filter Logic
@@ -141,20 +133,6 @@ export default function CustomersView() {
   return (
     <DashboardShell>
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-        {/* Toast Notification */}
-        {toastMessage && (
-          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white shadow-lg animate-in slide-in-from-bottom-5">
-            <CheckCircle2 className="h-5 w-5" />
-            <span>{toastMessage}</span>
-            <button
-              onClick={() => setToastMessage(null)}
-              className="ml-2 rounded p-0.5 hover:bg-emerald-700"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-
         {/* Page Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>

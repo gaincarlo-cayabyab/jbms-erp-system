@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useTransition } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { toast } from 'sonner'
 import DashboardShell from '@/components/dashboard-shell'
 import InventorySummaryCards from './inventory-summary-cards'
 import ProductFormModal from './product-form-modal'
@@ -42,7 +43,6 @@ export default function InventoryView() {
   const [adjustingProduct, setAdjustingProduct] = useState<ProductItem | null>(null)
 
   const [isPending, startTransition] = useTransition()
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   // URL query check (e.g. /inventory?new=true)
   useEffect(() => {
@@ -77,24 +77,16 @@ export default function InventoryView() {
     loadProducts()
   }, [])
 
-  // Auto-hide toast
-  useEffect(() => {
-    if (toastMessage) {
-      const t = setTimeout(() => setToastMessage(null), 4000)
-      return () => clearTimeout(t)
-    }
-  }, [toastMessage])
-
   // Handle saved product (create or edit)
   const handleProductSaved = (savedProduct: ProductItem, isEdit: boolean) => {
     if (isEdit) {
       setProducts((prev) =>
         prev.map((p) => (p.id === savedProduct.id ? savedProduct : p))
       )
-      setToastMessage(`Product "${savedProduct.item_name}" updated successfully.`)
+      toast.success(`Product "${savedProduct.item_name}" updated successfully.`)
     } else {
       setProducts((prev) => [savedProduct, ...prev])
-      setToastMessage(`Product "${savedProduct.item_name}" added to catalog.`)
+      toast.success(`Product "${savedProduct.item_name}" added to catalog.`)
     }
   }
 
@@ -103,7 +95,7 @@ export default function InventoryView() {
     setProducts((prev) =>
       prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p))
     )
-    setToastMessage(`Stock for "${updatedProduct.item_name}" updated to ${updatedProduct.stock_quantity} units.`)
+    toast.success(`Stock for "${updatedProduct.item_name}" updated to ${updatedProduct.stock_quantity} units.`)
   }
 
   // Handle delete product
@@ -122,10 +114,10 @@ export default function InventoryView() {
       if (error) throw new Error(error.message)
 
       setProducts((prev) => prev.filter((p) => p.id !== product.id))
-      setToastMessage(`Product "${product.item_name}" deleted.`)
+      toast.success(`Product "${product.item_name}" deleted.`)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to delete product'
-      setToastMessage(`Error deleting product: ${msg}`)
+      toast.error(`Error deleting product: ${msg}`)
     }
   }
 
@@ -198,20 +190,6 @@ export default function InventoryView() {
   return (
     <DashboardShell>
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-        {/* Toast */}
-        {toastMessage && (
-          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white shadow-lg animate-in slide-in-from-bottom-5">
-            <CheckCircle2 className="h-5 w-5" />
-            <span>{toastMessage}</span>
-            <button
-              onClick={() => setToastMessage(null)}
-              className="ml-2 rounded p-0.5 hover:bg-emerald-700"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-
         {/* Page Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useTransition } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { toast } from 'sonner'
 import DashboardShell from '@/components/dashboard-shell'
 import ProductionSummaryCards from './production-summary-cards'
 import JobOrderFormModal from './job-order-form-modal'
@@ -55,7 +56,6 @@ export default function ProductionView() {
   const [activeTabStage, setActiveTabStage] = useState<string>('all')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   // URL query params: e.g. /production?new=true
   useEffect(() => {
@@ -101,17 +101,9 @@ export default function ProductionView() {
     loadData()
   }, [])
 
-  // Auto-dismiss toast
-  useEffect(() => {
-    if (toastMessage) {
-      const t = setTimeout(() => setToastMessage(null), 4000)
-      return () => clearTimeout(t)
-    }
-  }, [toastMessage])
-
   const handleJobCreated = (newJob: JobOrder) => {
     setJobs((prev) => [newJob, ...prev])
-    setToastMessage(`Job Order "${newJob.job_number}" scheduled successfully.`)
+    toast.success(`Job Order "${newJob.job_number}" scheduled successfully.`)
   }
 
   // Update job order stage directly
@@ -132,10 +124,10 @@ export default function ProductionView() {
         throw new Error(error.message)
       }
 
-      setToastMessage(`Job stage moved to ${nextStage.replace('_', ' ')}.`)
+      toast.success(`Job stage moved to ${nextStage.replace('_', ' ')}.`)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to update stage'
-      setToastMessage(`Error updating stage: ${msg}`)
+      toast.error(`Error updating stage: ${msg}`)
       loadData()
     }
   }
@@ -225,20 +217,6 @@ export default function ProductionView() {
   return (
     <DashboardShell>
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-        {/* Toast */}
-        {toastMessage && (
-          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white shadow-lg animate-in slide-in-from-bottom-5">
-            <CheckCircle2 className="h-5 w-5" />
-            <span>{toastMessage}</span>
-            <button
-              onClick={() => setToastMessage(null)}
-              className="ml-2 rounded p-0.5 hover:bg-emerald-700"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-
         {/* Page Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>

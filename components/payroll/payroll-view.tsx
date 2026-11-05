@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, CheckCircle2, Briefcase } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { SkeletonRow } from '@/components/ui/skeleton';
 import {
   getPayrollRecords,
   getAttendanceLogs,
@@ -55,9 +57,9 @@ const BRANCHES: Branch[] = ['Main', 'North', 'South'];
 
 function TableSkeleton() {
   return (
-    <div className="animate-pulse space-y-3 p-4">
+    <div className="space-y-3 p-4">
       {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="h-10 rounded-lg bg-zinc-100" />
+        <SkeletonRow key={i} cols={8} />
       ))}
     </div>
   );
@@ -75,12 +77,6 @@ export default function PayrollView() {
   const [payrollStatusFilter, setPayrollStatusFilter] = useState<PayrollStatus | 'All'>('All');
   const [showPayrollModal, setShowPayrollModal] = useState(false);
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
-
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 4000);
-  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -117,20 +113,13 @@ export default function PayrollView() {
           : r
       )
     );
-    showToast('Payroll marked as Paid.');
+    toast.success('Payroll marked as Paid.');
   }
 
   const totalNetPayFiltered = filteredPayroll.reduce((s, r) => s + r.total_net_pay, 0);
 
   return (
     <div className="space-y-6 p-6">
-      {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 rounded-xl bg-zinc-900 px-5 py-3 text-sm text-white shadow-xl">
-          ✓ {toast}
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -344,7 +333,7 @@ export default function PayrollView() {
           onSuccess={(record) => {
             setPayroll((prev) => [record, ...prev]);
             setShowPayrollModal(false);
-            showToast(`Payroll for ${record.staff_name} issued successfully.`);
+            toast.success(`Payroll for ${record.staff_name} issued successfully.`);
           }}
         />
       )}
@@ -354,7 +343,7 @@ export default function PayrollView() {
           onSuccess={(log) => {
             setAttendance((prev) => [log, ...prev]);
             setShowAttendanceModal(false);
-            showToast(`Attendance for ${log.staff_name} logged on ${log.date}.`);
+            toast.success(`Attendance for ${log.staff_name} logged on ${log.date}.`);
           }}
         />
       )}

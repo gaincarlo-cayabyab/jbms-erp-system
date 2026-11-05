@@ -3,8 +3,8 @@ import type { Metadata } from 'next'
 import LoginForm from '@/components/auth/login-form'
 
 export const metadata: Metadata = {
-  title: 'Sign In | JAPA Core ERP',
-  description: 'Sign in to access the JAPA Core ERP system.',
+  title: 'Sign In | JAPA Global',
+  description: 'Sign in to access JAPA Global — Enterprise Operations.',
 }
 
 function LoginLoading() {

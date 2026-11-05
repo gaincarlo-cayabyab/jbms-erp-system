@@ -1,26 +1,67 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ── JAPA Global Brand Palette ───────────────────────────────────── */
+  --japa-blue:      #0B3BBE;
+  --japa-red:       #D3122A;
+  --japa-dark:      #101828;
+  --japa-surface:   #F8FAFC;
+  --japa-border:    #E2E8F0;
+
+  --background: var(--japa-surface);
+  --foreground: var(--japa-dark);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background:   var(--background);
+  --color-foreground:   var(--foreground);
+  --color-japa-blue:    var(--japa-blue);
+  --color-japa-red:     var(--japa-red);
+  --color-japa-dark:    var(--japa-dark);
+  --color-japa-surface: var(--japa-surface);
+  --color-japa-border:  var(--japa-border);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* ── Tabular numeric formatting for currency & ID columns ─────────── */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* ── Shimmer skeleton animation ───────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 25%,
+    #e0e0e0 50%,
+    #f0f0f0 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ── Grid pattern overlay for login left panel ────────────────────── */
+.bg-grid-overlay {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* ── Sidebar brand colors ─────────────────────────────────────────── */
+.sidebar-brand-bg {
+  background-color: var(--japa-dark);
 }
