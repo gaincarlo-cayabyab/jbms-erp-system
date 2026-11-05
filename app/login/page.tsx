@@ -27,6 +27,14 @@ function LoginLoading() {
 export default function LoginPage() {
   return (
     <Suspense fallback={<LoginLoading />}>
+      {/* Preload the loading animation so it buffers before the user clicks Sign In */}
+      {/* eslint-disable-next-line @next/next/no-head-element */}
+      <link
+        rel="preload"
+        href="/assets/video/JAPA_loading_animation.mp4"
+        as="video"
+        type="video/mp4"
+      />
       <div className="min-h-screen w-full flex flex-col lg:flex-row bg-slate-100 text-slate-900 relative">
         {/* Left Branding Panel */}
         <div className="hidden lg:flex flex-col justify-between w-1/2 bg-gradient-to-br from-indigo-600 via-violet-600 to-teal-500 p-12 text-white relative overflow-hidden">

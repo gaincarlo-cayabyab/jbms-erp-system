@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Eye, EyeOff, Loader2, LogIn, AlertCircle } from 'lucide-react'
@@ -19,17 +19,34 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [showVideoOverlay, setShowVideoOverlay] = useState(false)
   const redirectedRef = useRef(false)
+  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [emailError, setEmailError] = useState<string | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [generalError, setGeneralError] = useState<string | null>(null)
 
+  // Clean up fallback timer on unmount
+  useEffect(() => {
+    return () => {
+      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
+    }
+  }, [])
+
   const handleVideoComplete = useCallback(() => {
     if (redirectedRef.current) return
     redirectedRef.current = true
+    if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
     router.push(redirectTo)
     router.refresh()
   }, [router, redirectTo])
+
+  // Start the fallback timer only once the video is actually playing
+  const handleVideoPlay = useCallback(() => {
+    if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
+    fallbackTimerRef.current = setTimeout(() => {
+      handleVideoComplete()
+    }, 11000) // 10s video + 1s safety buffer
+  }, [handleVideoComplete])
 
   function validate(): boolean {
     let isValid = true
@@ -87,11 +104,6 @@ export default function LoginForm() {
 
       // Show full loading animation video
       setShowVideoOverlay(true)
-
-      // Fallback timer: 10.5 seconds in case onEnded does not fire
-      setTimeout(() => {
-        handleVideoComplete()
-      }, 10500)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'An unexpected error occurred'
       setGeneralError(msg)
@@ -235,6 +247,17 @@ export default function LoginForm() {
         </p>
       </div>
 
+      {/* ── Hidden preload: start buffering video while user fills the form ── */}
+      <video
+        preload="auto"
+        muted
+        playsInline
+        aria-hidden="true"
+        style={{ display: 'none', width: 0, height: 0, position: 'absolute' }}
+      >
+        <source src="/assets/video/JAPA_loading_animation.mp4" type="video/mp4" />
+      </video>
+
       {/* ── Seamless Fullscreen Video Loading Animation Overlay ─────── */}
       {showVideoOverlay && (
         <div
@@ -245,13 +268,13 @@ export default function LoginForm() {
             autoPlay
             muted
             playsInline
+            preload="auto"
+            onPlay={handleVideoPlay}
             onEnded={handleVideoComplete}
             onError={handleVideoComplete}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
           >
             <source src="/assets/video/JAPA_loading_animation.mp4" type="video/mp4" />
-            <source src="/assets/video/loading.mp4" type="video/mp4" />
-            <source src="/assets/video/transaction_loading.mp4" type="video/mp4" />
           </video>
         </div>
       )}
