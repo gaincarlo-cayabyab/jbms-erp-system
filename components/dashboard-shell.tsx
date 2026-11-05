@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Sidebar from './sidebar'
-import { Menu, X, Bell, ChevronRight, Store, Receipt, PanelLeftClose, PanelLeft } from 'lucide-react'
+import { Menu, X, Bell, ChevronRight, Store, Receipt, AlertTriangle, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { FullscreenToggle } from '@/components/ui/auto-fullscreen'
 
@@ -33,6 +33,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   // Desktop / Tablet Landscape collapsible sidebar state (>= 1024px)
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true)
   const [activeBranch, setActiveBranch] = useState('all')
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
   const pathname = usePathname()
 
   // Detect screen size and initialize sidebar preference
@@ -164,15 +165,137 @@ export default function DashboardShell({ children }: { children: React.ReactNode
             {/* Global Fullscreen Toggle */}
             <FullscreenToggle />
 
-            {/* Notification bell */}
-            <button
-              type="button"
-              className="relative rounded-lg p-1.5 sm:p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
-              aria-label="Notifications"
-            >
-              <Bell className="h-4 w-4" />
-              <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" />
-            </button>
+            {/* Notification bell & In-App Alerts Drawer */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setNotificationsOpen((prev) => !prev)}
+                className={cn(
+                  'relative rounded-lg p-1.5 sm:p-2 transition active:scale-95',
+                  notificationsOpen
+                    ? 'bg-indigo-50 text-indigo-700'
+                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
+                )}
+                aria-label="Notifications"
+                title="Operational Notifications & Alerts"
+              >
+                <Bell className="h-4 w-4" />
+                <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white animate-pulse" />
+              </button>
+
+              {/* Notification Popover Dropdown */}
+              {notificationsOpen && (
+                <>
+                  {/* Backdrop for closing */}
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setNotificationsOpen(false)}
+                  />
+
+                  {/* Dropdown panel */}
+                  <div className="absolute right-0 top-full mt-2 z-50 w-80 sm:w-96 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2 px-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-slate-900">Notifications & Alerts</span>
+                        <span className="rounded-full bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.2 text-[10px] font-bold">
+                          Live
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setNotificationsOpen(false)}
+                        className="text-slate-400 hover:text-slate-600 p-0.5 rounded-md hover:bg-slate-100"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto my-1">
+                      {/* Alert 1: Low Stock */}
+                      <Link
+                        href="/inventory"
+                        onClick={() => setNotificationsOpen(false)}
+                        className="flex items-start gap-2.5 p-2 hover:bg-slate-50 rounded-xl transition group"
+                      >
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-600 border border-rose-100 mt-0.5">
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition truncate">
+                            Inventory Threshold Monitor
+                          </p>
+                          <p className="text-[11px] text-slate-500 line-clamp-2">
+                            Check multi-store catalog for products at or below reorder level.
+                          </p>
+                        </div>
+                      </Link>
+
+                      {/* Alert 2: Uncollected Invoices */}
+                      <Link
+                        href="/sales"
+                        onClick={() => setNotificationsOpen(false)}
+                        className="flex items-start gap-2.5 p-2 hover:bg-slate-50 rounded-xl transition group"
+                      >
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 border border-amber-100 mt-0.5">
+                          <Receipt className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition truncate">
+                            Receivables Collection
+                          </p>
+                          <p className="text-[11px] text-slate-500 line-clamp-2">
+                            Pending quotes and unpaid sales orders awaiting customer collection.
+                          </p>
+                        </div>
+                      </Link>
+
+                      {/* Alert 3: Production Queue */}
+                      <Link
+                        href="/production"
+                        onClick={() => setNotificationsOpen(false)}
+                        className="flex items-start gap-2.5 p-2 hover:bg-slate-50 rounded-xl transition group"
+                      >
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600 border border-violet-100 mt-0.5">
+                          <Layers className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition truncate">
+                            7-Stage Production Pipeline
+                          </p>
+                          <p className="text-[11px] text-slate-500 line-clamp-2">
+                            Job orders in pre-press, sublimation, and fabrication queues.
+                          </p>
+                        </div>
+                      </Link>
+
+                      {/* Alert 4: Cashier Terminal */}
+                      <Link
+                        href="/pos"
+                        onClick={() => setNotificationsOpen(false)}
+                        className="flex items-start gap-2.5 p-2 hover:bg-slate-50 rounded-xl transition group"
+                      >
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 mt-0.5">
+                          <Store className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition truncate">
+                            Cashier POS Ready
+                          </p>
+                          <p className="text-[11px] text-slate-500 line-clamp-2">
+                            Dagupan & Manila terminal online for retail transactions.
+                          </p>
+                        </div>
+                      </Link>
+                    </div>
+
+                    <div className="border-t border-slate-100 pt-2 px-1 text-center">
+                      <p className="text-[10px] text-slate-400 font-medium">
+                        Real-time ERP notifications synced with Supabase
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </header>
 

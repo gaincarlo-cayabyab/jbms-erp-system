@@ -401,140 +401,157 @@ export default function ExecutiveDashboard() {
       </div>
 
       {/* ── Primary KPI Cards ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
         {/* Total Revenue */}
-        <Link href="/sales" className="block transition-transform hover:-translate-y-0.5">
+        <Link href="/sales" className="block transition-transform active:scale-[0.99]">
           <StatCard
             title="Total Gross Revenue"
-            value={fmt(totalRevenue > 0 ? totalRevenue : 45000)}
+            value={fmt(totalRevenue)}
             subtitle={
               salesOrders.length > 0
-                ? `${paidOrders.length} of ${salesOrders.length} orders settled`
-                : '1 order settled • Live tracker'
+                ? `${paidOrders.length} settled of ${salesOrders.length} total orders`
+                : 'No sales orders recorded'
             }
             icon={TrendingUp}
-            colorClass="bg-blue-600 shadow-lg shadow-blue-200"
-            trend={{ value: 'Real-time sales', positive: true }}
+            colorClass="bg-blue-50 text-blue-600 border border-blue-200/80 ring-2 ring-blue-500/10"
+            trend={{
+              value: paidOrders.length > 0 ? `${paidOrders.length} paid` : 'Live tracker',
+              positive: totalRevenue > 0,
+            }}
           />
         </Link>
 
         {/* Active Production Queue */}
-        <Link href="/production" className="block transition-transform hover:-translate-y-0.5">
+        <Link href="/production" className="block transition-transform active:scale-[0.99]">
           <StatCard
             title="Active Job Orders"
-            value={activeJobs.length > 0 ? activeJobs.length : 3}
+            value={activeJobs.length}
             subtitle={
-              completedJobs.length > 0
-                ? `${completedJobs.length} completed this cycle`
-                : 'In pre-press, print & QC'
+              completedJobs.length > 0 || activeJobs.length > 0
+                ? `${completedJobs.length} completed • ${activeJobs.length} in production`
+                : 'No job orders in queue'
             }
             icon={Layers}
-            colorClass="bg-violet-600 shadow-lg shadow-violet-200"
-            trend={{ value: 'In workflow', positive: true }}
+            colorClass="bg-violet-50 text-violet-600 border border-violet-200/80 ring-2 ring-violet-500/10"
+            trend={{
+              value: activeJobs.length > 0 ? `${activeJobs.length} in progress` : 'Queue idle',
+              positive: true,
+            }}
           />
         </Link>
 
         {/* Low Stock Alerts */}
-        <Link href="/inventory" className="block transition-transform hover:-translate-y-0.5">
+        <Link href="/inventory" className="block transition-transform active:scale-[0.99]">
           <StatCard
             title="Stock Warnings"
             value={lowStockItems.length}
             subtitle={
               lowStockItems.length > 0
-                ? `${lowStockItems.length} items below reorder level`
-                : 'All stock levels healthy'
+                ? `${lowStockItems.length} item${lowStockItems.length === 1 ? '' : 's'} below reorder level`
+                : 'All inventory stock levels healthy'
             }
-            icon={AlertTriangle}
-            colorClass={lowStockItems.length > 0 ? 'bg-amber-500 shadow-lg shadow-amber-200' : 'bg-zinc-600'}
+            icon={lowStockItems.length > 0 ? AlertTriangle : CheckCircle2}
+            colorClass={
+              lowStockItems.length > 0
+                ? 'bg-rose-50 text-rose-600 border border-rose-200/80 ring-2 ring-rose-500/10'
+                : 'bg-emerald-50 text-emerald-600 border border-emerald-200/80 ring-2 ring-emerald-500/10'
+            }
             trend={{
-              value: lowStockItems.length > 0 ? 'Restock required' : 'Optimal',
+              value: lowStockItems.length > 0 ? 'Restock required' : 'Optimal stock',
               positive: lowStockItems.length === 0,
             }}
           />
         </Link>
 
         {/* Outstanding Receivables */}
-        <Link href="/financials" className="block transition-transform hover:-translate-y-0.5">
+        <Link href="/financials" className="block transition-transform active:scale-[0.99]">
           <StatCard
             title="Pending Receivables"
-            value={fmt(accountsReceivable > 0 ? accountsReceivable : 18500)}
+            value={fmt(accountsReceivable)}
             subtitle={
               pendingSales.length > 0
-                ? `${pendingSales.length} uncollected invoices`
-                : 'Awaiting client collection'
+                ? `${pendingSales.length} uncollected ${pendingSales.length === 1 ? 'order' : 'orders'}`
+                : 'All invoices settled & collected'
             }
             icon={Clock}
-            colorClass="bg-rose-600 shadow-lg shadow-rose-200"
-            trend={{ value: 'Accounts Receivable', positive: false }}
+            colorClass={
+              accountsReceivable > 0
+                ? 'bg-amber-50 text-amber-600 border border-amber-200/80 ring-2 ring-amber-500/10'
+                : 'bg-emerald-50 text-emerald-600 border border-emerald-200/80 ring-2 ring-emerald-500/10'
+            }
+            trend={{
+              value: accountsReceivable > 0 ? `${pendingSales.length} unpaid` : 'Zero receivables',
+              positive: accountsReceivable === 0,
+            }}
           />
         </Link>
       </div>
 
       {/* ── Secondary Summary Strip ────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
         <Link
           href="/payroll"
-          className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-emerald-300 hover:shadow"
+          className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition hover:border-emerald-300 hover:shadow-sm active:scale-[0.99]"
         >
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200/70">
               <Wallet className="h-5 w-5" />
             </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate">
                 Monthly Payroll Budget
               </p>
-              <p className="text-lg font-bold text-zinc-900">
-                {fmt(totalPayrollBudget > 0 ? totalPayrollBudget : 94740)}
+              <p className="text-base sm:text-lg font-extrabold text-slate-900 tabular-nums truncate">
+                {fmt(totalPayrollBudget)}
               </p>
             </div>
           </div>
-          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
-            {pendingPayrollCount > 0 ? `${pendingPayrollCount} pending` : '5 active staff'}
+          <span className="shrink-0 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+            {pendingPayrollCount > 0 ? `${pendingPayrollCount} pending` : `${payrollRecords.length} records`}
           </span>
         </Link>
 
         <Link
           href="/customers"
-          className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow"
+          className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition hover:border-blue-300 hover:shadow-sm active:scale-[0.99]"
         >
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-200/70">
               <Users className="h-5 w-5" />
             </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate">
                 Client Directory
               </p>
-              <p className="text-lg font-bold text-zinc-900">
-                {customers.length > 0 ? `${customers.length} Accounts` : 'Corporate CRM'}
+              <p className="text-base sm:text-lg font-extrabold text-slate-900 tabular-nums truncate">
+                {customers.length} Accounts
               </p>
             </div>
           </div>
-          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">
+          <span className="shrink-0 rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-[10px] font-bold text-blue-700">
             Active Accounts
           </span>
         </Link>
 
         <Link
           href="/inventory"
-          className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-indigo-300 hover:shadow"
+          className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition hover:border-indigo-300 hover:shadow-sm active:scale-[0.99]"
         >
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-200/70">
               <Package className="h-5 w-5" />
             </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate">
                 Multi-Store Catalog
               </p>
-              <p className="text-lg font-bold text-zinc-900">
-                {products.length > 0 ? `${products.length} SKUs Managed` : '3 Stores Linked'}
+              <p className="text-base sm:text-lg font-extrabold text-slate-900 tabular-nums truncate">
+                {products.length} Products
               </p>
             </div>
           </div>
-          <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-800">
-            Dagupan (Main) • Manila
+          <span className="shrink-0 rounded-full bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
+            Dagupan • Manila
           </span>
         </Link>
       </div>
@@ -655,22 +672,42 @@ export default function ExecutiveDashboard() {
 
           {/* Workflow Pipeline */}
           <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
               Production Workflow Pipeline
             </h3>
             <div className="space-y-2.5">
               {[
-                { stage: 'Pre-Press / Design', count: '2 Orders', pct: '25%', color: 'bg-blue-500' },
-                { stage: 'Printing / Fabrication', count: '4 Orders', pct: '50%', color: 'bg-violet-500' },
-                { stage: 'Quality Inspection', count: '1 Order', pct: '12%', color: 'bg-amber-500' },
-                { stage: 'Ready for Dispatch', count: '3 Orders', pct: '38%', color: 'bg-emerald-500' },
+                {
+                  stage: 'Pre-Press / Design',
+                  count: `${jobOrders.filter((j) => ['Pre_Press', 'Queued', 'Pending'].includes(j.stage_status)).length} Orders`,
+                  pct: `${Math.round((jobOrders.filter((j) => ['Pre_Press', 'Queued', 'Pending'].includes(j.stage_status)).length / Math.max(jobOrders.length, 1)) * 100)}%`,
+                  color: 'bg-blue-500',
+                },
+                {
+                  stage: 'Printing / Fabrication',
+                  count: `${jobOrders.filter((j) => ['Printing', 'In_Production'].includes(j.stage_status)).length} Orders`,
+                  pct: `${Math.round((jobOrders.filter((j) => ['Printing', 'In_Production'].includes(j.stage_status)).length / Math.max(jobOrders.length, 1)) * 100)}%`,
+                  color: 'bg-violet-500',
+                },
+                {
+                  stage: 'Finishing & Assembly',
+                  count: `${jobOrders.filter((j) => j.stage_status === 'Finishing').length} Orders`,
+                  pct: `${Math.round((jobOrders.filter((j) => j.stage_status === 'Finishing').length / Math.max(jobOrders.length, 1)) * 100)}%`,
+                  color: 'bg-amber-500',
+                },
+                {
+                  stage: 'Quality Check & Completed',
+                  count: `${jobOrders.filter((j) => ['Quality_Check', 'Done', 'Completed', 'Delivered'].includes(j.stage_status)).length} Orders`,
+                  pct: `${Math.round((jobOrders.filter((j) => ['Quality_Check', 'Done', 'Completed', 'Delivered'].includes(j.stage_status)).length / Math.max(jobOrders.length, 1)) * 100)}%`,
+                  color: 'bg-emerald-500',
+                },
               ].map((pipe) => (
                 <div key={pipe.stage}>
-                  <div className="flex justify-between text-xs font-medium text-zinc-700 mb-1">
+                  <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
                     <span>{pipe.stage}</span>
-                    <span className="text-zinc-500 text-[11px]">{pipe.count}</span>
+                    <span className="text-slate-500 text-[11px] font-mono">{pipe.count}</span>
                   </div>
-                  <div className="h-2 w-full rounded-full bg-zinc-100 overflow-hidden">
+                  <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
                     <div
                       className={cn('h-full rounded-full transition-all duration-500', pipe.color)}
                       style={{ width: pipe.pct }}
@@ -684,31 +721,31 @@ export default function ExecutiveDashboard() {
       </div>
 
       {/* ── All ERP Modules Hub ────────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
           <div>
-            <h2 className="text-sm font-bold text-zinc-800">Integrated System Modules</h2>
-            <p className="text-xs text-zinc-500">
+            <h2 className="text-sm font-bold text-slate-800">Integrated System Modules</h2>
+            <p className="text-xs text-slate-500">
               Direct access to all 7 core ERP operational subsystems.
             </p>
           </div>
-          <span className="mt-2 sm:mt-0 inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-200">
-            <CheckCircle2 className="h-3.5 w-3.5 text-blue-600" /> All Subsystems Active
+          <span className="mt-2 sm:mt-0 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> All Subsystems Active
           </span>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
           {moduleHub.map((mod) => (
             <Link
               key={mod.label}
               href={mod.href}
-              className="group flex flex-col items-center rounded-xl border border-zinc-200/80 bg-zinc-50/60 p-3.5 text-center transition hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-xs"
+              className="group flex flex-col items-center rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 text-center transition hover:border-indigo-300 hover:bg-indigo-50/40 hover:shadow-2xs active:scale-[0.98]"
             >
-              <span className="text-xs font-bold text-zinc-800 group-hover:text-blue-700 transition-colors">
+              <span className="text-xs font-bold text-slate-800 group-hover:text-indigo-700 transition-colors truncate w-full">
                 {mod.label}
               </span>
-              <span className="mt-1 text-[11px] font-medium text-zinc-500">{mod.count}</span>
-              <span className="mt-2 inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-bold text-emerald-800 uppercase tracking-wider">
+              <span className="mt-1 text-[11px] font-medium text-slate-500 truncate w-full">{mod.count}</span>
+              <span className="mt-2 inline-flex items-center rounded-full bg-emerald-100/80 px-2 py-0.5 text-[9px] font-bold text-emerald-800 uppercase tracking-wider">
                 {mod.status}
               </span>
             </Link>
