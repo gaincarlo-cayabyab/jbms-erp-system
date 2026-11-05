@@ -73,3 +73,4 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
 };
 
 export default NotificationToast;
+

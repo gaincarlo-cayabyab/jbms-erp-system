@@ -49,6 +49,10 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/login') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
+    pathname.startsWith('/assets') ||
+    pathname.startsWith('/images') ||
+    pathname.startsWith('/favicon') ||
+    pathname.includes('.') ||
     pathname === '/favicon.ico'
 
   // Redirect unauthenticated users to /login
