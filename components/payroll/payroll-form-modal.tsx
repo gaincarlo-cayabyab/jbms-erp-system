@@ -314,3 +314,4 @@ export default function PayrollFormModal({ onClose, onSuccess }: Props) {
     </div>
   );
 }
+

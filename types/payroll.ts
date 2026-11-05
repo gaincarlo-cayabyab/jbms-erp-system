@@ -69,3 +69,4 @@ export interface PayrollSummary {
   pendingDisbursementsAmount: number;
   totalOvertimeHours: number;
 }
+

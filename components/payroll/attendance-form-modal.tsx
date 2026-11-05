@@ -209,3 +209,4 @@ export default function AttendanceFormModal({ onClose, onSuccess }: Props) {
     </div>
   );
 }
+
