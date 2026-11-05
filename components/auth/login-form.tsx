@@ -237,19 +237,21 @@ export default function LoginForm() {
 
       {/* ── Seamless Fullscreen White Video Loading Animation Overlay ─────── */}
       {showVideoOverlay && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white animate-in fade-in duration-300">
-          <video
-            autoPlay
-            muted
-            playsInline
-            onEnded={handleVideoComplete}
-            onError={handleVideoComplete}
-            className="w-full h-full object-contain bg-white"
-          >
-            <source src="/assets/video/JAPA_loading_animation.mp4" type="video/mp4" />
-            <source src="/assets/video/loading.mp4" type="video/mp4" />
-            <source src="/assets/video/transaction_loading.mp4" type="video/mp4" />
-          </video>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white animate-in fade-in duration-300 p-4 sm:p-8">
+          <div className="w-full max-w-xl sm:max-w-2xl flex items-center justify-center">
+            <video
+              autoPlay
+              muted
+              playsInline
+              onEnded={handleVideoComplete}
+              onError={handleVideoComplete}
+              className="w-full h-auto max-h-[65vh] object-contain bg-white"
+            >
+              <source src="/assets/video/JAPA_loading_animation.mp4" type="video/mp4" />
+              <source src="/assets/video/loading.mp4" type="video/mp4" />
+              <source src="/assets/video/transaction_loading.mp4" type="video/mp4" />
+            </video>
+          </div>
         </div>
       )}
     </div>
