@@ -308,3 +308,4 @@ export default function POSReceiptModal({ transaction, onNewSale }: Props) {
     </div>
   )
 }
+

@@ -36,6 +36,7 @@ export default function POSProductCatalog({ products, isLoading, onAddToCart, ca
         p.sku.toLowerCase().includes(search.toLowerCase())
       const matchCat =
         activeCategory === 'All' ||
+        (activeCategory === 'Others' && (!p.category || !['fast moving', 'hardware', 'electronics', 'promos'].includes(p.category.toLowerCase()))) ||
         (p.category?.toLowerCase() === activeCategory.toLowerCase())
       return matchSearch && matchCat
     })

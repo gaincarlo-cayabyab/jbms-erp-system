@@ -26,7 +26,7 @@ export default function POSTransactionModal({ transaction, onComplete }: Props) 
         for (const item of transaction.items) {
           const newStock = Math.max(0, item.product.stock_quantity - item.quantity)
           await supabase
-            .from('inventory_items')
+            .from('products_and_inventory')
             .update({ stock_quantity: newStock })
             .eq('id', item.product.id)
         }
@@ -114,3 +114,4 @@ export default function POSTransactionModal({ transaction, onComplete }: Props) 
     </div>
   )
 }
+

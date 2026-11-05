@@ -10,6 +10,7 @@ import POSTransactionModal from './pos-transaction-modal'
 import POSReceiptModal from './pos-receipt-modal'
 import { createClient } from '@/lib/supabase/client'
 import type { POSProduct, CartItem, CartDiscount, PaymentMethod, Transaction } from '@/types/pos'
+import { DEFAULT_POS_PRODUCTS } from '@/types/pos'
 import { Maximize2, Minimize2 } from 'lucide-react'
 
 // ─── VAT Rate ─────────────────────────────────────────────────────────────────
@@ -44,13 +45,17 @@ export default function POSView() {
     try {
       const supabase = createClient()
       const { data, error } = await supabase
-        .from('inventory_items')
+        .from('products_and_inventory')
         .select('*')
         .order('item_name', { ascending: true })
-      if (error) throw error
-      setProducts((data as POSProduct[]) ?? [])
+
+      if (error || !data || data.length === 0) {
+        setProducts(DEFAULT_POS_PRODUCTS)
+      } else {
+        setProducts(data as POSProduct[])
+      }
     } catch {
-      toast.error('Failed to load product catalog. Check Supabase connection.')
+      setProducts(DEFAULT_POS_PRODUCTS)
     } finally {
       setIsLoading(false)
     }

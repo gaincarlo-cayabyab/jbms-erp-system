@@ -209,3 +209,4 @@ export default function POSCheckoutPanel({ totals, itemCount, cartDiscount, onCh
     </div>
   )
 }
+
