@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -954,27 +955,56 @@ export default function LoginForm() {
         style={{ display: 'none', width: 0, height: 0, position: 'absolute' }}
       >
         <source src="/assets/video/JAPA_loading_animation.mp4" type="video/mp4" />
+        <source src="/assets/video/loading.mp4" type="video/mp4" />
       </video>
 
-      {/* ── Fullscreen Video Loading Overlay ─────────────────────────── */}
-      {showVideoOverlay && (
-        <div
-          className="fixed inset-0 z-[9999] overflow-hidden animate-in fade-in duration-300"
-          style={{ background: '#F0F0F0' }}
-        >
-          <video
-            autoPlay
-            muted
-            playsInline
-            preload="auto"
-            onPlay={handleVideoPlay}
-            onEnded={handleVideoComplete}
-            onError={handleVideoComplete}
-            style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
-          >
-            <source src="/assets/video/JAPA_loading_animation.mp4" type="video/mp4" />
-          </video>
-        </div>
+      {/* ── Restored Classic Video Loading Animation Overlay ────────── */}
+      {showVideoOverlay && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="relative flex flex-col items-center justify-center max-w-sm w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl text-center text-white overflow-hidden">
+            <div className="absolute inset-0 bg-radial from-indigo-500/20 via-transparent to-transparent pointer-events-none" />
+
+            {/* Video Player */}
+            <div className="relative w-48 h-48 mb-5 rounded-2xl overflow-hidden shadow-inner bg-slate-950 border border-slate-800">
+              <video
+                autoPlay
+                muted
+                playsInline
+                preload="auto"
+                onPlay={handleVideoPlay}
+                onEnded={handleVideoComplete}
+                onError={handleVideoComplete}
+                className="w-full h-full object-cover"
+              >
+                <source src="/assets/video/JAPA_loading_animation.mp4" type="video/mp4" />
+                <source src="/assets/video/loading.mp4" type="video/mp4" />
+                <source src="/assets/video/transaction_loading.mp4" type="video/mp4" />
+              </video>
+            </div>
+
+            <h3 className="text-lg font-bold text-white tracking-tight mb-1">
+              Authenticating Credentials
+            </h3>
+            <p className="text-xs text-indigo-300 font-medium mb-3">
+              {selectedUser?.full_name || 'JAPA Core Workspace'}
+            </p>
+
+            <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Initializing secure session &amp; workspace…</span>
+            </div>
+
+            {/* Quick Skip Button */}
+            <button
+              type="button"
+              onClick={handleVideoComplete}
+              className="mt-5 text-[11px] font-semibold text-slate-400 hover:text-white transition underline underline-offset-4 cursor-pointer"
+            >
+              Skip to Workspace →
+            </button>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   )

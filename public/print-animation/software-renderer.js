@@ -1,61 +1,27 @@
-// A small CPU renderer keeps the real 3D scene running when hardware WebGL is unavailable.
-// Both rendering paths use the same meshes, camera, materials and animation timeline.
+// Perspective-correct, depth-buffered renderer for browsers without WebGL.
 import * as THREE from 'three';
-
 export class SoftwareRenderer {
-  constructor(){this.domElement=document.createElement('canvas');this.ctx=this.domElement.getContext('2d',{alpha:true});this.ratio=1;this.shadowMap={};this.patterns=new WeakMap();this.colors=new WeakMap();this.width=1;this.height=1;this.isSoftwareRenderer=true;}
-  setPixelRatio(r){this.ratio=Math.min(r,1.5);}
+  constructor(){this.domElement=document.createElement('canvas');this.ctx=this.domElement.getContext('2d',{alpha:true});this.isSoftwareRenderer=true;this.shadowMap={};this.textures=new WeakMap();this.cache=new WeakMap();this.ratio=1;this.light=new THREE.Vector3(-.45,.85,.65).normalize();this.half=new THREE.Vector3(-.1,.65,1).normalize();this.stats={triangles:0};}
+  setPixelRatio(r){this.ratio=Math.min(r,1.15);}
   setClearColor(){}
-  setSize(w,h){this.width=w;this.height=h;this.domElement.width=Math.round(w*this.ratio);this.domElement.height=Math.round(h*this.ratio);this.domElement.style.width=w+'px';this.domElement.style.height=h+'px';}
-  pattern(texture){if(!texture?.image)return null;let p=this.patterns.get(texture);if(!p){p=this.ctx.createPattern(texture.image,'repeat');this.patterns.set(texture,p);}return p;}
+  setSize(width,height){this.width=width;this.height=height;const scale=Math.min(this.ratio,1100/width,800/height);this.w=Math.max(1,Math.round(width*scale));this.h=Math.max(1,Math.round(height*scale));this.domElement.width=this.w;this.domElement.height=this.h;this.domElement.style.width=width+'px';this.domElement.style.height=height+'px';this.image=this.ctx.createImageData(this.w,this.h);this.depth=new Float32Array(this.w*this.h);}
+  texture(map){if(!map?.image)return null;let t=this.textures.get(map);if(!t||t.version!==map.version){const image=map.image,c=document.createElement('canvas');c.width=image.width;c.height=image.height;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(image,0,0);t={data:x.getImageData(0,0,c.width,c.height).data,w:c.width,h:c.height,version:map.version};this.textures.set(map,t);}return t;}
   render(scene,camera){
-    const ctx=this.ctx,w=this.width,h=this.height;ctx.setTransform(this.ratio,0,0,this.ratio,0,0);ctx.clearRect(0,0,w,h);
-    scene.updateMatrixWorld();camera.updateMatrixWorld();camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
-    const proj=new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);
-    const center=new THREE.Vector3(0,-.12,0).project(camera),bottomY=(1-center.y)*h/2;
-    const shadow=ctx.createRadialGradient(w/2,bottomY,0,w/2,bottomY,w*.32);shadow.addColorStop(0,'rgba(72,76,52,.18)');shadow.addColorStop(.7,'rgba(72,76,52,.045)');shadow.addColorStop(1,'rgba(72,76,52,0)');
-    ctx.save();ctx.translate(0,bottomY*.67);ctx.scale(1,.33);ctx.fillStyle=shadow;ctx.fillRect(0,0,w,h*3);ctx.restore();
-    const tris=[],light=new THREE.Vector3(-.4,.8,.65).normalize(),normal=new THREE.Vector3(),c=new THREE.Color();
+    if(!this.image)return;const w=this.w,h=this.h,pixels=this.image.data,depth=this.depth;pixels.fill(0);depth.fill(Infinity);scene.updateMatrixWorld();camera.updateMatrixWorld();camera.matrixWorldInverse.copy(camera.matrixWorld).invert();const vp=new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);const color=new THREE.Color(),matrix=new THREE.Matrix4(),nm=new THREE.Matrix3(),normal=new THREE.Vector3();let triangles=0;
     scene.traverseVisible(obj=>{
-      if(!obj.isMesh||!obj.geometry||obj.material?.isShadowMaterial)return;
-      const g=obj.geometry,mat=Array.isArray(obj.material)?obj.material[0]:obj.material;if(!mat||mat.opacity===0||mat.wireframe)return;
-      const p=g.attributes.position,n=g.attributes.normal,uv=g.attributes.uv,idx=g.index?.array;
-      const count=idx?idx.length:p.count,transform=new THREE.Matrix4().multiplyMatrices(proj,obj.matrixWorld),nm=new THREE.Matrix3().getNormalMatrix(obj.matrixWorld);
-      const projected=new Float64Array(p.count*3);const point=new THREE.Vector3();
-      for(let i=0;i<p.count;i++){point.fromBufferAttribute(p,i).applyMatrix4(transform);projected[i*3]=(point.x+1)*w/2;projected[i*3+1]=(1-point.y)*h/2;projected[i*3+2]=point.z;}
-      c.copy(mat.color||new THREE.Color(0xffffff)).convertLinearToSRGB();
-      const base=[c.r*255,c.g*255,c.b*255];
-      for(let i=0;i<count;i+=3){
-        const a=idx?idx[i]:i,b=idx?idx[i+1]:i+1,d=idx?idx[i+2]:i+2;
-        const ax=projected[a*3],ay=projected[a*3+1],bx=projected[b*3],by=projected[b*3+1],dx=projected[d*3],dy=projected[d*3+1];
-        const area=(bx-ax)*(dy-ay)-(by-ay)*(dx-ax);
-        if(Math.abs(area)<.03||mat.side!==THREE.DoubleSide&&area>=0)continue;
-        if(Math.max(ax,bx,dx)<0||Math.min(ax,bx,dx)>w||Math.max(ay,by,dy)<0||Math.min(ay,by,dy)>h)continue;
-        normal.set(n?(n.getX(a)+n.getX(b)+n.getX(d))/3:0,n?(n.getY(a)+n.getY(b)+n.getY(d))/3:1,n?(n.getZ(a)+n.getZ(b)+n.getZ(d))/3:0).applyMatrix3(nm).normalize();
-        if(area>=0)normal.negate();
-        const bright=mat.isMeshBasicMaterial?1:Math.min(1,.69+Math.max(0,normal.dot(light))*.33);
-        let texture=mat.map,white=false;
-        if(texture&&mat.userData.reveal&&uv){const v=(uv.getY(a)+uv.getY(b)+uv.getY(d))/3;white=1-v>mat.userData.reveal.value;if(white)texture=null;}
-        tris.push({xy:[ax,ay,bx,by,dx,dy],layer:obj.userData.softwareLayer||0,z:(projected[a*3+2]+projected[b*3+2]+projected[d*3+2])/3,base:white?[242,237,222]:base,bright,texture,uv:texture&&uv?[uv.getX(a),uv.getY(a),uv.getX(b),uv.getY(b),uv.getX(d),uv.getY(d)]:null,opacity:mat.transparent?mat.opacity:1});
+      if(!obj.isMesh||obj.material?.isShadowMaterial||!obj.geometry)return;const g=obj.geometry,mat=Array.isArray(obj.material)?obj.material[0]:obj.material;if(!mat||mat.visible===false||mat.opacity===0||mat.wireframe)return;const pos=g.attributes.position,n=g.attributes.normal,uv=g.attributes.uv,index=g.index?.array;let cache=this.cache.get(obj);if(!cache||cache.length!==pos.count*9){cache=new Float64Array(pos.count*9);this.cache.set(obj,cache);}matrix.multiplyMatrices(vp,obj.matrixWorld);nm.getNormalMatrix(obj.matrixWorld);const m=matrix.elements;
+      for(let i=0;i<pos.count;i++){const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i),o=i*9,iw=1/(m[3]*x+m[7]*y+m[11]*z+m[15]);cache[o]=((m[0]*x+m[4]*y+m[8]*z+m[12])*iw+1)*w*.5;cache[o+1]=(1-(m[1]*x+m[5]*y+m[9]*z+m[13])*iw)*h*.5;cache[o+2]=(m[2]*x+m[6]*y+m[10]*z+m[14])*iw;cache[o+3]=iw;cache[o+4]=uv?uv.getX(i)*iw:0;cache[o+5]=uv?uv.getY(i)*iw:0;if(n)normal.fromBufferAttribute(n,i).applyMatrix3(nm).normalize();else normal.set(0,1,0);cache[o+6]=normal.x*iw;cache[o+7]=normal.y*iw;cache[o+8]=normal.z*iw;}
+      color.copy(mat.color||new THREE.Color(0xffffff)).convertLinearToSRGB();const cr=color.r,cg=color.g,cb=color.b,tex=this.texture(mat.map),map=mat.map,rough=mat.roughness??.8,metal=mat.metalness??0,basic=mat.isMeshBasicMaterial,repeatX=map?.repeat.x??1,repeatY=map?.repeat.y??1,offX=map?.offset.x??0,offY=map?.offset.y??0,wrapX=map?.wrapS===THREE.RepeatWrapping,wrapY=map?.wrapT===THREE.RepeatWrapping,reveal=mat.userData.reveal?.value??2,cloth=mat.userData.cloth,count=index?index.length:pos.count,light=this.light,half=this.half;
+      for(let f=0;f<count;f+=3){
+        const a=(index?index[f]:f)*9,b=(index?index[f+1]:f+1)*9,c=(index?index[f+2]:f+2)*9,ax=cache[a],ay=cache[a+1],bx=cache[b],by=cache[b+1],cx=cache[c],cy=cache[c+1],area=(bx-ax)*(cy-ay)-(by-ay)*(cx-ax);if(Math.abs(area)<.04||mat.side!==THREE.DoubleSide&&area>=0)continue;if(cache[a+3]<=0||cache[b+3]<=0||cache[c+3]<=0)continue;
+        const xmin=Math.max(0,Math.ceil(Math.min(ax,bx,cx)-.5)),xmax=Math.min(w-1,Math.floor(Math.max(ax,bx,cx)-.5)),ymin=Math.max(0,Math.ceil(Math.min(ay,by,cy)-.5)),ymax=Math.min(h-1,Math.floor(Math.max(ay,by,cy)-.5));if(xmin>xmax||ymin>ymax)continue;triangles++;const ia=1/area,dax=(by-cy)*ia,day=(cx-bx)*ia,dbx=(cy-ay)*ia,dby=(ax-cx)*ia;let rowA=((bx-(xmin+.5))*(cy-(ymin+.5))-(by-(ymin+.5))*(cx-(xmin+.5)))*ia,rowB=((cx-(xmin+.5))*(ay-(ymin+.5))-(cy-(ymin+.5))*(ax-(xmin+.5)))*ia;const side=area<0?1:-1,za=cache[a+2],zb=cache[b+2],zc=cache[c+2];
+        for(let y=ymin;y<=ymax;y++,rowA+=day,rowB+=dby){let wa=rowA,wb=rowB,k=y*w+xmin;for(let x=xmin;x<=xmax;x++,k++,wa+=dax,wb+=dbx){const wc=1-wa-wb;if(wa<-.00001||wb<-.00001||wc<-.00001)continue;const z=wa*za+wb*zb+wc*zc;if(z>=depth[k]||z< -1||z>1)continue;const iw=wa*cache[a+3]+wb*cache[b+3]+wc*cache[c+3],inv=1/iw;let u=(wa*cache[a+4]+wb*cache[b+4]+wc*cache[c+4])*inv,v=(wa*cache[a+5]+wb*cache[b+5]+wc*cache[c+5])*inv,red=255*cr,green=255*cg,blue=255*cb;
+          if(tex){let tu=u*repeatX+offX,tv=v*repeatY+offY;tu=wrapX?tu-Math.floor(tu):Math.max(0,Math.min(.999999,tu));tv=wrapY?tv-Math.floor(tv):Math.max(0,Math.min(.999999,tv));const tx=Math.min(tex.w-1,Math.floor(tu*tex.w)),ty=Math.min(tex.h-1,Math.floor((1-tv)*(tex.h-1))),tk=(ty*tex.w+tx)*4;if(tex.data[tk+3]<128)continue;red=tex.data[tk]*cr;green=tex.data[tk+1]*cg;blue=tex.data[tk+2]*cb;if(1-v>reveal){red=247;green=246;blue=242;}}
+          let shade=1,spec=0;if(!basic){let nx=(wa*cache[a+6]+wb*cache[b+6]+wc*cache[c+6])*inv*side,ny=(wa*cache[a+7]+wb*cache[b+7]+wc*cache[c+7])*inv*side,nz=(wa*cache[a+8]+wb*cache[b+8]+wc*cache[c+8])*inv*side;const nl=1/Math.sqrt(nx*nx+ny*ny+nz*nz);nx*=nl;ny*=nl;nz*=nl;const diffuse=Math.max(0,nx*light.x+ny*light.y+nz*light.z);shade=.53+.43*diffuse+.06*Math.max(0,ny);if(rough<.65){const dot=Math.max(0,nx*half.x+ny*half.y+nz*half.z);spec=Math.pow(dot,12+(1-rough)*70)*(1-rough)*(.5+metal)*80;}if(cloth)shade*=.987+.013*Math.sin(u*1400)*Math.sin(v*1400);}
+          const pk=k*4;pixels[pk]=Math.min(255,red*shade+spec);pixels[pk+1]=Math.min(255,green*shade+spec);pixels[pk+2]=Math.min(255,blue*shade+spec);pixels[pk+3]=255;depth[k]=z;
+        }}
       }
     });
-    tris.sort((a,b)=>a.layer-b.layer||b.z-a.z);
-    for(const t of tris){
-      const q=t.xy;ctx.globalAlpha=t.opacity;ctx.beginPath();ctx.moveTo(q[0],q[1]);ctx.lineTo(q[2],q[3]);ctx.lineTo(q[4],q[5]);ctx.closePath();
-      ctx.fillStyle=`rgb(${Math.round(t.base[0]*t.bright)},${Math.round(t.base[1]*t.bright)},${Math.round(t.base[2]*t.bright)})`;ctx.fill();if(!t.texture){ctx.lineWidth=.4;ctx.strokeStyle=ctx.fillStyle;ctx.stroke();}
-      if(t.texture&&t.uv){
-        const image=t.texture.image,tw=image.width,th=image.height,u=t.uv,ox=t.texture.offset.x,oy=t.texture.offset.y;
-        const u0=(u[0]+ox)*tw,v0=(1-u[1]-oy)*th,u1=(u[2]+ox)*tw,v1=(1-u[3]-oy)*th,u2=(u[4]+ox)*tw,v2=(1-u[5]-oy)*th;
-        const det=(u1-u0)*(v2-v0)-(u2-u0)*(v1-v0);
-        if(Math.abs(det)>.001){
-          const aa=((q[2]-q[0])*(v2-v0)-(q[4]-q[0])*(v1-v0))/det,bb=((q[3]-q[1])*(v2-v0)-(q[5]-q[1])*(v1-v0))/det;
-          const cc=((q[4]-q[0])*(u1-u0)-(q[2]-q[0])*(u2-u0))/det,dd=((q[5]-q[1])*(u1-u0)-(q[3]-q[1])*(u2-u0))/det;
-          const ee=q[0]-aa*u0-cc*v0,ff=q[1]-bb*u0-dd*v0;
-          ctx.save();const cx=(q[0]+q[2]+q[4])/3,cy=(q[1]+q[3]+q[5])/3;ctx.beginPath();for(let j=0;j<3;j++){const px=q[j*2],py=q[j*2+1],dl=Math.hypot(px-cx,py-cy)||1;const ex=px+(px-cx)/dl*.6,ey=py+(py-cy)/dl*.6;if(j===0)ctx.moveTo(ex,ey);else ctx.lineTo(ex,ey);}ctx.closePath();ctx.clip();ctx.transform(aa,bb,cc,dd,ee,ff);ctx.fillStyle=this.pattern(t.texture);ctx.fillRect(Math.min(u0,u1,u2)-2,Math.min(v0,v1,v2)-2,Math.max(u0,u1,u2)-Math.min(u0,u1,u2)+4,Math.max(v0,v1,v2)-Math.min(v0,v1,v2)+4);ctx.restore();
-          if(t.bright<.99){ctx.fillStyle=`rgba(25,31,31,${1-t.bright})`;ctx.fill();}
-        }
-      }
-    }
-    ctx.globalAlpha=1;
+    this.ctx.putImageData(this.image,0,0);const p=new THREE.Vector3(0,-.04,0).project(camera),sx=(p.x+1)*w/2,sy=(1-p.y)*h/2,ctx=this.ctx;ctx.save();ctx.globalCompositeOperation='destination-over';ctx.translate(sx,sy);ctx.scale(1,.28);const s=ctx.createRadialGradient(0,0,w*.08,0,0,w*.34);s.addColorStop(0,'rgba(19,24,43,.18)');s.addColorStop(1,'rgba(19,24,43,0)');ctx.fillStyle=s;ctx.fillRect(-w*.4,-w*.4,w*.8,w*.8);ctx.restore();this.stats.triangles=triangles;
   }
 }

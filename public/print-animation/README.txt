@@ -1,58 +1,80 @@
-PRINT IN MOTION
-Six-phase 3D crafting animation for a login-page panel.
+JAPA GLOBAL TRADING
+The Craft of Print - 3D Login Panel, version 2
 
-QUICK START
-Serve this folder with your existing web app or any static HTTP server.
-Open index.html through that server. ES modules require HTTP; double-clicking
-the HTML file using file:// is not supported by browsers.
+WHAT CHANGED
+JAPA's supplied logo and red, blue, black and white identity are used throughout.
+Opaque surfaces now use per-pixel depth testing in both WebGL and the CPU fallback.
+Only one service occupies the stage at a time. Scenes leave before the next enters.
+Rigid equipment stays assembled and grounded. Product motion is separate from transitions.
+Press, garment, print-head and merchandise clearances are verified over the loop.
+The fabric output follows a continuous path tangent to a supported take-up roll.
+Fabric has fine weave, stitched hems and collars; ceramic and metal use distinct materials.
 
-USE BESIDE YOUR LOGIN FORM
-Copy this entire folder into your app's public/print-animation folder.
-Place the iframe below in the visual column of your existing login layout.
+START
+Serve this folder over HTTP with your existing web app or any static server.
+Open index.html. Do not open it directly with file:// because ES modules require HTTP.
+
+EMBED IN YOUR LOGIN PAGE
+Copy this folder to public/print-animation in your own application.
+Place this iframe in the visual column of your two-column login layout.
 
 <iframe
   src="/print-animation/index.html?embed=1"
-  title="A six-phase journey through print and apparel crafting"
+  title="JAPA Global Trading printing and apparel animation"
   style="width:100%;height:100%;min-height:620px;border:0;display:block;"
 ></iframe>
 
-The embed query hides the surrounding phase list and playback toolbar.
-The animation automatically repeats every 48 seconds.
-This is a browser animation, not a rendered video or an authentication system.
+Panel view shows the narrower presentation. Within an iframe it fills its parent.
+The full studio includes pause/play, speed, phase selection and a draggable timeline.
+The six phases repeat in order over 48 seconds.
+Reduced-motion preferences start playback paused with a completed design visible.
+This is a browser animation, not an exported video or an authentication system.
 
-PHASES, IN ORDER
-01 Full Sublimation Printing - heat press transfers a full-colour design.
-02 Commercial Apparel & Uniforms - garment panels assemble into teamwear.
-03 Diverse Printing Technologies - CMYK ink, print head, screen and samples.
-04 Direct-to-Garment (DTG) - a moving print head reveals a garment design.
-05 Merchandise & Large-Format Sublimation Fabric - printed mug, tote and banner.
-06 Print Roll Services - wide-format printer feeds a continuous fabric roll.
+PHASES
+01 Sublimation - transfer paper aligns above polyester, the press closes, then opens
+   before the paper leaves and the transferred design is revealed.
+02 Commercial apparel - separated garment panels form teamwear on a grounded rack.
+03 Printing technologies - screen and squeegee work beside a digital inkjet station.
+04 DTG - a garment platen feeds through an open throat beneath a travelling print head,
+   then returns to its loading position after the design is complete.
+05 Merchandise and large-format fabric - branded coated mug, tote and fabric display.
+06 Print roll services - media travels from the output roller to a supported take-up roll.
 
-The visuals illustrate the services. They are stylized and do not represent
-the exact mechanical workflow or specifications of particular equipment.
+These are compact visual illustrations, with time accelerated for a login page.
+They do not reproduce a particular machine or every production step. DTG pretreatment
+and ink curing are outside this short print-head demonstration. Sublimation temperature,
+pressure and dwell time depend on the substrate, ink, transfer paper and equipment.
+
+PROCESS REFERENCES
+Roland DG, Introduction to Dye Sublimation
+https://www.rolanddg.eu/-/media/roland-emea/images/sites/guides/dye-sub/roland-dg-uk-dye-sublimation-guide.pdf
+Brother, GTX600 product and process information
+https://base.brother.digital/download/GTX600_english.pdf
+
+FILES
+studio.js - equipment, product geometry, JAPA artwork, materials, motion and clearances.
+animation.js - playback, responsive camera fitting, keyboard and embedding behavior.
+software-renderer.js - perspective-correct texture mapping and per-pixel depth buffer.
+index.html and style.css - branded studio interface and responsive panel layout.
+assets/japa-logo.jpg - your supplied logo, used without changing the original image.
+assets/three.module.js, RoundedBoxGeometry.js and RoomEnvironment.js - Three.js r170.
+assets/THREE-LICENSE.txt - Three.js MIT license.
+All runtime assets are local; no remote font, image or script requests are needed.
 
 CONTROLS
-Click a phase or a timeline segment to jump to it.
-Space toggles playback. Left and right arrows choose a phase.
-Escape leaves panel view. The menu changes playback speed.
-Reduced-motion preferences start the animation paused in the full studio.
-In panel mode, show the full studio using Back to studio to access playback.
+Space toggles playback when an interactive control is not focused.
+Left and right arrows select phases. Escape leaves panel view.
+The timeline can be dragged or operated with the arrow keys for precise inspection.
+The full studio phase buttons show a finished scene when playback is paused.
 
-CUSTOMIZATION
-animation.js - phases, timing, 3D models, materials and procedural artwork.
-style.css - layout, colours, text and responsive panel styling.
-index.html - headings, phase labels and playback controls.
-software-renderer.js - CPU fallback when WebGL is unavailable.
-assets/ - bundled Three.js r170, rounded-box geometry helper and MIT license.
-All dependencies are local. No remote image, font or script requests are needed.
-
-CONTROL FROM CODE (inside the animation iframe)
+OPTIONAL CODE API, inside the iframe
 window.PrintMotion.play()
 window.PrintMotion.pause()
-window.PrintMotion.setPhase(0) // 0 through 5
+window.PrintMotion.setPhase(0) // index 0 through 5
 window.PrintMotion.seek(16)  // seconds, wrapping at 48
 window.PrintMotion.getState()
 
-COPYRIGHT
-Original illustration, interface and animation code created for this project.
-Three.js is distributed under the included MIT license in assets/THREE-LICENSE.txt.
+ASSET RIGHTS
+The JAPA logo is the user-supplied brand asset, not a newly generated logo.
+Original scene and application code created for this project.
+Three.js uses the included MIT license.
