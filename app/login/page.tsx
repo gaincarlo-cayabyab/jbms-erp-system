@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import Image from "next/image";
 import type { Metadata } from "next";
 import LoginForm from "@/components/auth/login-form";
-import Crafting3DShowcase from "@/components/auth/crafting-3d-showcase";
 import { Store, ShieldCheck } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -41,45 +40,50 @@ export default function LoginPage() {
       {/* Full viewport — no scroll, entire page fits in screen */}
       <div className="h-screen w-full flex flex-col lg:flex-row bg-slate-50 text-slate-900 overflow-hidden">
 
-        {/* ── Left Branding Panel (desktop/wide tablet only) ──────────── */}
-        <div className="hidden lg:flex flex-col justify-between w-5/12 xl:w-1/2 bg-gradient-to-br from-indigo-700 via-indigo-600 to-slate-900 p-10 xl:p-14 text-white relative overflow-hidden select-none">
-          <div className="absolute -right-24 -bottom-24 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -left-20 -top-20 w-80 h-80 bg-indigo-400/20 rounded-full blur-2xl pointer-events-none" />
-          <div className="absolute inset-0 bg-grid-overlay pointer-events-none" />
-
-          {/* Top Logo */}
-          <div className="z-10">
-            <div className="flex items-center gap-3.5">
-              <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-white shadow-md border border-white/30 p-1.5 shrink-0">
+        {/* ── Left Visual Panel: 3D Print in Motion Animation ───────── */}
+        <div className="hidden lg:flex flex-col justify-between w-5/12 xl:w-1/2 h-full bg-[#f1f0e9] relative overflow-hidden select-none border-r border-slate-200">
+          {/* Top Logo Overlay */}
+          <div className="absolute top-6 left-8 z-20">
+            <div className="flex items-center gap-3 bg-white/85 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-slate-200/80 shadow-xs">
+              <div className="relative w-8 h-8 rounded-xl overflow-hidden bg-white shadow-2xs border border-slate-200 p-0.5 shrink-0">
                 <Image
                   src="/assets/images/JAPA_logo.jpg"
                   alt="JAPA Global Logo"
-                  width={56}
-                  height={56}
-                  className="rounded-xl object-contain w-full h-full"
+                  width={32}
+                  height={32}
+                  className="rounded-lg object-contain w-full h-full"
                   priority
                   unoptimized
                 />
               </div>
               <div>
-                <span className="text-2xl font-black tracking-tight text-white block">
+                <span className="text-sm font-black tracking-tight text-slate-900 block leading-tight">
                   JAPA Global
                 </span>
-                <span className="text-xs text-indigo-200 font-semibold tracking-wide">
+                <span className="text-[10px] text-slate-500 font-bold tracking-wide block leading-tight">
                   Enterprise Operations Workspace
                 </span>
               </div>
             </div>
           </div>
 
-          {/* 3D Crafting Manufacturing Animation Showcase */}
-          <Crafting3DShowcase />
+          {/* 3D Interactive Crafting Studio iframe */}
+          <div className="w-full h-full relative z-10">
+            <iframe
+              src="/print-animation/index.html?embed=1"
+              title="JAPA Global 3D Print &amp; Apparel Crafting Studio"
+              className="w-full h-full border-0 block"
+              style={{ minHeight: '560px' }}
+            />
+          </div>
 
-          {/* Bottom Footer */}
-          <div className="z-10 flex items-center justify-between text-xs text-indigo-200/80 border-t border-white/10 pt-4">
-            <span>&copy; 2026 JAPA Global Trading</span>
-            <div className="flex items-center gap-1.5 font-medium">
-              <Store className="h-3.5 w-3.5 text-emerald-400" />
+          {/* Bottom Footer Overlay */}
+          <div className="absolute bottom-4 left-8 right-8 z-20 flex items-center justify-between text-xs pointer-events-none">
+            <span className="bg-white/85 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-200/80 text-[11px] font-medium text-slate-600 shadow-2xs">
+              &copy; 2026 JAPA Global Trading
+            </span>
+            <div className="flex items-center gap-1.5 font-bold bg-white/85 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-200/80 text-[11px] text-emerald-700 shadow-2xs">
+              <Store className="h-3.5 w-3.5 text-emerald-600" />
               <span>Dagupan &amp; Manila Nodes</span>
             </div>
           </div>

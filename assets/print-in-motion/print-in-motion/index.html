@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f1f0e9">
+  <title>Print in Motion — From idea to made</title>
+  <meta name="description" content="Six printing services brought to life in a continuous, interactive 3D crafting animation.">
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">{"imports":{"three":"./assets/three.module.js"}}</script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="Print in Motion home"><span class="brand-symbol" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>print<span class="brand-light">in</span>motion<span class="brand-dot">®</span></span></a>
+    <span class="header-note">FROM IDEA TO MADE.</span>
+    <div class="header-actions"><button id="panelButton" class="text-button">Panel view <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button></div>
+  </header>
+
+  <main class="experience">
+    <section class="studio" aria-label="3D printing animation">
+      <div class="studio-intro"><div class="eyebrow"><span class="orange-dash"></span> A LITTLE INK. ENDLESS POSSIBILITIES.</div><h1>Watch ideas<br>take shape<span>.</span></h1><p>From the first thread to the final impression.</p></div>
+      <div class="scene-label"><span class="live-dot"></span><span id="sceneState">CRAFTING IN 3D</span></div>
+      <div id="viewport" aria-label="Animated three-dimensional print workshop"><div id="loading" class="loading">Setting the studio in motion<span></span></div><div id="fallback" class="fallback" hidden><span class="fallback-mark">✳</span><p>Your browser couldn’t open the 3D studio.</p><button onclick="location.reload()">Try again</button></div></div>
+      <div class="scene-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 8a7 7 0 1 1-1.9 7M8 3v5H3"/><path d="M12 9v4l2 2"/></svg> An ever-evolving loop of craft</div>
+      <div class="scene-caption"><div class="caption-label"><span id="activeNumber">01</span><span>IN THE MAKING</span></div><div class="caption-line"><h2 id="activeTitle">Full Sublimation Printing</h2><span class="caption-star" aria-hidden="true">✳</span></div><p id="activeDescription">Vibrant colour meets fabric, edge to edge.</p></div>
+    </section>
+
+    <aside class="process" aria-label="Animation phases">
+      <div class="process-heading"><span class="eyebrow">THE CREATIVE CYCLE</span><span class="phase-count">06 PHASES</span></div>
+      <h2>A world of print.<br>One seamless flow.</h2><p class="process-subtitle">Follow the craft, one transformation at a time.</p>
+      <nav class="phase-list" aria-label="Choose a printing service">
+        <button class="phase active" data-phase="0" aria-current="step"><span class="phase-number">01</span><span class="phase-copy"><strong>Full Sublimation Printing</strong><span>Colour without boundaries</span></span><svg class="phase-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14m-5-5 5 5-5 5"/></svg><span class="phase-line"></span></button>
+        <button class="phase" data-phase="1"><span class="phase-number">02</span><span class="phase-copy"><strong>Commercial Apparel<br>&amp; Uniforms</strong><span>Built for every team</span></span><svg class="phase-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14m-5-5 5 5-5 5"/></svg><span class="phase-line"></span></button>
+        <button class="phase" data-phase="2"><span class="phase-number">03</span><span class="phase-copy"><strong>Diverse Printing Technologies</strong><span>Different methods. Shared creativity.</span></span><svg class="phase-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14m-5-5 5 5-5 5"/></svg><span class="phase-line"></span></button>
+        <button class="phase" data-phase="3"><span class="phase-number">04</span><span class="phase-copy"><strong>Direct-to-Garment (DTG)</strong><span>Blank garment to original statement</span></span><svg class="phase-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14m-5-5 5 5-5 5"/></svg><span class="phase-line"></span></button>
+        <button class="phase" data-phase="4"><span class="phase-number">05</span><span class="phase-copy"><strong>Merchandise &amp; Large-Format<br>Sublimation Fabric</strong><span>Small objects. Big expressions.</span></span><svg class="phase-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14m-5-5 5 5-5 5"/></svg><span class="phase-line"></span></button>
+        <button class="phase" data-phase="5"><span class="phase-number">06</span><span class="phase-copy"><strong>Print Roll Services</strong><span>Creativity, by the metre</span></span><svg class="phase-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14m-5-5 5 5-5 5"/></svg><span class="phase-line"></span></button>
+      </nav>
+      <div class="process-footer"><div class="ink-dots" aria-label="Cyan magenta yellow black"><i></i><i></i><i></i><i></i></div><span>CRAFTED IN EVERY COLOUR.</span></div>
+    </aside>
+  </main>
+
+  <footer class="transport">
+    <button id="playButton" class="play-button" aria-label="Pause animation"><svg id="pauseIcon" viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="5" width="3" height="14" rx="1"/><rect x="14" y="5" width="3" height="14" rx="1"/></svg><svg id="playIcon" hidden viewBox="0 0 24 24" fill="currentColor"><path d="m8 5 11 7-11 7z"/></svg></button>
+    <button id="restartButton" class="icon-button" aria-label="Restart animation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 9a7 7 0 1 1-.4 5M5 4v5h5"/></svg></button>
+    <span class="playback-label" id="playbackLabel">PLAYING</span>
+    <div class="timeline" aria-label="Animation timeline"><button data-seek="0" aria-label="Go to full sublimation printing"><i></i></button><button data-seek="1" aria-label="Go to uniforms"><i></i></button><button data-seek="2" aria-label="Go to printing technologies"><i></i></button><button data-seek="3" aria-label="Go to direct-to-garment"><i></i></button><button data-seek="4" aria-label="Go to merchandise"><i></i></button><button data-seek="5" aria-label="Go to print roll services"><i></i></button></div>
+    <span class="timecode"><span id="timecode">00:00</span> <span>/ 00:48</span></span>
+    <label class="speed-control"><span class="sr-only">Playback speed</span><select id="speedSelect"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label>
+    <span class="loop-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 6h-9a6 6 0 0 0 0 12h1M16 3l3 3-3 3m-10 9h9a6 6 0 0 0 0-12h-1m-6 15-3-3 3-3"/></svg> ON REPEAT</span>
+  </footer>
+  <div class="panel-exit"><button id="exitPanel" aria-label="Exit panel view">Back to studio <span>↗</span></button></div>
+  <script type="module" src="./animation.js"></script>
+</body>
+</html>
