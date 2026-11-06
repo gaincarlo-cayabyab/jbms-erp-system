@@ -109,6 +109,8 @@ export default function AutoFullscreenManager() {
     window.addEventListener('touchstart', onUserGesture, { capture: true, passive: true })
     window.addEventListener('click', onUserGesture, { capture: true, passive: true })
     window.addEventListener('keydown', onUserGesture, { capture: true, passive: true })
+    window.addEventListener('focus', onUserGesture, { passive: true })
+    document.addEventListener('visibilitychange', onUserGesture, { passive: true })
 
     return () => {
       document.removeEventListener('fullscreenchange', checkFullscreen)
@@ -119,6 +121,8 @@ export default function AutoFullscreenManager() {
       window.removeEventListener('touchstart', onUserGesture, { capture: true })
       window.removeEventListener('click', onUserGesture, { capture: true })
       window.removeEventListener('keydown', onUserGesture, { capture: true })
+      window.removeEventListener('focus', onUserGesture)
+      document.removeEventListener('visibilitychange', onUserGesture)
     }
   }, [checkFullscreen])
 

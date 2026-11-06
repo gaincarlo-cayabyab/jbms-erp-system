@@ -4,6 +4,7 @@
   "description": "Enterprise Resource Planning & Point of Sale Workspace",
   "start_url": "/login",
   "display": "fullscreen",
+  "display_override": ["fullscreen", "window-controls-overlay", "standalone"],
   "orientation": "landscape-primary",
   "background_color": "#faf9f5",
   "theme_color": "#faf9f5",
@@ -22,3 +23,4 @@
     }
   ]
 }
+

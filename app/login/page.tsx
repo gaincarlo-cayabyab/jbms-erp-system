@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import Image from "next/image";
 import type { Metadata } from "next";
 import LoginForm from "@/components/auth/login-form";
-import { FullscreenToggle } from "@/components/ui/auto-fullscreen";
 import { Store, ShieldCheck } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -123,13 +122,10 @@ export default function LoginPage() {
                     Enterprise Operations
                   </p>
                 </div>
-                {/* Actions: Fullscreen Kiosk toggle & Branch status pill */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <FullscreenToggle className="border-[#dedfd6] bg-stone-50 hover:bg-stone-100 text-stone-700" />
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] sm:text-xs font-bold shrink-0">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>DAG &amp; MNL</span>
-                  </div>
+                {/* Branch status pill */}
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] sm:text-xs font-bold shrink-0">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>DAG &amp; MNL</span>
                 </div>
               </div>
 
