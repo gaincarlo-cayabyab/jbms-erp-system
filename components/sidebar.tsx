@@ -31,6 +31,7 @@ interface NavItem {
   restricted?: boolean
   badge?: string
   badgeClass?: string
+  allowedRoles?: string[]
 }
 
 const navItems: NavItem[] = [
@@ -38,6 +39,7 @@ const navItems: NavItem[] = [
     label: 'Dashboard Overview',
     href: '/',
     icon: LayoutDashboard,
+    allowedRoles: ['Admin', 'Manager'],
   },
   {
     label: 'Cashier / POS',
@@ -45,6 +47,7 @@ const navItems: NavItem[] = [
     icon: Receipt,
     badge: 'POS',
     badgeClass: 'bg-rose-50 text-rose-700 border border-rose-200',
+    allowedRoles: ['Admin', 'Manager', 'Cashier'],
   },
   {
     label: 'CRM / Customers',
@@ -52,6 +55,7 @@ const navItems: NavItem[] = [
     icon: Users,
     badge: 'CRM',
     badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200',
+    allowedRoles: ['Admin', 'Manager'],
   },
   {
     label: 'Sales & Quotations',
@@ -59,6 +63,7 @@ const navItems: NavItem[] = [
     icon: ShoppingCart,
     badge: 'Sales',
     badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200',
+    allowedRoles: ['Admin', 'Manager'],
   },
   {
     label: 'Production Queue',
@@ -66,6 +71,7 @@ const navItems: NavItem[] = [
     icon: Layers,
     badge: '7-Stage',
     badgeClass: 'bg-violet-50 text-violet-700 border border-violet-200',
+    allowedRoles: ['Admin', 'Manager', 'Inventory', 'Staff'],
   },
   {
     label: 'Multi-Store Inventory',
@@ -73,6 +79,7 @@ const navItems: NavItem[] = [
     icon: Package,
     badge: 'Stock',
     badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+    allowedRoles: ['Admin', 'Manager', 'Inventory', 'Staff'],
   },
   {
     label: 'Financials & Expenses',
@@ -81,6 +88,7 @@ const navItems: NavItem[] = [
     restricted: true,
     badge: 'P&L',
     badgeClass: 'bg-teal-50 text-teal-700 border border-teal-200',
+    allowedRoles: ['Admin'],
   },
   {
     label: 'Attendance & Payroll',
@@ -89,6 +97,7 @@ const navItems: NavItem[] = [
     restricted: true,
     badge: 'DTR',
     badgeClass: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
+    allowedRoles: ['Admin'],
   },
 ]
 
@@ -146,6 +155,15 @@ export default function Sidebar({ userEmail, userInitial, onNavigate }: SidebarP
   }
 
   const role = authUser?.role || localRole || 'Admin'
+  const normalizedRole =
+    role === 'Production_Staff' ? 'Staff' :
+    role === 'Store_Manager' ? 'Manager' : role
+
+  const visibleNavItems = navItems.filter((item) => {
+    if (!item.allowedRoles) return true
+    return item.allowedRoles.includes(normalizedRole)
+  })
+
   const displayName = authUser?.full_name || email.split('@')[0] || 'User'
   const displayEmail = authUser?.email || (authUser ? `${authUser.role} · Active Session` : (email || 'admin@japacore.com'))
   const displayInitial = authUser?.full_name?.charAt(0).toUpperCase() || userInitial || displayName.charAt(0).toUpperCase()
@@ -190,7 +208,7 @@ export default function Sidebar({ userEmail, userInitial, onNavigate }: SidebarP
             Operations Modules
           </p>
           <ul className="space-y-1">
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const Icon = item.icon
               const isActive =
                 pathname === item.href ||

@@ -339,6 +339,10 @@ export default function LoginForm() {
         const dest =
           userToVerify.role === 'Cashier'
             ? '/pos'
+            : userToVerify.role === 'Staff'
+            ? '/production'
+            : userToVerify.role === 'Inventory'
+            ? '/inventory'
             : redirectTo && redirectTo !== '/' && redirectTo !== '/login'
             ? redirectTo
             : '/dashboard'

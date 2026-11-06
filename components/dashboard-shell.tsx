@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import Sidebar from './sidebar'
 import { Menu, X, Bell, ChevronRight, Store, Receipt, AlertTriangle, Layers, LogOut, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -10,6 +10,19 @@ import { FullscreenToggle } from '@/components/ui/auto-fullscreen'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import { performSignOut } from '@/lib/auth'
 import { useAuth } from '@/lib/auth-context'
+import { toast } from 'sonner'
+
+function AccessDeniedNotifier() {
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    if (searchParams?.get('error') === 'access_denied') {
+      toast.error('Access Restricted: Your profile does not have permission to access that module.')
+    }
+  }, [searchParams])
+
+  return null
+}
 
 // Map pathnames → readable breadcrumb titles
 const BREADCRUMB_MAP: Record<string, string> = {
@@ -41,6 +54,16 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   const [headerSignOutLoading, setHeaderSignOutLoading] = useState(false)
   const confirm = useConfirm()
   const pathname = usePathname()
+
+  const rawRole = authUser?.role || 'Staff'
+  const userRole =
+    rawRole === 'Production_Staff' ? 'Staff' :
+    rawRole === 'Store_Manager' ? 'Manager' : rawRole
+
+  const canAccessPos = userRole === 'Admin' || userRole === 'Manager' || userRole === 'Cashier'
+  const canAccessInventory = userRole === 'Admin' || userRole === 'Manager' || userRole === 'Inventory' || userRole === 'Staff'
+  const canAccessSales = userRole === 'Admin' || userRole === 'Manager'
+  const canAccessProduction = userRole === 'Admin' || userRole === 'Manager' || userRole === 'Staff' || userRole === 'Inventory'
 
   async function handleHeaderSignOut() {
     const ok = await confirm({
@@ -84,6 +107,9 @@ export default function DashboardShell({ children }: { children: React.ReactNode
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
+      <Suspense fallback={null}>
+        <AccessDeniedNotifier />
+      </Suspense>
       {/* ── Mobile & Tablet Portrait Overlay Backdrop (< 1024px) ────────── */}
       {mobileDrawerOpen && (
         <div
@@ -146,22 +172,24 @@ export default function DashboardShell({ children }: { children: React.ReactNode
 
           {/* Right: Cashier shortcut + branch selector + fullscreen + notifications */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-            {/* Direct Cashier / POS Launcher */}
-            <Link
-              href="/pos"
-              className={cn(
-                'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition active:scale-95 shadow-2xs',
-                pathname === '/pos'
-                  ? 'border-indigo-600 bg-indigo-600 text-white'
-                  : 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:border-rose-300'
-              )}
-              title="Launch Cashier / POS Terminal"
-            >
-              <Receipt className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">
-                {pathname === '/pos' ? 'POS Terminal' : 'Cashier POS'}
-              </span>
-            </Link>
+            {/* Direct Cashier / POS Launcher (Only for authorized POS users) */}
+            {canAccessPos && (
+              <Link
+                href="/pos"
+                className={cn(
+                  'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition active:scale-95 shadow-2xs',
+                  pathname === '/pos'
+                    ? 'border-indigo-600 bg-indigo-600 text-white'
+                    : 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:border-rose-300'
+                )}
+                title="Launch Cashier / POS Terminal"
+              >
+                <Receipt className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">
+                  {pathname === '/pos' ? 'POS Terminal' : 'Cashier POS'}
+                </span>
+              </Link>
+            )}
 
             {/* Branch / Store Selector — Responsive on Tablets */}
             <div className="flex items-center gap-1 sm:gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 sm:px-2.5 py-1.5 shadow-2xs">
@@ -229,80 +257,88 @@ export default function DashboardShell({ children }: { children: React.ReactNode
 
                     <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto my-1">
                       {/* Alert 1: Low Stock */}
-                      <Link
-                        href="/inventory"
-                        onClick={() => setNotificationsOpen(false)}
-                        className="flex items-start gap-2.5 p-2 hover:bg-slate-50 rounded-xl transition group"
-                      >
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-600 border border-rose-100 mt-0.5">
-                          <AlertTriangle className="h-3.5 w-3.5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition truncate">
-                            Inventory Threshold Monitor
-                          </p>
-                          <p className="text-[11px] text-slate-500 line-clamp-2">
-                            Check multi-store catalog for products at or below reorder level.
-                          </p>
-                        </div>
-                      </Link>
+                      {canAccessInventory && (
+                        <Link
+                          href="/inventory"
+                          onClick={() => setNotificationsOpen(false)}
+                          className="flex items-start gap-2.5 p-2 hover:bg-slate-50 rounded-xl transition group"
+                        >
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-600 border border-rose-100 mt-0.5">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition truncate">
+                              Inventory Threshold Monitor
+                            </p>
+                            <p className="text-[11px] text-slate-500 line-clamp-2">
+                              Check multi-store catalog for products at or below reorder level.
+                            </p>
+                          </div>
+                        </Link>
+                      )}
 
                       {/* Alert 2: Uncollected Invoices */}
-                      <Link
-                        href="/sales"
-                        onClick={() => setNotificationsOpen(false)}
-                        className="flex items-start gap-2.5 p-2 hover:bg-slate-50 rounded-xl transition group"
-                      >
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 border border-amber-100 mt-0.5">
-                          <Receipt className="h-3.5 w-3.5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition truncate">
-                            Receivables Collection
-                          </p>
-                          <p className="text-[11px] text-slate-500 line-clamp-2">
-                            Pending quotes and unpaid sales orders awaiting customer collection.
-                          </p>
-                        </div>
-                      </Link>
+                      {canAccessSales && (
+                        <Link
+                          href="/sales"
+                          onClick={() => setNotificationsOpen(false)}
+                          className="flex items-start gap-2.5 p-2 hover:bg-slate-50 rounded-xl transition group"
+                        >
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 border border-amber-100 mt-0.5">
+                            <Receipt className="h-3.5 w-3.5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition truncate">
+                              Receivables Collection
+                            </p>
+                            <p className="text-[11px] text-slate-500 line-clamp-2">
+                              Pending quotes and unpaid sales orders awaiting customer collection.
+                            </p>
+                          </div>
+                        </Link>
+                      )}
 
                       {/* Alert 3: Production Queue */}
-                      <Link
-                        href="/production"
-                        onClick={() => setNotificationsOpen(false)}
-                        className="flex items-start gap-2.5 p-2 hover:bg-slate-50 rounded-xl transition group"
-                      >
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600 border border-violet-100 mt-0.5">
-                          <Layers className="h-3.5 w-3.5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition truncate">
-                            7-Stage Production Pipeline
-                          </p>
-                          <p className="text-[11px] text-slate-500 line-clamp-2">
-                            Job orders in pre-press, sublimation, and fabrication queues.
-                          </p>
-                        </div>
-                      </Link>
+                      {canAccessProduction && (
+                        <Link
+                          href="/production"
+                          onClick={() => setNotificationsOpen(false)}
+                          className="flex items-start gap-2.5 p-2 hover:bg-slate-50 rounded-xl transition group"
+                        >
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600 border border-violet-100 mt-0.5">
+                            <Layers className="h-3.5 w-3.5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition truncate">
+                              7-Stage Production Pipeline
+                            </p>
+                            <p className="text-[11px] text-slate-500 line-clamp-2">
+                              Job orders in pre-press, sublimation, and fabrication queues.
+                            </p>
+                          </div>
+                        </Link>
+                      )}
 
                       {/* Alert 4: Cashier Terminal */}
-                      <Link
-                        href="/pos"
-                        onClick={() => setNotificationsOpen(false)}
-                        className="flex items-start gap-2.5 p-2 hover:bg-slate-50 rounded-xl transition group"
-                      >
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 mt-0.5">
-                          <Store className="h-3.5 w-3.5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition truncate">
-                            Cashier POS Ready
-                          </p>
-                          <p className="text-[11px] text-slate-500 line-clamp-2">
-                            Dagupan & Manila terminal online for retail transactions.
-                          </p>
-                        </div>
-                      </Link>
+                      {canAccessPos && (
+                        <Link
+                          href="/pos"
+                          onClick={() => setNotificationsOpen(false)}
+                          className="flex items-start gap-2.5 p-2 hover:bg-slate-50 rounded-xl transition group"
+                        >
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 mt-0.5">
+                            <Store className="h-3.5 w-3.5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition truncate">
+                              Cashier POS Ready
+                            </p>
+                            <p className="text-[11px] text-slate-500 line-clamp-2">
+                              Dagupan & Manila terminal online for retail transactions.
+                            </p>
+                          </div>
+                        </Link>
+                      )}
                     </div>
 
                     <div className="border-t border-slate-100 pt-2 px-1 text-center">

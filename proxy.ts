@@ -2,11 +2,63 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-// Routes restricted to Admin & Accountant roles
-const RESTRICTED_ROUTES: { path: string; roles: string[] }[] = [
-  { path: '/financials', roles: ['Admin', 'Accountant'] },
-  { path: '/payroll', roles: ['Admin', 'Accountant'] },
-]
+// Normalizes various role strings to standard canonical role names
+function normalizeRole(rawRole: string | undefined | null): string {
+  if (!rawRole) return 'Staff'
+  if (rawRole === 'Production_Staff' || rawRole === 'Staff') return 'Staff'
+  if (rawRole === 'Store_Manager' || rawRole === 'Manager') return 'Manager'
+  if (rawRole === 'Admin') return 'Admin'
+  if (rawRole === 'Cashier') return 'Cashier'
+  if (rawRole === 'Inventory') return 'Inventory'
+  if (rawRole === 'Accountant') return 'Admin'
+  return rawRole
+}
+
+// Default home workspace for each role
+const ROLE_DEFAULT_ROUTE: Record<string, string> = {
+  Admin: '/',
+  Manager: '/',
+  Cashier: '/pos',
+  Inventory: '/inventory',
+  Staff: '/production',
+}
+
+// Strict list of allowed routes per role
+const ROLE_ALLOWED_ROUTES: Record<string, string[]> = {
+  Admin: [
+    '/',
+    '/dashboard',
+    '/pos',
+    '/customers',
+    '/crm',
+    '/sales',
+    '/production',
+    '/inventory',
+    '/financials',
+    '/payroll',
+  ],
+  Manager: [
+    '/',
+    '/dashboard',
+    '/pos',
+    '/customers',
+    '/crm',
+    '/sales',
+    '/production',
+    '/inventory',
+  ],
+  Cashier: [
+    '/pos',
+  ],
+  Inventory: [
+    '/inventory',
+    '/production',
+  ],
+  Staff: [
+    '/production',
+    '/inventory',
+  ],
+}
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -70,13 +122,9 @@ export async function proxy(request: NextRequest) {
         response.cookies.set(cookie.name, '', { maxAge: 0, path: '/' })
       }
     }
-  } else if (pathname.startsWith('/login') && isAuthenticated) {
-    // Authenticated user trying to access /login -> redirect to / (or /pos for Cashier)
-    const targetUrl = pinUser?.role === 'Cashier' ? '/pos' : '/'
-    return NextResponse.redirect(new URL(targetUrl, request.url))
   }
 
-  // Allow public assets and login
+  // Allow public assets, static files, and login API
   const isPublicPath =
     pathname.startsWith('/login') ||
     pathname.startsWith('/_next') ||
@@ -94,35 +142,47 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // Role-Based Access Control (RBAC)
-  if (isAuthenticated) {
-    const restricted = RESTRICTED_ROUTES.find((r) => pathname.startsWith(r.path))
-    if (restricted) {
-      let activeRole: string = pinUser?.role || (user?.user_metadata?.role as string) || ''
+  // Determine active role
+  let rawRole: string = pinUser?.role || (user?.user_metadata?.role as string) || ''
+  if (!rawRole && user) {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+      if (profile?.role) rawRole = profile.role
+    } catch {
+      /* ignore */
+    }
+  }
+  if (user?.email === 'admin@japacore.com' || user?.email === 'admin@japa.com') {
+    rawRole = 'Admin'
+  }
 
-      if (!activeRole && user) {
-        try {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single()
-          if (profile?.role) activeRole = profile.role
-        } catch {
-          /* ignore */
-        }
-      }
+  const activeRole = normalizeRole(rawRole)
 
-      // Default admin account override
-      if (user?.email === 'admin@japacore.com' || user?.email === 'admin@japa.com') {
-        activeRole = 'Admin'
-      }
+  // Authenticated user trying to access /login -> redirect to their designated home workspace
+  if (pathname.startsWith('/login') && isAuthenticated && !isExplicitLogout) {
+    const homeWorkspace = ROLE_DEFAULT_ROUTE[activeRole] || '/'
+    return NextResponse.redirect(new URL(homeWorkspace, request.url))
+  }
 
-      if (!restricted.roles.includes(activeRole)) {
-        const deniedUrl = new URL('/', request.url)
-        deniedUrl.searchParams.set('error', 'access_denied')
-        return NextResponse.redirect(deniedUrl)
-      }
+  // ── Role-Based Access Control (RBAC) Enforcement ────────────────────────────
+  if (isAuthenticated && !isPublicPath) {
+    const allowedList = ROLE_ALLOWED_ROUTES[activeRole] || ['/pos']
+
+    // Check if current route is allowed for this role
+    const isAllowed = allowedList.some((allowed) => {
+      if (allowed === '/') return pathname === '/'
+      return pathname === allowed || pathname.startsWith(allowed + '/')
+    })
+
+    if (!isAllowed) {
+      const fallbackWorkspace = ROLE_DEFAULT_ROUTE[activeRole] || '/pos'
+      const redirectUrl = new URL(fallbackWorkspace, request.url)
+      redirectUrl.searchParams.set('error', 'access_denied')
+      return NextResponse.redirect(redirectUrl)
     }
   }
 
