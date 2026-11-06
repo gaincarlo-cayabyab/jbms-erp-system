@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -892,14 +891,14 @@ export default function LoginForm() {
           </div>
 
           {/* 3×4 Large Touch-Friendly PIN Numpad for Tablet/POS */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 max-w-[320px] sm:max-w-[360px] mx-auto my-1 sm:my-2">
+          <div className="grid grid-cols-3 gap-3 sm:gap-4 w-full max-w-[380px] sm:max-w-[420px] mx-auto my-2 sm:my-3">
             {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
               <button
                 key={digit}
                 type="button"
                 onClick={() => handleDigitClick(digit)}
                 disabled={verifying}
-                className="h-13 sm:h-15 lg:h-16 rounded-2xl border border-stone-200/90 bg-stone-50/80 hover:bg-stone-100 hover:border-stone-300 active:scale-95 active:bg-stone-200/80 text-2xl sm:text-3xl font-black text-stone-800 transition-all shadow-xs flex items-center justify-center select-none disabled:opacity-50 touch-manipulation cursor-pointer"
+                className="h-16 sm:h-18 lg:h-20 rounded-2xl border border-stone-200/90 bg-stone-50/80 hover:bg-stone-100 hover:border-stone-300 active:scale-95 active:bg-stone-200/80 text-3xl sm:text-4xl font-black text-stone-800 transition-all shadow-sm flex items-center justify-center select-none disabled:opacity-50 touch-manipulation cursor-pointer"
               >
                 {digit}
               </button>
@@ -910,10 +909,10 @@ export default function LoginForm() {
               type="button"
               onClick={handleClear}
               disabled={verifying || pin.length === 0}
-              className="h-13 sm:h-15 lg:h-16 rounded-2xl border border-stone-200/90 bg-stone-100/80 hover:bg-stone-200 active:scale-95 text-xs sm:text-sm font-bold text-stone-600 transition-all shadow-xs flex items-center justify-center gap-1.5 select-none disabled:opacity-40 touch-manipulation cursor-pointer"
+              className="h-16 sm:h-18 lg:h-20 rounded-2xl border border-stone-200/90 bg-stone-100/80 hover:bg-stone-200 active:scale-95 text-sm sm:text-base font-bold text-stone-600 transition-all shadow-sm flex items-center justify-center gap-1.5 select-none disabled:opacity-40 touch-manipulation cursor-pointer"
               title="Clear PIN"
             >
-              <RotateCcw className="h-4 w-4 sm:h-5 sm:w-5" />
+              <RotateCcw className="h-5 w-5 sm:h-6 sm:w-6" />
               <span>Clear</span>
             </button>
 
@@ -922,7 +921,7 @@ export default function LoginForm() {
               type="button"
               onClick={() => handleDigitClick('0')}
               disabled={verifying}
-              className="h-13 sm:h-15 lg:h-16 rounded-2xl border border-stone-200/90 bg-stone-50/80 hover:bg-stone-100 hover:border-stone-300 active:scale-95 active:bg-stone-200/80 text-2xl sm:text-3xl font-black text-stone-800 transition-all shadow-xs flex items-center justify-center select-none disabled:opacity-50 touch-manipulation cursor-pointer"
+              className="h-16 sm:h-18 lg:h-20 rounded-2xl border border-stone-200/90 bg-stone-50/80 hover:bg-stone-100 hover:border-stone-300 active:scale-95 active:bg-stone-200/80 text-3xl sm:text-4xl font-black text-stone-800 transition-all shadow-sm flex items-center justify-center select-none disabled:opacity-50 touch-manipulation cursor-pointer"
             >
               0
             </button>
@@ -932,10 +931,10 @@ export default function LoginForm() {
               type="button"
               onClick={handleBackspace}
               disabled={verifying || pin.length === 0}
-              className="h-13 sm:h-15 lg:h-16 rounded-2xl border border-stone-200/90 bg-stone-100/80 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 active:scale-95 text-stone-600 transition-all shadow-xs flex items-center justify-center select-none disabled:opacity-40 touch-manipulation cursor-pointer"
+              className="h-16 sm:h-18 lg:h-20 rounded-2xl border border-stone-200/90 bg-stone-100/80 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 active:scale-95 text-stone-600 transition-all shadow-sm flex items-center justify-center select-none disabled:opacity-40 touch-manipulation cursor-pointer"
               title="Delete Digit"
             >
-              <Delete className="h-5 w-5 sm:h-6 sm:w-6" />
+              <Delete className="h-6 w-6 sm:h-7 sm:w-7" />
             </button>
           </div>
 
@@ -958,53 +957,27 @@ export default function LoginForm() {
         <source src="/assets/video/loading.mp4" type="video/mp4" />
       </video>
 
-      {/* ── Restored Classic Video Loading Animation Overlay ────────── */}
-      {showVideoOverlay && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <div className="relative flex flex-col items-center justify-center max-w-sm w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl text-center text-white overflow-hidden">
-            <div className="absolute inset-0 bg-radial from-indigo-500/20 via-transparent to-transparent pointer-events-none" />
-
-            {/* Video Player */}
-            <div className="relative w-48 h-48 mb-5 rounded-2xl overflow-hidden shadow-inner bg-slate-950 border border-slate-800">
-              <video
-                autoPlay
-                muted
-                playsInline
-                preload="auto"
-                onPlay={handleVideoPlay}
-                onEnded={handleVideoComplete}
-                onError={handleVideoComplete}
-                className="w-full h-full object-cover"
-              >
-                <source src="/assets/video/JAPA_loading_animation.mp4" type="video/mp4" />
-                <source src="/assets/video/loading.mp4" type="video/mp4" />
-                <source src="/assets/video/transaction_loading.mp4" type="video/mp4" />
-              </video>
-            </div>
-
-            <h3 className="text-lg font-bold text-white tracking-tight mb-1">
-              Authenticating Credentials
-            </h3>
-            <p className="text-xs text-indigo-300 font-medium mb-3">
-              {selectedUser?.full_name || 'JAPA Core Workspace'}
-            </p>
-
-            <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Initializing secure session &amp; workspace…</span>
-            </div>
-
-            {/* Quick Skip Button */}
-            <button
-              type="button"
-              onClick={handleVideoComplete}
-              className="mt-5 text-[11px] font-semibold text-slate-400 hover:text-white transition underline underline-offset-4 cursor-pointer"
-            >
-              Skip to Workspace →
-            </button>
-          </div>
-        </div>,
-        document.body
+      {/* ── Fullscreen Light Video Loading Overlay (original style) ──── */}
+      {showVideoOverlay && (
+        <div
+          className="fixed inset-0 z-[9999] overflow-hidden animate-in fade-in duration-300"
+          style={{ background: '#F0F0F0' }}
+        >
+          <video
+            autoPlay
+            muted
+            playsInline
+            preload="auto"
+            onPlay={handleVideoPlay}
+            onEnded={handleVideoComplete}
+            onError={handleVideoComplete}
+            style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+          >
+            <source src="/assets/video/JAPA_loading_animation.mp4" type="video/mp4" />
+            <source src="/assets/video/loading.mp4" type="video/mp4" />
+            <source src="/assets/video/transaction_loading.mp4" type="video/mp4" />
+          </video>
+        </div>
       )}
     </div>
   )

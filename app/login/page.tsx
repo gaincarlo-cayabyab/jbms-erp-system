@@ -139,8 +139,8 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Form Body — zero scroll, comfortable touch layout */}
-              <div className="px-6 py-4 sm:py-5 overflow-y-auto flex-1 flex flex-col justify-center [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {/* Form Body — top-aligned, comfortable touch layout */}
+              <div className="px-6 pt-4 pb-3 overflow-y-auto flex-1 flex flex-col [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <LoginForm />
               </div>
             </div>
