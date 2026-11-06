@@ -12,21 +12,21 @@ import { performSignOut } from '@/lib/auth'
 
 // Map pathnames → readable breadcrumb titles
 const BREADCRUMB_MAP: Record<string, string> = {
-  '/':           'Executive Dashboard',
-  '/pos':        'Cashier / POS Terminal',
-  '/customers':  'CRM / Customers',
-  '/crm':        'CRM / Customers',
-  '/sales':      'Sales & Quotations',
+  '/': 'Executive Dashboard',
+  '/pos': 'Cashier / POS Terminal',
+  '/customers': 'CRM / Customers',
+  '/crm': 'CRM / Customers',
+  '/sales': 'Sales & Quotations',
   '/production': 'Production Queue & Job Orders',
-  '/inventory':  'Multi-Store Inventory',
+  '/inventory': 'Multi-Store Inventory',
   '/financials': 'Financials & Expenses',
-  '/payroll':    'Attendance & Payroll',
+  '/payroll': 'Attendance & Payroll',
 }
 
 const BRANCH_OPTIONS = [
-  { value: 'all',     label: 'All Stores',      fullLabel: 'All Stores — Consolidated' },
-  { value: 'dagupan', label: 'Dagupan (Main)',  fullLabel: 'JAPA Dagupan (Main Branch)' },
-  { value: 'manila',  label: 'Manila',          fullLabel: 'JAPA Manila' },
+  { value: 'all', label: 'All Stores', fullLabel: 'All Stores — Consolidated' },
+  { value: 'dagupan', label: 'Dagupan (Main)', fullLabel: 'JAPA Dagupan (Main Branch)' },
+  { value: 'manila', label: 'Manila', fullLabel: 'JAPA Manila' },
 ]
 
 export default function DashboardShell({ children }: { children: React.ReactNode }) {

@@ -62,3 +62,4 @@ export async function performSignOut(): Promise<void> {
     window.location.href = '/login?logout=1'
   }
 }
+
