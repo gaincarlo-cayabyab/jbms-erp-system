@@ -146,7 +146,14 @@ const FALLBACK_USERS: Record<AppRole, AppUser[]> = {
   ],
 }
 
-type PinStep = 'role' | 'user' | 'pin'
+// Dagupan cashier shift operators
+export const DAGUPAN_CASHIER_STAFF: AppUser[] = [
+  { id: 'd1111111-1111-4000-8000-000000000001', full_name: 'JAPA Pearly', role: 'Cashier' },
+  { id: 'd1111111-1111-4000-8000-000000000002', full_name: 'JAPA Ivan', role: 'Cashier' },
+  { id: 'd1111111-1111-4000-8000-000000000003', full_name: 'JAPA Lanie', role: 'Cashier' },
+]
+
+type PinStep = 'role' | 'user' | 'cashier-staff' | 'pin'
 
 interface ProfileDisplayInfo {
   displayName: string
@@ -159,6 +166,42 @@ interface ProfileDisplayInfo {
 }
 
 function getProfileDisplayInfo(fullName: string): ProfileDisplayInfo {
+  if (fullName.includes('JAPA Pearly') || fullName.includes('Pearly')) {
+    return {
+      displayName: 'JAPA Pearly',
+      branchLabel: 'Dagupan Main Store',
+      badgeText: 'Dagupan Cashier • Shift Staff',
+      avatarCode: 'JP',
+      avatarClasses: 'bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-600',
+      cardBorder: 'border-emerald-200/90 hover:border-emerald-500 hover:bg-emerald-50/40',
+      badgeClasses: 'bg-emerald-50 text-emerald-700 border-emerald-200 group-hover:bg-emerald-100',
+    }
+  }
+
+  if (fullName.includes('JAPA Ivan') || fullName.includes('Ivan')) {
+    return {
+      displayName: 'JAPA Ivan',
+      branchLabel: 'Dagupan Main Store',
+      badgeText: 'Dagupan Cashier • Shift Staff',
+      avatarCode: 'JI',
+      avatarClasses: 'bg-teal-100 text-teal-800 border border-teal-300 font-extrabold group-hover:bg-teal-600 group-hover:text-white group-hover:border-teal-600',
+      cardBorder: 'border-teal-200/90 hover:border-teal-500 hover:bg-teal-50/40',
+      badgeClasses: 'bg-teal-50 text-teal-700 border-teal-200 group-hover:bg-teal-100',
+    }
+  }
+
+  if (fullName.includes('JAPA Lanie') || fullName.includes('Lanie')) {
+    return {
+      displayName: 'JAPA Lanie',
+      branchLabel: 'Dagupan Main Store',
+      badgeText: 'Dagupan Cashier • Shift Staff',
+      avatarCode: 'JL',
+      avatarClasses: 'bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-600',
+      cardBorder: 'border-emerald-200/90 hover:border-emerald-500 hover:bg-emerald-50/40',
+      badgeClasses: 'bg-emerald-50 text-emerald-700 border-emerald-200 group-hover:bg-emerald-100',
+    }
+  }
+
   if (fullName.includes('Dagupan') || fullName.includes('(DAG)')) {
     const roleTitle = fullName.split('—')[0]?.trim() || fullName.split('-')[0]?.trim() || fullName
     return {
@@ -299,9 +342,21 @@ export default function LoginForm() {
     fetchUsersForRole(role)
   }
 
-  // Step 2: Select User
+  // Step 2: Select User / Terminal
   function handleSelectUser(user: AppUser) {
+    if (selectedRole === 'Cashier' && (user.full_name.includes('Dagupan') || user.full_name.includes('(DAG)'))) {
+      setPinStep('cashier-staff')
+      return
+    }
     setSelectedUser(user)
+    setPin('')
+    setErrorMessage(null)
+    setPinStep('pin')
+  }
+
+  // Step 2b: Select Cashier Shift Staff (Pearly, Ivan, Lanie)
+  function handleSelectCashierStaff(staff: AppUser) {
+    setSelectedUser(staff)
     setPin('')
     setErrorMessage(null)
     setPinStep('pin')
@@ -376,7 +431,11 @@ export default function LoginForm() {
         if (!branchId) {
           if (userToVerify.full_name.includes('Manila') || userToVerify.full_name.includes('(MNL)')) {
             branchId = 'manila_branch'
-          } else if (userToVerify.full_name.includes('Dagupan') || userToVerify.full_name.includes('(DAG)')) {
+          } else if (
+            userToVerify.full_name.includes('Dagupan') ||
+            userToVerify.full_name.includes('(DAG)') ||
+            userToVerify.full_name.startsWith('JAPA ')
+          ) {
             branchId = 'dagupan_main'
           }
         }
@@ -607,7 +666,7 @@ export default function LoginForm() {
             </div>
           ) : (
             <div className="flex flex-col gap-1.5">
-              {users.map((u) => {
+              {(selectedRole === 'Cashier' ? users.filter((u) => !u.full_name.startsWith('JAPA ')) : users).map((u) => {
                 const info = getProfileDisplayInfo(u.full_name)
                 return (
                   <button
@@ -646,7 +705,7 @@ export default function LoginForm() {
                           </span>
                         </div>
                         <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium leading-tight mt-0.5">
-                          {info.branchLabel} • <span className="text-indigo-600 group-hover:underline">Tap to enter PIN</span>
+                          {info.branchLabel} • <span className="text-indigo-600 group-hover:underline">{selectedRole === 'Cashier' && u.full_name.includes('Dagupan') ? 'Select Cashier Staff' : 'Tap to enter PIN'}</span>
                         </p>
                       </div>
                     </div>
@@ -660,6 +719,87 @@ export default function LoginForm() {
         </div>
       )}
 
+      {/* ── STEP 2b: DAGUPAN CASHIER SHIFT OPERATOR SELECTION ─────────── */}
+      {pinStep === 'cashier-staff' && (
+        <div className="space-y-2 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setPinStep('user')
+                setSelectedUser(null)
+              }}
+              className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-indigo-600 transition"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              <span>Back to Terminals</span>
+            </button>
+            <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 text-[11px] font-bold">
+              Dagupan Cashiers
+            </span>
+          </div>
+
+          <div>
+            <h3 className="text-xs sm:text-sm font-bold text-slate-900 leading-tight">
+              Select Cashier on Duty
+            </h3>
+            <p className="text-[11px] text-slate-500 leading-tight">
+              Choose your profile to attribute sales &amp; register operations
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            {DAGUPAN_CASHIER_STAFF.map((staff) => {
+              const info = getProfileDisplayInfo(staff.full_name)
+              return (
+                <button
+                  key={staff.id}
+                  type="button"
+                  onClick={() => handleSelectCashierStaff(staff)}
+                  className={cn(
+                    'w-full flex items-center justify-between p-2 sm:p-2.5 rounded-xl border bg-white text-left transition-all duration-150 shadow-2xs group active:scale-[0.99]',
+                    info.cardBorder
+                  )}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className={cn(
+                        'flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg text-[11px] tracking-wider transition shadow-2xs font-extrabold',
+                        info.avatarClasses
+                      )}
+                    >
+                      {info.avatarCode}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-emerald-700 transition leading-tight">
+                          {info.displayName}
+                        </span>
+                        <span
+                          className={cn(
+                            'text-[9px] font-bold px-1.5 py-0.2 rounded-full border inline-flex items-center gap-0.5 shadow-2xs',
+                            info.badgeClasses
+                          )}
+                        >
+                          <MapPin className="h-2 w-2" />
+                          {info.badgeText}
+                        </span>
+                      </div>
+                      <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium leading-tight mt-0.5">
+                        {info.branchLabel} • <span className="text-emerald-600 group-hover:underline">Tap to enter PIN</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <ChevronRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition shrink-0 ml-1.5" />
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── STEP 3: 4-DIGIT PIN ENTRY NUMPAD ─────────────────────────── */}
       {pinStep === 'pin' && selectedUser && (() => {
         const selectedInfo = getProfileDisplayInfo(selectedUser.full_name)
@@ -670,14 +810,18 @@ export default function LoginForm() {
               <button
                 type="button"
                 onClick={() => {
-                  setPinStep('user')
+                  if (selectedUser.full_name.startsWith('JAPA ')) {
+                    setPinStep('cashier-staff')
+                  } else {
+                    setPinStep('user')
+                  }
                   setPin('')
                   setErrorMessage(null)
                 }}
                 className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-indigo-600 transition"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
-                <span>Back to Profiles</span>
+                <span>{selectedUser.full_name.startsWith('JAPA ') ? 'Back to Cashiers' : 'Back to Profiles'}</span>
               </button>
 
               <div className="flex items-center gap-1.5">
