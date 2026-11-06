@@ -220,21 +220,23 @@ export default function POSCart({
               </div>
 
               {/* Qty Stepper — Touch-friendly targets */}
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <button
+                  type="button"
                   onClick={() => onUpdateQuantity(item.product.id, item.quantity - 1)}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-700 hover:bg-indigo-100 hover:text-indigo-700 transition active:scale-90 font-bold"
+                  className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-700 hover:bg-indigo-100 hover:text-indigo-700 transition active:scale-90 font-bold shadow-2xs"
                   aria-label="Decrease quantity"
                 >
-                  <Minus className="h-4 w-4" />
+                  <Minus className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
-                <span className="w-8 text-center text-sm font-bold text-slate-900 tabular-nums">{item.quantity}</span>
+                <span className="w-8 text-center text-sm sm:text-base font-extrabold text-slate-900 tabular-nums">{item.quantity}</span>
                 <button
+                  type="button"
                   onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-700 hover:bg-indigo-100 hover:text-indigo-700 transition active:scale-90 font-bold"
+                  className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-700 hover:bg-indigo-100 hover:text-indigo-700 transition active:scale-90 font-bold shadow-2xs"
                   aria-label="Increase quantity"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
               </div>
 

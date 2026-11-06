@@ -1,10 +1,12 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import AutoFullscreenManager from "@/components/ui/auto-fullscreen";
 import { ConfirmDialogProvider } from "@/components/ui/confirm-dialog";
 import { AuthProvider } from "@/lib/auth-context";
 import { BranchProvider } from "@/lib/branch-context";
+import { DeviceProvider } from "@/lib/device-context";
+import { ModeSelectionModal } from "@/components/ui/mode-selection-modal";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,6 +18,14 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  interactiveWidget: "resizes-content",
+};
 
 export const metadata: Metadata = {
   title: {
@@ -44,9 +54,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <AutoFullscreenManager />
         <AuthProvider>
           <BranchProvider>
-            <ConfirmDialogProvider>
-              {children}
-            </ConfirmDialogProvider>
+            <DeviceProvider>
+              <ConfirmDialogProvider>
+                {children}
+                <ModeSelectionModal />
+              </ConfirmDialogProvider>
+            </DeviceProvider>
           </BranchProvider>
         </AuthProvider>
         {/* Global Sonner toast notifications — centered top */}

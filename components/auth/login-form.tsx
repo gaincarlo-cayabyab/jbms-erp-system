@@ -388,6 +388,15 @@ export default function LoginForm() {
           branch_id: branchId,
         })
 
+        // Check & establish erp_device_mode per Section 2.1 of dual-mode specification
+        try {
+          const storedMode = localStorage.getItem('erp_device_mode')
+          if (!storedMode) {
+            const defaultMode = userToVerify.role === 'Cashier' ? 'pos' : 'desktop'
+            localStorage.setItem('erp_device_mode', defaultMode)
+          }
+        } catch {}
+
         const dest =
           userToVerify.role === 'Cashier'
             ? '/pos'

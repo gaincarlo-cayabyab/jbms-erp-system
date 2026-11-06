@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Banknote, CreditCard, Smartphone, Building2, CheckCircle2, ArrowLeft } from 'lucide-react'
+import { Banknote, CreditCard, Smartphone, Building2, CheckCircle2, ArrowLeft, Keyboard } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { PaymentMethod, CartDiscount } from '@/types/pos'
+import { useDeviceMode, handlePosInputFocus } from '@/lib/device-context'
+import { TouchKeypad } from '@/components/ui/touch-keypad'
 
 const PHP = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' })
 
@@ -31,8 +33,10 @@ const PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: React.Component
 ]
 
 export default function POSCheckoutPanel({ totals, itemCount, cartDiscount, onCheckout, onBackToCart }: Props) {
+  const { deviceMode } = useDeviceMode()
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('CASH')
   const [tenderedInput, setTenderedInput] = useState<string>('')
+  const [showKeypad, setShowKeypad] = useState(false)
 
   // Tendered calculation
   const tendered = parseFloat(tenderedInput) || 0
@@ -142,10 +146,26 @@ export default function POSCheckoutPanel({ totals, itemCount, cartDiscount, onCh
 
       {/* Cash Tendered Input & Change Display */}
       {selectedMethod === 'CASH' ? (
-        <div className="p-2.5 border-b border-slate-100 space-y-1.5 flex-1 overflow-y-auto">
-          <label className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            Amount Tendered (₱)
-          </label>
+        <div className="p-2.5 border-b border-slate-100 space-y-2 flex-1 overflow-y-auto">
+          <div className="flex items-center justify-between">
+            <label className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              Amount Tendered (₱)
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowKeypad((prev) => !prev)}
+              className={cn(
+                'flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg border transition shadow-2xs',
+                showKeypad || deviceMode === 'pos'
+                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                  : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+              )}
+            >
+              <Keyboard className="h-3 w-3" />
+              <span>{showKeypad ? 'Hide Keypad' : 'Touch Keypad'}</span>
+            </button>
+          </div>
+
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">₱</span>
             <input
@@ -154,30 +174,47 @@ export default function POSCheckoutPanel({ totals, itemCount, cartDiscount, onCh
               placeholder="0.00"
               value={tenderedInput}
               onChange={(e) => setTenderedInput(e.target.value)}
+              onFocus={handlePosInputFocus}
               className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-7 pr-3 text-base font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
             />
           </div>
 
-          {/* Quick Denomination Chips */}
-          <div className="flex flex-wrap gap-1 pt-0.5">
-            <button
-              type="button"
-              onClick={handleExact}
-              className="rounded-lg border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700 hover:bg-slate-200 transition"
-            >
-              Exact
-            </button>
-            {[100, 200, 500, 1000, 2000, 5000].map((denomination) => (
+          {/* Touch Keypad Option for Counter Terminals */}
+          {(showKeypad || deviceMode === 'pos') ? (
+            <div className="pt-1">
+              <TouchKeypad
+                onKeyPress={(val) => {
+                  if (val === '.' && tenderedInput.includes('.')) return
+                  setTenderedInput((prev) => prev + val)
+                }}
+                onDelete={() => setTenderedInput((prev) => prev.slice(0, -1))}
+                onClear={() => setTenderedInput('')}
+                presets={[100, 200, 500, 1000]}
+                onPresetSelect={(amt) => setTenderedInput(String(amt))}
+              />
+            </div>
+          ) : (
+            /* Quick Denomination Chips (Desktop view) */
+            <div className="flex flex-wrap gap-1 pt-0.5">
               <button
-                key={denomination}
                 type="button"
-                onClick={() => handleQuickAmount(denomination)}
-                className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition"
+                onClick={handleExact}
+                className="rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-[10px] font-bold text-slate-700 hover:bg-slate-200 transition"
               >
-                ₱{denomination}
+                Exact
               </button>
-            ))}
-          </div>
+              {[100, 200, 500, 1000, 2000, 5000].map((denomination) => (
+                <button
+                  key={denomination}
+                  type="button"
+                  onClick={() => handleQuickAmount(denomination)}
+                  className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[10px] font-semibold text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition"
+                >
+                  ₱{denomination}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Change Due readout */}
           <div className="mt-1.5 rounded-xl border border-emerald-200 bg-emerald-50/70 p-2 sm:p-2.5 flex justify-between items-center">
@@ -206,7 +243,7 @@ export default function POSCheckoutPanel({ totals, itemCount, cartDiscount, onCh
           onClick={triggerCheckout}
           disabled={totals.grandTotal <= 0 || (selectedMethod === 'CASH' && !isExactOrGreater)}
           className={cn(
-            'w-full min-h-[50px] rounded-xl flex items-center justify-center gap-2 font-bold text-white shadow-modern transition-all duration-150 active:scale-[0.98]',
+            'w-full min-h-[56px] rounded-2xl flex items-center justify-center gap-2 font-black text-white shadow-modern transition-all duration-150 active:scale-[0.98]',
             totals.grandTotal <= 0 || (selectedMethod === 'CASH' && !isExactOrGreater)
               ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
               : 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-modern-hover'

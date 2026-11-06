@@ -142,3 +142,41 @@ body {
 .animate-pin-shake {
   animation: pin-shake 0.4s ease-in-out;
 }
+
+/* ──────────────────────────────────────────────────────────
+   Dual-Mode UI Architecture: POS Terminal Mode vs Desktop
+   (Section 6.4 Specification)
+   ────────────────────────────────────────────────────────── */
+
+/* Global Touch & Visual Overrides for POS Terminal Mode */
+.pos-terminal-mode {
+  /* Prevent accidental text selections during fast counter tapping */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Enforce Minimum 52-56px Touch Targets on primary touch controls */
+.pos-terminal-mode .pos-touch-target,
+.pos-terminal-mode .pos-interactive-btn,
+.pos-terminal-mode input:not([type="checkbox"]):not([type="radio"]),
+.pos-terminal-mode select {
+  min-height: 52px;
+  font-size: 1.05rem;
+}
+
+/* Hide non-critical UI components when in POS Terminal mode */
+.pos-terminal-mode .desktop-only {
+  display: none !important;
+}
+
+/* Ensure Desktop view hides POS-only keypads and touch overlays */
+.desktop-mode .pos-only {
+  display: none !important;
+}
+
+/* Scroll Padding to Prevent Soft Keyboard Occlusion on Tablets */
+.pos-terminal-mode main {
+  scroll-padding-bottom: 280px;
+}
+

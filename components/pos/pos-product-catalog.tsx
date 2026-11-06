@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { Search, Package, AlertTriangle, ShoppingCart } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { POSProduct, CartItem } from '@/types/pos'
+import { handlePosInputFocus } from '@/lib/device-context'
 
 const PHP = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' })
 
@@ -53,6 +54,7 @@ export default function POSProductCatalog({ products, isLoading, onAddToCart, ca
             placeholder="Search product name or SKU…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onFocus={handlePosInputFocus}
             className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>
