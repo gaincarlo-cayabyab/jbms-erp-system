@@ -13,11 +13,16 @@ import { createClient } from '@/lib/supabase/client'
  */
 export async function performSignOut(): Promise<void> {
   try {
-    // 1. Notify server route to delete all auth cookies
-    await fetch('/api/auth/signout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-    }).catch(() => {})
+    // 1. Notify server route to delete all auth cookies and session
+    await Promise.allSettled([
+      fetch('/api/auth/signout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+      fetch('/api/auth/session', {
+        method: 'DELETE',
+      }),
+    ])
 
     // 2. Clear browser client auth
     try {

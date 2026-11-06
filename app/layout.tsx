@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import AutoFullscreenManager from "@/components/ui/auto-fullscreen";
 import { ConfirmDialogProvider } from "@/components/ui/confirm-dialog";
+import { AuthProvider } from "@/lib/auth-context";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -40,9 +41,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-screen flex flex-col bg-slate-50 text-slate-900 antialiased">
         <AutoFullscreenManager />
-        <ConfirmDialogProvider>
-          {children}
-        </ConfirmDialogProvider>
+        <AuthProvider>
+          <ConfirmDialogProvider>
+            {children}
+          </ConfirmDialogProvider>
+        </AuthProvider>
         {/* Global Sonner toast notifications — bottom-right */}
         <Toaster
           position="bottom-right"

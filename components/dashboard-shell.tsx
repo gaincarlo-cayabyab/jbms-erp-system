@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { FullscreenToggle } from '@/components/ui/auto-fullscreen'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import { performSignOut } from '@/lib/auth'
+import { useAuth } from '@/lib/auth-context'
 
 // Map pathnames → readable breadcrumb titles
 const BREADCRUMB_MAP: Record<string, string> = {
@@ -35,6 +36,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   // Desktop / Tablet Landscape collapsible sidebar state (>= 1024px)
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true)
   const [activeBranch, setActiveBranch] = useState('all')
+  const { user: authUser, logout } = useAuth()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [headerSignOutLoading, setHeaderSignOutLoading] = useState(false)
   const confirm = useConfirm()
@@ -49,7 +51,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
     })
     if (!ok) return
     setHeaderSignOutLoading(true)
-    await performSignOut()
+    await logout()
   }
 
   // Detect screen size and initialize sidebar preference
@@ -312,6 +314,23 @@ export default function DashboardShell({ children }: { children: React.ReactNode
                 </>
               )}
             </div>
+
+            {/* Active User Badge (Visible on sm+ screens) */}
+            {authUser && (
+              <div className="hidden sm:flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1 shadow-2xs">
+                <div className="flex h-6 w-6 items-center justify-center rounded-md bg-indigo-600 text-xs font-bold text-white shadow-2xs">
+                  {authUser.full_name?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <div className="text-left">
+                  <p className="text-xs font-bold text-slate-800 leading-tight truncate max-w-[110px] lg:max-w-[140px]">
+                    {authUser.full_name}
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-medium leading-none">
+                    {authUser.role}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Direct Header Sign Out (Accessible on all devices & when sidebar is collapsed) */}
             <button

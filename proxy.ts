@@ -39,9 +39,25 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Check for PIN-based session cookie (Enterprise App Users)
+  const pinSessionCookie = request.cookies.get('japa_session')?.value
+  let pinUser: { id: string; full_name: string; role: string } | null = null
+  if (pinSessionCookie) {
+    try {
+      pinUser = JSON.parse(decodeURIComponent(pinSessionCookie))
+    } catch {
+      /* ignore invalid cookie JSON */
+    }
+  }
+
+  const isAuthenticated = !!user || !!pinUser
+
   // Explicit signout query parameter check — strip cookies & allow login view without redirecting to /
   const isExplicitLogout = request.nextUrl.searchParams.has('logout')
   if (isExplicitLogout) {
+    response.cookies.delete('japa_session')
+    response.cookies.set('japa_session', '', { maxAge: 0, path: '/' })
+
     const allCookies = request.cookies.getAll()
     for (const cookie of allCookies) {
       if (
@@ -54,9 +70,10 @@ export async function proxy(request: NextRequest) {
         response.cookies.set(cookie.name, '', { maxAge: 0, path: '/' })
       }
     }
-  } else if (pathname.startsWith('/login') && user) {
-    // Authenticated user trying to access /login -> redirect to home
-    return NextResponse.redirect(new URL('/', request.url))
+  } else if (pathname.startsWith('/login') && isAuthenticated) {
+    // Authenticated user trying to access /login -> redirect to / (or /pos for Cashier)
+    const targetUrl = pinUser?.role === 'Cashier' ? '/pos' : '/'
+    return NextResponse.redirect(new URL(targetUrl, request.url))
   }
 
   // Allow public assets and login
@@ -71,37 +88,37 @@ export async function proxy(request: NextRequest) {
     pathname === '/favicon.ico'
 
   // Redirect unauthenticated users to /login
-  if (!isPublicPath && !user) {
+  if (!isPublicPath && !isAuthenticated) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('redirectTo', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
   // Role-Based Access Control (RBAC)
-  if (user) {
+  if (isAuthenticated) {
     const restricted = RESTRICTED_ROUTES.find((r) => pathname.startsWith(r.path))
     if (restricted) {
-      let userRole: string = (user.user_metadata?.role as string) || ''
+      let activeRole: string = pinUser?.role || (user?.user_metadata?.role as string) || ''
 
-      if (!userRole) {
+      if (!activeRole && user) {
         try {
           const { data: profile } = await supabase
             .from('profiles')
             .select('role')
             .eq('id', user.id)
             .single()
-          if (profile?.role) userRole = profile.role
+          if (profile?.role) activeRole = profile.role
         } catch {
           /* ignore */
         }
       }
 
       // Default admin account override
-      if (user.email === 'admin@japacore.com') {
-        userRole = 'Admin'
+      if (user?.email === 'admin@japacore.com') {
+        activeRole = 'Admin'
       }
 
-      if (!restricted.roles.includes(userRole)) {
+      if (!restricted.roles.includes(activeRole)) {
         const deniedUrl = new URL('/', request.url)
         deniedUrl.searchParams.set('error', 'access_denied')
         return NextResponse.redirect(deniedUrl)

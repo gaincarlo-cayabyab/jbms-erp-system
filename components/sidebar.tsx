@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import { performSignOut } from '@/lib/auth'
+import { useAuth } from '@/lib/auth-context'
 
 interface NavItem {
   label: string
@@ -100,8 +101,9 @@ interface SidebarProps {
 export default function Sidebar({ userEmail, userInitial, onNavigate }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const { user: authUser, logout } = useAuth()
   const [email, setEmail] = useState(userEmail || '')
-  const [role, setRole] = useState('Admin')
+  const [localRole, setLocalRole] = useState('Admin')
   const [signOutLoading, setSignOutLoading] = useState(false)
 
   useEffect(() => {
@@ -114,13 +116,13 @@ export default function Sidebar({ userEmail, userInitial, onNavigate }: SidebarP
         if (user?.email) {
           setEmail(user.email)
           const metaRole = user.user_metadata?.role as string
-          if (metaRole) setRole(metaRole)
+          if (metaRole) setLocalRole(metaRole)
           const { data: profile } = await supabase
             .from('profiles')
             .select('role')
             .eq('id', user.id)
             .single()
-          if (profile?.role) setRole(profile.role)
+          if (profile?.role) setLocalRole(profile.role)
         }
       } catch {
         /* graceful fallback */
@@ -140,16 +142,21 @@ export default function Sidebar({ userEmail, userInitial, onNavigate }: SidebarP
     })
     if (!ok) return
     setSignOutLoading(true)
-    await performSignOut()
+    await logout()
   }
 
-  const displayEmail = email || userEmail || 'admin@japacore.com'
-  const displayInitial = userInitial ?? displayEmail.charAt(0).toUpperCase()
-  const displayName = displayEmail.split('@')[0]
+  const role = authUser?.role || localRole || 'Admin'
+  const displayName = authUser?.full_name || email.split('@')[0] || 'User'
+  const displayEmail = authUser?.email || (authUser ? `${authUser.role} · Active Session` : (email || 'admin@japacore.com'))
+  const displayInitial = authUser?.full_name?.charAt(0).toUpperCase() || userInitial || displayName.charAt(0).toUpperCase()
 
   const roleBadgeClass =
-    role === 'Admin' || role === 'Accountant'
+    role === 'Admin' || role === 'Manager'
       ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+      : role === 'Cashier'
+      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+      : role === 'Inventory'
+      ? 'bg-amber-50 text-amber-700 border border-amber-200'
       : 'bg-slate-100 text-slate-600 border border-slate-200'
 
   return (
