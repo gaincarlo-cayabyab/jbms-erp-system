@@ -16,6 +16,7 @@ import {
   Loader2,
   AlertCircle,
   KeyRound,
+  MapPin,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -145,6 +146,78 @@ const FALLBACK_USERS: Record<AppRole, AppUser[]> = {
 }
 
 type PinStep = 'role' | 'user' | 'pin'
+
+interface ProfileDisplayInfo {
+  displayName: string
+  branchLabel: string
+  badgeText: string
+  avatarCode: string
+  avatarClasses: string
+  cardBorder: string
+  badgeClasses: string
+}
+
+function getProfileDisplayInfo(fullName: string): ProfileDisplayInfo {
+  if (fullName.includes('Dagupan') || fullName.includes('(DAG)')) {
+    const roleTitle = fullName.split('—')[0]?.trim() || fullName.split('-')[0]?.trim() || fullName
+    return {
+      displayName: roleTitle,
+      branchLabel: 'Dagupan Main Store',
+      badgeText: 'Dagupan (DAG)',
+      avatarCode: 'DAG',
+      avatarClasses: 'bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-600',
+      cardBorder: 'border-emerald-200/90 hover:border-emerald-500 hover:bg-emerald-50/40',
+      badgeClasses: 'bg-emerald-50 text-emerald-700 border-emerald-200 group-hover:bg-emerald-100',
+    }
+  }
+
+  if (fullName.includes('Manila') || fullName.includes('(MNL)')) {
+    const roleTitle = fullName.split('—')[0]?.trim() || fullName.split('-')[0]?.trim() || fullName
+    return {
+      displayName: roleTitle,
+      branchLabel: 'Manila Operations',
+      badgeText: 'Manila (MNL)',
+      avatarCode: 'MNL',
+      avatarClasses: 'bg-sky-100 text-sky-800 border border-sky-300 font-extrabold group-hover:bg-sky-600 group-hover:text-white group-hover:border-sky-600',
+      cardBorder: 'border-sky-200/90 hover:border-sky-500 hover:bg-sky-50/40',
+      badgeClasses: 'bg-sky-50 text-sky-700 border-sky-200 group-hover:bg-sky-100',
+    }
+  }
+
+  if (fullName.includes('Gain Carlo')) {
+    return {
+      displayName: 'Gain Carlo',
+      branchLabel: 'System Administrator',
+      badgeText: 'Admin • Full Access',
+      avatarCode: 'GC',
+      avatarClasses: 'bg-indigo-100 text-indigo-800 border border-indigo-300 font-extrabold group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600',
+      cardBorder: 'border-indigo-200/90 hover:border-indigo-500 hover:bg-indigo-50/40',
+      badgeClasses: 'bg-indigo-50 text-indigo-700 border-indigo-200 group-hover:bg-indigo-100',
+    }
+  }
+
+  if (fullName.includes('Belinda Dee')) {
+    return {
+      displayName: 'Belinda Dee',
+      branchLabel: 'Chief Executive Officer',
+      badgeText: 'CEO • Executive',
+      avatarCode: 'BD',
+      avatarClasses: 'bg-purple-100 text-purple-800 border border-purple-300 font-extrabold group-hover:bg-purple-600 group-hover:text-white group-hover:border-purple-600',
+      cardBorder: 'border-purple-200/90 hover:border-purple-500 hover:bg-purple-50/40',
+      badgeClasses: 'bg-purple-50 text-purple-700 border-purple-200 group-hover:bg-purple-100',
+    }
+  }
+
+  return {
+    displayName: fullName,
+    branchLabel: 'Branch Operations',
+    badgeText: 'Active Profile',
+    avatarCode: fullName.slice(0, 2).toUpperCase(),
+    avatarClasses: 'bg-slate-100 text-slate-700 border border-slate-300 font-bold group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600',
+    cardBorder: 'border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/40',
+    badgeClasses: 'bg-slate-50 text-slate-700 border-slate-200',
+  }
+}
 
 export default function LoginForm() {
   const router = useRouter()
@@ -468,32 +541,52 @@ export default function LoginForm() {
               <p className="text-[11px] text-slate-500">Please contact an administrator or switch role.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="flex flex-col gap-2.5">
               {users.map((u) => {
-                const initials = u.full_name
-                  .split(' ')
-                  .map((n) => n[0])
-                  .join('')
-                  .slice(0, 2)
-                  .toUpperCase()
-
+                const info = getProfileDisplayInfo(u.full_name)
                 return (
                   <button
                     key={u.id}
                     type="button"
                     onClick={() => handleSelectUser(u)}
-                    className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-white hover:border-indigo-400 hover:bg-indigo-50/40 text-left transition active:scale-98 shadow-2xs group"
+                    className={cn(
+                      'w-full flex items-center justify-between p-3 rounded-xl border bg-white text-left transition-all duration-150 shadow-2xs group active:scale-[0.99]',
+                      info.cardBorder
+                    )}
                   >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700 font-bold text-sm group-hover:bg-indigo-600 group-hover:text-white transition">
-                      {initials}
+                    <div className="flex items-center gap-3 min-w-0">
+                      {/* Avatar with clear branch code */}
+                      <div
+                        className={cn(
+                          'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs tracking-wider transition shadow-2xs',
+                          info.avatarClasses
+                        )}
+                      >
+                        {info.avatarCode}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition">
+                            {info.displayName}
+                          </span>
+                          <span
+                            className={cn(
+                              'text-[10px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 shadow-2xs',
+                              info.badgeClasses
+                            )}
+                          >
+                            <MapPin className="h-2.5 w-2.5" />
+                            {info.badgeText}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                          {info.branchLabel} • <span className="text-indigo-600 group-hover:underline">Tap to enter PIN</span>
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-slate-900 group-hover:text-indigo-700 truncate">
-                        {u.full_name}
-                      </p>
-                      <p className="text-[10px] text-slate-400 font-medium">Tap to enter PIN</p>
-                    </div>
-                    <KeyRound className="h-3.5 w-3.5 text-slate-300 group-hover:text-indigo-600 transition shrink-0" />
+
+                    <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition shrink-0 ml-2" />
                   </button>
                 )
               })}
@@ -503,32 +596,44 @@ export default function LoginForm() {
       )}
 
       {/* ── STEP 3: 4-DIGIT PIN ENTRY NUMPAD ─────────────────────────── */}
-      {pinStep === 'pin' && selectedUser && (
-        <div className="space-y-3 animate-in fade-in duration-200">
-          {/* Back to user list */}
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <button
-              type="button"
-              onClick={() => {
-                setPinStep('user')
-                setPin('')
-                setErrorMessage(null)
-              }}
-              className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-indigo-600 transition"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span>Back to Profiles</span>
-            </button>
+      {pinStep === 'pin' && selectedUser && (() => {
+        const selectedInfo = getProfileDisplayInfo(selectedUser.full_name)
+        return (
+          <div className="space-y-3 animate-in fade-in duration-200">
+            {/* Back to user list */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setPinStep('user')
+                  setPin('')
+                  setErrorMessage(null)
+                }}
+                className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-indigo-600 transition"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span>Back to Profiles</span>
+              </button>
 
-            <div className="flex items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-white shadow-2xs">
-                {selectedUser.full_name.charAt(0).toUpperCase()}
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    'px-2 py-0.5 rounded-md text-[10px] font-extrabold border shadow-2xs',
+                    selectedInfo.avatarClasses
+                  )}
+                >
+                  {selectedInfo.avatarCode}
+                </span>
+                <div className="text-right">
+                  <span className="text-xs font-bold text-slate-900 block leading-tight">
+                    {selectedInfo.displayName}
+                  </span>
+                  <span className="text-[10px] font-semibold text-slate-500 block leading-tight">
+                    {selectedInfo.badgeText}
+                  </span>
+                </div>
               </div>
-              <span className="text-xs font-bold text-slate-800 truncate max-w-[140px]">
-                {selectedUser.full_name}
-              </span>
             </div>
-          </div>
 
           {/* Security Header & 4 Dot Indicators */}
           <div className="text-center space-y-2">
@@ -620,7 +725,8 @@ export default function LoginForm() {
             Use keyboard number keys (0–9) or tap the numpad above.
           </p>
         </div>
-      )}
+        )
+      })()}
 
       {/* ── Hidden video preload ──────────────────────────────────────── */}
       <video

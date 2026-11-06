@@ -122,7 +122,7 @@ export default function LoginPage() {
           {/* Scrollable inner — only the form card scrolls if needed */}
           <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 overflow-y-auto">
             {/* Main white card */}
-            <div className="w-full max-w-sm xl:max-w-md bg-white border border-slate-200/90 rounded-2xl shadow-sm relative z-10">
+            <div className="w-full max-w-md xl:max-w-lg bg-white border border-slate-200/90 rounded-2xl shadow-sm relative z-10">
 
               {/* Card Header */}
               <div className="text-center space-y-2 px-5 pt-5 pb-3 border-b border-slate-100">
