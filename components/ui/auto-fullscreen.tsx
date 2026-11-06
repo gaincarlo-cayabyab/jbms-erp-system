@@ -5,49 +5,122 @@ import { Maximize2, Minimize2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /**
+ * Universal cross-browser fullscreen helper with vendor prefix fallbacks
+ */
+export function requestAppFullscreen() {
+  if (typeof document === 'undefined') return
+
+  const docEl = document.documentElement as HTMLElement & {
+    webkitRequestFullscreen?: () => Promise<void>
+    mozRequestFullScreen?: () => Promise<void>
+    msRequestFullscreen?: () => Promise<void>
+  }
+
+  const isFullscreen = !!(
+    document.fullscreenElement ||
+    (document as { webkitFullscreenElement?: Element }).webkitFullscreenElement ||
+    (document as { mozFullScreenElement?: Element }).mozFullScreenElement ||
+    (document as { msFullscreenElement?: Element }).msFullscreenElement
+  )
+
+  if (isFullscreen) return
+
+  const req =
+    docEl.requestFullscreen ||
+    docEl.webkitRequestFullscreen ||
+    docEl.mozRequestFullScreen ||
+    docEl.msRequestFullscreen
+
+  if (req) {
+    try {
+      const res = req.call(docEl)
+      if (res && typeof res.catch === 'function') {
+        res.catch(() => {
+          // Handled silently if browser user activation policy is not satisfied yet
+        })
+      }
+    } catch {
+      // Ignore synchronous policy exceptions on older engines
+    }
+  }
+}
+
+export function exitAppFullscreen() {
+  if (typeof document === 'undefined') return
+
+  const doc = document as Document & {
+    webkitExitFullscreen?: () => Promise<void>
+    mozCancelFullScreen?: () => Promise<void>
+    msExitFullscreen?: () => Promise<void>
+  }
+
+  const exit =
+    doc.exitFullscreen ||
+    doc.webkitExitFullscreen ||
+    doc.mozCancelFullScreen ||
+    doc.msExitFullscreen
+
+  if (exit) {
+    try {
+      const res = exit.call(doc)
+      if (res && typeof res.catch === 'function') {
+        res.catch(() => {})
+      }
+    } catch {}
+  }
+}
+
+/**
  * Global Automatic Fullscreen Controller:
  * Automatically expands the viewport to full screen upon the first user interaction
- * (click, touch, or keypress) anywhere in the application, matching Kiosk / POS mode.
+ * (touch, tap, click, or keypress) anywhere in the application, ideal for POS & Tablet Kiosk mode.
  */
 export default function AutoFullscreenManager() {
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const [hasRequestedAuto, setHasRequestedAuto] = useState(false)
+  const [, setIsFullscreen] = useState(false)
 
   const checkFullscreen = useCallback(() => {
-    setIsFullscreen(!!document.fullscreenElement)
-  }, [])
-
-  const enterFullscreen = useCallback(() => {
-    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-      document.documentElement.requestFullscreen().catch(() => {
-        // Suppress browser rejection if user gesture hasn't satisfied policy yet
-      })
-    }
+    const isFS = !!(
+      document.fullscreenElement ||
+      (document as { webkitFullscreenElement?: Element }).webkitFullscreenElement ||
+      (document as { mozFullScreenElement?: Element }).mozFullScreenElement ||
+      (document as { msFullscreenElement?: Element }).msFullscreenElement
+    )
+    setIsFullscreen(isFS)
   }, [])
 
   useEffect(() => {
     checkFullscreen()
-    document.addEventListener('fullscreenchange', checkFullscreen)
 
-    // Trigger auto fullscreen on very first user interaction anywhere
-    function onFirstInteraction() {
-      if (!hasRequestedAuto && !document.fullscreenElement) {
-        setHasRequestedAuto(true)
-        enterFullscreen()
-      }
+    document.addEventListener('fullscreenchange', checkFullscreen)
+    document.addEventListener('webkitfullscreenchange', checkFullscreen)
+    document.addEventListener('mozfullscreenchange', checkFullscreen)
+    document.addEventListener('MSFullscreenChange', checkFullscreen)
+
+    // Attempt immediately on mount (succeeds if navigated from previous page with user activation)
+    requestAppFullscreen()
+
+    // Trigger auto fullscreen on the very first touch/click/press anywhere
+    function onUserGesture() {
+      requestAppFullscreen()
     }
 
-    window.addEventListener('click', onFirstInteraction, { passive: true })
-    window.addEventListener('touchstart', onFirstInteraction, { passive: true })
-    window.addEventListener('keydown', onFirstInteraction, { passive: true })
+    // Capture phase ensures execution ahead of any nested component handlers
+    window.addEventListener('pointerdown', onUserGesture, { capture: true, passive: true })
+    window.addEventListener('touchstart', onUserGesture, { capture: true, passive: true })
+    window.addEventListener('click', onUserGesture, { capture: true, passive: true })
+    window.addEventListener('keydown', onUserGesture, { capture: true, passive: true })
 
     return () => {
       document.removeEventListener('fullscreenchange', checkFullscreen)
-      window.removeEventListener('click', onFirstInteraction)
-      window.removeEventListener('touchstart', onFirstInteraction)
-      window.removeEventListener('keydown', onFirstInteraction)
+      document.removeEventListener('webkitfullscreenchange', checkFullscreen)
+      document.removeEventListener('mozfullscreenchange', checkFullscreen)
+      document.removeEventListener('MSFullscreenChange', checkFullscreen)
+      window.removeEventListener('pointerdown', onUserGesture, { capture: true })
+      window.removeEventListener('touchstart', onUserGesture, { capture: true })
+      window.removeEventListener('click', onUserGesture, { capture: true })
+      window.removeEventListener('keydown', onUserGesture, { capture: true })
     }
-  }, [checkFullscreen, enterFullscreen, hasRequestedAuto])
+  }, [checkFullscreen])
 
   return null
 }
@@ -60,18 +133,29 @@ export function FullscreenToggle({ className }: { className?: string }) {
 
   useEffect(() => {
     function onFSChange() {
-      setIsFullscreen(!!document.fullscreenElement)
+      const isFS = !!(
+        document.fullscreenElement ||
+        (document as { webkitFullscreenElement?: Element }).webkitFullscreenElement ||
+        (document as { mozFullScreenElement?: Element }).mozFullScreenElement ||
+        (document as { msFullscreenElement?: Element }).msFullscreenElement
+      )
+      setIsFullscreen(isFS)
     }
-    setIsFullscreen(!!document.fullscreenElement)
+
+    onFSChange()
     document.addEventListener('fullscreenchange', onFSChange)
-    return () => document.removeEventListener('fullscreenchange', onFSChange)
+    document.addEventListener('webkitfullscreenchange', onFSChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', onFSChange)
+      document.removeEventListener('webkitfullscreenchange', onFSChange)
+    }
   }, [])
 
   function toggle() {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen?.().catch(() => {})
+    if (!isFullscreen) {
+      requestAppFullscreen()
     } else {
-      document.exitFullscreen?.().catch(() => {})
+      exitAppFullscreen()
     }
   }
 
@@ -80,24 +164,23 @@ export function FullscreenToggle({ className }: { className?: string }) {
       type="button"
       onClick={toggle}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white/90 px-2 py-1.5 xl:px-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-100 transition active:scale-95',
+        'inline-flex items-center gap-1.5 rounded-xl border border-stone-200/90 bg-white/90 px-2.5 py-1 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-100 transition active:scale-95 touch-manipulation cursor-pointer',
         className
       )}
-      title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen (Kiosk Mode)'}
+      title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen (POS Kiosk Mode)'}
       aria-label="Toggle Fullscreen"
     >
       {isFullscreen ? (
         <>
-          <Minimize2 className="h-3.5 w-3.5 text-slate-700 shrink-0" />
-          <span className="hidden 2xl:inline">Exit Fullscreen</span>
+          <Minimize2 className="h-3.5 w-3.5 text-stone-700 shrink-0" />
+          <span className="hidden sm:inline text-[11px] font-bold">Exit Fullscreen</span>
         </>
       ) : (
         <>
-          <Maximize2 className="h-3.5 w-3.5 text-slate-700 shrink-0" />
-          <span className="hidden 2xl:inline">Fullscreen</span>
+          <Maximize2 className="h-3.5 w-3.5 text-stone-700 shrink-0" />
+          <span className="hidden sm:inline text-[11px] font-bold">Fullscreen</span>
         </>
       )}
     </button>
   )
 }
-

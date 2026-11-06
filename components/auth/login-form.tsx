@@ -22,6 +22,7 @@ import {
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth-context'
+import { requestAppFullscreen } from '@/components/ui/auto-fullscreen'
 import type { Database } from '@/types/supabase'
 
 export type AppRole = 'Admin' | 'Manager' | 'Cashier' | 'Inventory' | 'Staff'
@@ -337,6 +338,7 @@ export default function LoginForm() {
 
   // Step 1: Select Role
   function handleSelectRole(role: AppRole) {
+    requestAppFullscreen()
     setSelectedRole(role)
     setPinStep('user')
     fetchUsersForRole(role)
@@ -344,6 +346,7 @@ export default function LoginForm() {
 
   // Step 2: Select User / Terminal
   function handleSelectUser(user: AppUser) {
+    requestAppFullscreen()
     if (selectedRole === 'Cashier' && (user.full_name.includes('Dagupan') || user.full_name.includes('(DAG)'))) {
       setPinStep('cashier-staff')
       return
@@ -356,6 +359,7 @@ export default function LoginForm() {
 
   // Step 2b: Select Cashier Shift Staff (Pearly, Ivan, Lanie)
   function handleSelectCashierStaff(staff: AppUser) {
+    requestAppFullscreen()
     setSelectedUser(staff)
     setPin('')
     setErrorMessage(null)
@@ -490,6 +494,7 @@ export default function LoginForm() {
 
   // Handle numpad digit click
   const handleDigitClick = useCallback((digit: string) => {
+    requestAppFullscreen()
     if (verifying || !selectedUser) return
 
     setPin((prev) => {

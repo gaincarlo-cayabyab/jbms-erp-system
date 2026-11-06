@@ -34,6 +34,12 @@ export const metadata: Metadata = {
   },
   description:
     "Enterprise Resource Planning System for JAPA Global Trading — Multi-store CRM, 7-Stage Production, Inventory, Financials & Payroll",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "JAPA Core ERP",
+  },
   icons: {
     icon: [
       { url: "/assets/images/JAPA_favicon.ico", sizes: "any" },
