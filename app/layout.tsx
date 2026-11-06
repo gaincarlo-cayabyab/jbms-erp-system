@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import AutoFullscreenManager from "@/components/ui/auto-fullscreen";
 import { ConfirmDialogProvider } from "@/components/ui/confirm-dialog";
 import { AuthProvider } from "@/lib/auth-context";
+import { BranchProvider } from "@/lib/branch-context";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -42,9 +43,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-screen flex flex-col bg-slate-50 text-slate-900 antialiased">
         <AutoFullscreenManager />
         <AuthProvider>
-          <ConfirmDialogProvider>
-            {children}
-          </ConfirmDialogProvider>
+          <BranchProvider>
+            <ConfirmDialogProvider>
+              {children}
+            </ConfirmDialogProvider>
+          </BranchProvider>
         </AuthProvider>
         {/* Global Sonner toast notifications — bottom-right */}
         <Toaster

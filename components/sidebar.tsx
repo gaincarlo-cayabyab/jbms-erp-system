@@ -17,6 +17,8 @@ import {
   Lock,
   Receipt,
   Loader2,
+  ArrowLeftRight,
+  History,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -82,6 +84,14 @@ const navItems: NavItem[] = [
     allowedRoles: ['Admin', 'Manager', 'Inventory', 'Staff'],
   },
   {
+    label: 'Stock Transfers (STO)',
+    href: '/transfers',
+    icon: ArrowLeftRight,
+    badge: 'STO',
+    badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200',
+    allowedRoles: ['Admin', 'Manager', 'Inventory'],
+  },
+  {
     label: 'Financials & Expenses',
     href: '/financials',
     icon: DollarSign,
@@ -97,6 +107,15 @@ const navItems: NavItem[] = [
     restricted: true,
     badge: 'DTR',
     badgeClass: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
+    allowedRoles: ['Admin'],
+  },
+  {
+    label: 'Audit & Compliance',
+    href: '/audit',
+    icon: History,
+    restricted: true,
+    badge: 'Audit',
+    badgeClass: 'bg-slate-100 text-slate-700 border border-slate-300',
     allowedRoles: ['Admin'],
   },
 ]

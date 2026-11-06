@@ -330,10 +330,30 @@ export default function LoginForm() {
       if (result && result.success) {
         toast.success(`Welcome, ${userToVerify.full_name}!`)
 
+        // Lookup branch_id from app_users or fallback from name
+        let branchId: string | undefined = undefined
+        try {
+          const { data: userRec } = await supabase
+            .from('app_users')
+            .select('branch_id')
+            .eq('id', userToVerify.id)
+            .maybeSingle()
+          branchId = userRec?.branch_id || undefined
+        } catch {}
+
+        if (!branchId) {
+          if (userToVerify.full_name.includes('Manila') || userToVerify.full_name.includes('(MNL)')) {
+            branchId = 'manila_branch'
+          } else if (userToVerify.full_name.includes('Dagupan') || userToVerify.full_name.includes('(DAG)')) {
+            branchId = 'dagupan_main'
+          }
+        }
+
         await loginWithPinSession({
           id: userToVerify.id,
           full_name: userToVerify.full_name,
           role: userToVerify.role,
+          branch_id: branchId,
         })
 
         const dest =

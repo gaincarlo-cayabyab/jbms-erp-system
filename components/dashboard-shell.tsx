@@ -10,6 +10,7 @@ import { FullscreenToggle } from '@/components/ui/auto-fullscreen'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import { performSignOut } from '@/lib/auth'
 import { useAuth } from '@/lib/auth-context'
+import { useBranch } from '@/lib/branch-context'
 import { toast } from 'sonner'
 
 function AccessDeniedNotifier() {
@@ -33,23 +34,28 @@ const BREADCRUMB_MAP: Record<string, string> = {
   '/sales': 'Sales & Quotations',
   '/production': 'Production Queue & Job Orders',
   '/inventory': 'Multi-Store Inventory',
+  '/transfers': 'Inter-Branch Stock Transfers',
   '/financials': 'Financials & Expenses',
   '/payroll': 'Attendance & Payroll',
+  '/audit': 'System Security & Audit Logs',
 }
-
-const BRANCH_OPTIONS = [
-  { value: 'all', label: 'All Stores', fullLabel: 'All Stores — Consolidated' },
-  { value: 'dagupan', label: 'Dagupan (Main)', fullLabel: 'JAPA Dagupan (Main Branch)' },
-  { value: 'manila', label: 'Manila', fullLabel: 'JAPA Manila' },
-]
 
 export default function DashboardShell({ children }: { children: React.ReactNode }) {
   // Mobile / Tablet Portrait overlay drawer state (< 1024px)
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
   // Desktop / Tablet Landscape collapsible sidebar state (>= 1024px)
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true)
-  const [activeBranch, setActiveBranch] = useState('all')
   const { user: authUser, logout } = useAuth()
+  const {
+    activeBranchId,
+    activeBranch,
+    availableBranches,
+    isBranchLocked,
+    isSuperAdmin,
+    impersonatedBranchId,
+    setActiveBranchId,
+    setViewAsBranch,
+  } = useBranch()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [headerSignOutLoading, setHeaderSignOutLoading] = useState(false)
   const confirm = useConfirm()
@@ -191,21 +197,42 @@ export default function DashboardShell({ children }: { children: React.ReactNode
               </Link>
             )}
 
-            {/* Branch / Store Selector — Responsive on Tablets */}
-            <div className="flex items-center gap-1 sm:gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 sm:px-2.5 py-1.5 shadow-2xs">
-              <Store className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+            {/* Branch / Store Selector — Scoped & Multi-Branch Ready */}
+            <div className={cn(
+              "flex items-center gap-1 sm:gap-1.5 rounded-lg border px-2 sm:px-2.5 py-1.5 shadow-2xs transition",
+              impersonatedBranchId
+                ? "border-amber-300 bg-amber-50 text-amber-900"
+                : isBranchLocked
+                ? "border-slate-200 bg-slate-100/70 text-slate-700"
+                : "border-slate-200 bg-slate-50 text-slate-700 hover:border-indigo-300"
+            )}>
+              <Store className={cn(
+                "h-3.5 w-3.5 shrink-0",
+                impersonatedBranchId ? "text-amber-600 animate-pulse" : "text-indigo-600"
+              )} />
               <select
-                value={activeBranch}
-                onChange={(e) => setActiveBranch(e.target.value)}
-                className="bg-transparent text-xs font-semibold text-slate-700 outline-none cursor-pointer max-w-[100px] sm:max-w-[160px] md:max-w-none truncate"
-                title="Active Store Branch"
+                value={activeBranchId}
+                onChange={(e) => setActiveBranchId(e.target.value)}
+                disabled={isBranchLocked}
+                className="bg-transparent text-xs font-semibold outline-none cursor-pointer max-w-[110px] sm:max-w-[170px] md:max-w-none truncate disabled:cursor-not-allowed"
+                title={isBranchLocked ? `Branch locked to ${activeBranch.name}` : 'Switch Branch View'}
               >
-                {BRANCH_OPTIONS.map((b) => (
-                  <option key={b.value} value={b.value} className="bg-white text-slate-900">
-                    {b.label}
+                {availableBranches.map((b) => (
+                  <option key={b.id} value={b.id} className="bg-white text-slate-900">
+                    {b.shortCode !== 'ALL' ? `${b.shortCode} — ${b.name.split('(')[0].trim()}` : b.name}
                   </option>
                 ))}
               </select>
+              {impersonatedBranchId && (
+                <button
+                  type="button"
+                  onClick={() => setViewAsBranch(null)}
+                  className="ml-1 text-[10px] bg-amber-200 text-amber-900 px-1 rounded font-bold hover:bg-amber-300 transition"
+                  title="Exit View As Branch mode"
+                >
+                  ✕ Exit
+                </button>
+              )}
             </div>
 
             {/* Global Fullscreen Toggle */}

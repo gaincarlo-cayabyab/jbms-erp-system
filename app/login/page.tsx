@@ -37,10 +37,10 @@ export default function LoginPage() {
         type="video/mp4"
       />
 
-      {/* Full viewport — no scroll */}
+      {/* Full viewport — no scroll, entire page fits in screen */}
       <div className="h-screen w-full flex flex-col lg:flex-row bg-slate-50 text-slate-900 overflow-hidden">
 
-        {/* ── Left Branding Panel (desktop/wide tablet only) ─────────── */}
+        {/* ── Left Branding Panel (desktop/wide tablet only) ──────────── */}
         <div className="hidden lg:flex flex-col justify-between w-5/12 xl:w-1/2 bg-gradient-to-br from-indigo-700 via-indigo-600 to-slate-900 p-10 xl:p-14 text-white relative overflow-hidden select-none">
           <div className="absolute -right-24 -bottom-24 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -left-20 -top-20 w-80 h-80 bg-indigo-400/20 rounded-full blur-2xl pointer-events-none" />
@@ -75,7 +75,7 @@ export default function LoginPage() {
           <div className="z-10 max-w-lg space-y-5 my-auto py-8">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-indigo-100 text-xs font-semibold">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Multi-Branch POS & Production Terminal</span>
+              <span>Multi-Branch POS &amp; Production Terminal</span>
             </div>
 
             <h1 className="text-3xl xl:text-4xl font-extrabold leading-tight tracking-tight">
@@ -105,66 +105,65 @@ export default function LoginPage() {
 
           {/* Bottom Footer */}
           <div className="z-10 flex items-center justify-between text-xs text-indigo-200/80 border-t border-white/10 pt-4">
-            <span>© 2026 JAPA Global Trading</span>
+            <span>&copy; 2026 JAPA Global Trading</span>
             <div className="flex items-center gap-1.5 font-medium">
               <Store className="h-3.5 w-3.5 text-emerald-400" />
-              <span>Dagupan & Manila Nodes</span>
+              <span>Dagupan &amp; Manila Nodes</span>
             </div>
           </div>
         </div>
 
-        {/* ── Right Auth Panel ────────────────────────────────────────── */}
+        {/* ── Right Auth Panel ──────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 relative">
           {/* Ambient blobs */}
           <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-indigo-100/50 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-1/4 left-1/4 w-72 h-72 bg-emerald-100/40 rounded-full blur-3xl pointer-events-none" />
 
-          {/* Scrollable inner — only the form card scrolls if needed */}
-          <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 overflow-y-auto">
-            {/* Main white card */}
-            <div className="w-full max-w-md xl:max-w-lg bg-white border border-slate-200/90 rounded-2xl shadow-sm relative z-10">
+          {/* Centered container — fits in viewport, card scrolls internally if needed */}
+          <div className="flex-1 flex flex-col items-center justify-center px-3 py-2 sm:px-5 sm:py-3 overflow-hidden">
 
-              {/* Card Header */}
-              <div className="text-center space-y-2 px-5 pt-5 pb-3 border-b border-slate-100">
-                <div className="flex items-center justify-center gap-3">
-                  <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-white shadow-sm border border-slate-200 p-1 shrink-0">
-                    <Image
-                      src="/assets/images/JAPA_logo.jpg"
-                      alt="JAPA Global Logo"
-                      width={40}
-                      height={40}
-                      className="rounded-lg object-contain w-full h-full"
-                      priority
-                      unoptimized
-                    />
-                  </div>
-                  <div className="text-left">
-                    <h2 className="text-base font-black tracking-tight text-slate-900 leading-tight">
-                      JAPA Global
-                    </h2>
-                    <p className="text-[11px] font-semibold text-slate-500">
-                      Enterprise Operations
-                    </p>
-                  </div>
+            {/* Main white card — compact header + scrollable body */}
+            <div className="w-full max-w-sm sm:max-w-md bg-white border border-slate-200/90 rounded-2xl shadow-sm relative z-10 flex flex-col" style={{ maxHeight: 'calc(100vh - 3rem)' }}>
+
+              {/* Card Header — compact single row */}
+              <div className="flex items-center gap-3 px-4 pt-3 pb-2.5 border-b border-slate-100 shrink-0">
+                <div className="relative w-8 h-8 rounded-xl overflow-hidden bg-white shadow-sm border border-slate-200 p-0.5 shrink-0">
+                  <Image
+                    src="/assets/images/JAPA_logo.jpg"
+                    alt="JAPA Global Logo"
+                    width={32}
+                    height={32}
+                    className="rounded-lg object-contain w-full h-full"
+                    priority
+                    unoptimized
+                  />
                 </div>
-
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold shadow-2xs">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Dagupan Main Store &amp; Manila Operations</span>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-sm font-black tracking-tight text-slate-900 leading-tight">
+                    JAPA Global
+                  </h2>
+                  <p className="text-[10px] font-semibold text-slate-500 leading-tight">
+                    Enterprise Operations
+                  </p>
+                </div>
+                {/* Branch status pill — right aligned */}
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>DAG &amp; MNL</span>
                 </div>
               </div>
 
-              {/* Form Body */}
-              <div className="px-5 py-4">
+              {/* Form Body — scrolls internally if content is taller than remaining space */}
+              <div className="px-4 py-3 overflow-y-auto flex-1">
                 <LoginForm />
               </div>
             </div>
 
             {/* Security Footer */}
-            <div className="pt-3 text-center z-10">
-              <p className="text-[11px] text-slate-400 font-medium inline-flex items-center gap-1.5">
-                <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
-                <span>Encrypted Session • Enterprise Role-Based Access Control</span>
+            <div className="pt-2 text-center z-10 shrink-0">
+              <p className="text-[10px] text-slate-400 font-medium inline-flex items-center gap-1.5">
+                <ShieldCheck className="h-3 w-3 text-slate-400" />
+                <span>Encrypted Session &bull; Enterprise Role-Based Access Control</span>
               </p>
             </div>
           </div>

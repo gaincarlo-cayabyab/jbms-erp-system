@@ -11,6 +11,7 @@ import StockAdjustmentModal from './stock-adjustment-modal'
 import { createClient } from '@/lib/supabase/client'
 import { ProductItem } from '@/types/inventory'
 import { useConfirm } from '@/components/ui/confirm-dialog'
+import { useBranch } from '@/lib/branch-context'
 import {
   Package,
   Plus,
@@ -29,9 +30,11 @@ import {
   Barcode,
   Eye,
   Receipt,
+  ArrowLeftRight,
 } from 'lucide-react'
 
 export default function InventoryView() {
+  const { activeBranchId, activeBranch } = useBranch()
   const searchParams = useSearchParams()
   const [products, setProducts] = useState<ProductItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -88,7 +91,7 @@ export default function InventoryView() {
     }
   }, [searchParams])
 
-  // Load products from Supabase
+  // Load products from Supabase with branch-scoped stock levels
   const loadProducts = async () => {
     setIsLoading(true)
     setFetchError(null)
@@ -101,7 +104,32 @@ export default function InventoryView() {
 
       if (error) throw new Error(error.message)
 
-      setProducts((data as ProductItem[]) || [])
+      let prods = (data as ProductItem[]) || []
+
+      // If viewing a specific branch, apply branch-level inventory_stock numbers
+      if (activeBranchId !== 'all') {
+        const { data: branchStocks } = await supabase
+          .from('inventory_stock')
+          .select('product_id, quantity_on_hand, reorder_level')
+          .eq('branch_id', activeBranchId)
+
+        if (branchStocks && branchStocks.length > 0) {
+          const stockMap = new Map(branchStocks.map((s) => [s.product_id, s]))
+          prods = prods.map((p) => {
+            const bs = stockMap.get(p.id)
+            if (bs) {
+              return {
+                ...p,
+                stock_quantity: bs.quantity_on_hand,
+                reorder_level: bs.reorder_level ?? p.reorder_level,
+              }
+            }
+            return p
+          })
+        }
+      }
+
+      setProducts(prods)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to fetch inventory catalog.'
       setFetchError(msg)
@@ -112,7 +140,26 @@ export default function InventoryView() {
 
   useEffect(() => {
     loadProducts()
-  }, [])
+  }, [activeBranchId])
+
+  // Realtime subscription for inventory_stock updates
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`inventory_realtime_${activeBranchId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'inventory_stock' },
+        () => {
+          loadProducts()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [activeBranchId])
 
   // Handle saved product (create or edit)
   const handleProductSaved = (savedProduct: ProductItem, isEdit: boolean) => {
@@ -241,6 +288,9 @@ export default function InventoryView() {
               <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
                 Module 4
               </span>
+              <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
+                📍 {activeBranch.shortCode} — {activeBranch.name.split('(')[0].trim()}
+              </span>
             </div>
             <p className="mt-1 text-sm text-zinc-500">
               Track warehouse materials, retail products, live stock counts, and automated reorder alerts.
@@ -249,6 +299,15 @@ export default function InventoryView() {
 
           {/* Unified Action Bar (Section 7.1 CRUD Standard) */}
           <div className="flex flex-wrap items-center gap-2">
+            {/* Direct Link to Inter-Branch Transfers */}
+            <Link
+              href="/transfers"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-bold text-blue-700 shadow-2xs hover:bg-blue-100 transition active:scale-95"
+              title="Manage Inter-Branch Stock Transfers (STO)"
+            >
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+              <span>Stock Transfers</span>
+            </Link>
             <button
               type="button"
               onClick={() => {

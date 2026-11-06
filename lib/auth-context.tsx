@@ -9,6 +9,7 @@ export interface AppUserSession {
   full_name: string
   role: 'Admin' | 'Manager' | 'Cashier' | 'Inventory' | 'Staff' | string
   email?: string
+  branch_id?: string
 }
 
 interface AuthContextType {
