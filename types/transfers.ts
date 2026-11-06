@@ -46,3 +46,4 @@ export interface CreateTransferPayload {
     quantity_sent: number
   }[]
 }
+

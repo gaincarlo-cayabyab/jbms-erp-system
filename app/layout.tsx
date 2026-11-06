@@ -49,16 +49,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </ConfirmDialogProvider>
           </BranchProvider>
         </AuthProvider>
-        {/* Global Sonner toast notifications — bottom-right */}
+        {/* Global Sonner toast notifications — centered top */}
         <Toaster
-          position="bottom-right"
+          position="top-center"
           richColors
           closeButton
           toastOptions={{
             duration: 4000,
             classNames: {
               toast:
-                "font-sans text-sm shadow-modern border border-slate-200 rounded-xl",
+                "font-sans text-sm shadow-xl border border-slate-200 rounded-2xl",
             },
           }}
         />

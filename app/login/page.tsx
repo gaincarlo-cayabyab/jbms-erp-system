@@ -158,14 +158,14 @@ export default function LoginPage() {
                 <LoginForm />
               </div>
             </div>
+          </div>
 
-            {/* Security Footer */}
-            <div className="pt-2 text-center z-10 shrink-0">
-              <p className="text-[10px] text-slate-400 font-medium inline-flex items-center gap-1.5">
-                <ShieldCheck className="h-3 w-3 text-slate-400" />
-                <span>Encrypted Session &bull; Enterprise Role-Based Access Control</span>
-              </p>
-            </div>
+          {/* Security Footer — pinned to bottom right corner */}
+          <div className="absolute bottom-3 right-4 sm:bottom-4 sm:right-6 z-20 pointer-events-none">
+            <p className="text-[10px] sm:text-[11px] text-slate-500 font-semibold inline-flex items-center gap-1.5 bg-white/90 backdrop-blur-xs px-3 py-1.5 rounded-full border border-slate-200/90 shadow-2xs">
+              <ShieldCheck className="h-3.5 w-3.5 text-indigo-600" />
+              <span>Encrypted Session &bull; Enterprise Role-Based Access Control</span>
+            </p>
           </div>
         </div>
       </div>

@@ -17,6 +17,7 @@ import {
   AlertCircle,
   KeyRound,
   MapPin,
+  CheckCircle2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -328,7 +329,38 @@ export default function LoginForm() {
 
       const result = data?.[0]
       if (result && result.success) {
-        toast.success(`Welcome, ${userToVerify.full_name}!`)
+        // Enhanced Middle-Top Welcome Notification
+        toast.custom(
+          () => (
+            <div className="flex items-center gap-3.5 bg-white/95 backdrop-blur-md border border-emerald-300/80 px-4 py-3 rounded-2xl shadow-2xl shadow-emerald-500/15 min-w-[320px] sm:min-w-[420px] animate-in fade-in slide-in-from-top-3 duration-300">
+              <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/25">
+                <CheckCircle2 className="h-5 w-5" />
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 ring-2 ring-white"></span>
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-extrabold text-slate-900 truncate">
+                    Welcome back, {userToVerify.full_name}!
+                  </h4>
+                  <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
+                    Verified
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 font-medium mt-0.5 flex items-center gap-1.5">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                  <span className="truncate">Enterprise Workspace Session Activated • {userToVerify.role}</span>
+                </p>
+              </div>
+            </div>
+          ),
+          {
+            duration: 4500,
+            position: 'top-center',
+          }
+        )
 
         // Lookup branch_id from app_users or fallback from name
         let branchId: string | undefined = undefined
@@ -766,7 +798,7 @@ export default function LoginForm() {
       {/* ── Fullscreen Video Loading Overlay ─────────────────────────── */}
       {showVideoOverlay && (
         <div
-          className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-300"
+          className="fixed inset-0 z-[9999] overflow-hidden animate-in fade-in duration-300"
           style={{ background: '#F0F0F0' }}
         >
           <video
