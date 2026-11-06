@@ -479,7 +479,7 @@ export default function LoginForm() {
   }, [pinStep, handleDigitClick, handleBackspace, handleClear])
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Access Denied Warning */}
       {accessError === 'access_denied' && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 animate-in fade-in">
@@ -506,18 +506,18 @@ export default function LoginForm() {
 
       {/* ── STEP 1: ROLE SELECTION ───────────────────────────────────── */}
       {pinStep === 'role' && (
-        <div className="space-y-2.5 animate-in fade-in duration-200">
+        <div className="space-y-1.5 animate-in fade-in duration-200">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Select Role</h3>
-              <p className="text-xs text-slate-500">Tap your operational team to sign in</p>
+              <h3 className="text-xs sm:text-sm font-bold text-slate-900 leading-tight">Select Role</h3>
+              <p className="text-[11px] text-slate-500 leading-tight">Tap your operational team to sign in</p>
             </div>
-            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-600 border border-slate-200">
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-600 border border-slate-200">
               Step 1 of 2
             </span>
           </div>
 
-          <div className="grid grid-cols-1 gap-2">
+          <div className="grid grid-cols-1 gap-1.5">
             {ROLES.map((rc) => {
               const Icon = rc.icon
               return (
@@ -526,7 +526,7 @@ export default function LoginForm() {
                   type="button"
                   onClick={() => handleSelectRole(rc.role)}
                   className={cn(
-                    'w-full flex items-center justify-between p-3 rounded-xl border bg-white text-left transition-all duration-150 shadow-2xs group active:scale-[0.99]',
+                    'w-full flex items-center justify-between p-2 sm:p-2.5 rounded-xl border bg-white text-left transition-all duration-150 shadow-2xs group active:scale-[0.99]',
                     rc.colorClasses.border,
                     rc.colorClasses.bg,
                     rc.colorClasses.hoverBorder
@@ -535,33 +535,33 @@ export default function LoginForm() {
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div
                       className={cn(
-                        'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition',
+                        'flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg transition',
                         rc.colorClasses.iconBg,
                         rc.colorClasses.iconColor
                       )}
                     >
-                      <Icon className="h-4 w-4" />
+                      <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     </div>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition truncate">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition truncate">
                           {rc.title}
                         </span>
                         <span
                           className={cn(
-                            'text-[10px] font-bold px-1.5 py-0.5 rounded-full border shrink-0',
+                            'text-[9px] font-bold px-1.5 py-0.2 rounded-full border shrink-0',
                             rc.colorClasses.badge
                           )}
                         >
                           {rc.badgeText}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 truncate">
+                      <p className="text-[10px] sm:text-[11px] text-slate-500 truncate leading-tight">
                         {rc.description}
                       </p>
                     </div>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition shrink-0 ml-2" />
+                  <ChevronRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition shrink-0 ml-1.5" />
                 </button>
               )
             })}
@@ -571,8 +571,8 @@ export default function LoginForm() {
 
       {/* ── STEP 2: USER PROFILE SELECTION ───────────────────────────── */}
       {pinStep === 'user' && selectedRole && (
-        <div className="space-y-3 animate-in fade-in duration-200">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+        <div className="space-y-2 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
             <button
               type="button"
               onClick={() => {
@@ -582,31 +582,31 @@ export default function LoginForm() {
               }}
               className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-indigo-600 transition"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-3.5 w-3.5" />
               <span>Change Role</span>
             </button>
-            <span className="rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 px-2.5 py-0.5 text-xs font-bold">
+            <span className="rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 text-[11px] font-bold">
               {selectedRole}
             </span>
           </div>
 
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Select Profile</h3>
-            <p className="text-xs text-slate-500">Select your name to enter your 4-digit security PIN</p>
+            <h3 className="text-xs sm:text-sm font-bold text-slate-900 leading-tight">Select Profile</h3>
+            <p className="text-[11px] text-slate-500 leading-tight">Select your name to enter your 4-digit security PIN</p>
           </div>
 
           {usersLoading ? (
-            <div className="py-6 flex flex-col items-center justify-center gap-2 text-slate-400">
-              <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+            <div className="py-4 flex flex-col items-center justify-center gap-1.5 text-slate-400">
+              <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
               <p className="text-xs font-semibold text-slate-600">Loading {selectedRole} roster…</p>
             </div>
           ) : users.length === 0 ? (
-            <div className="p-5 text-center rounded-xl border border-slate-200 bg-slate-50 space-y-1.5">
+            <div className="p-4 text-center rounded-xl border border-slate-200 bg-slate-50 space-y-1">
               <p className="text-xs font-bold text-slate-700">No active profiles found</p>
-              <p className="text-[11px] text-slate-500">Please contact an administrator or switch role.</p>
+              <p className="text-[10px] text-slate-500">Please contact an administrator or switch role.</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-1.5">
               {users.map((u) => {
                 const info = getProfileDisplayInfo(u.full_name)
                 return (
@@ -615,15 +615,15 @@ export default function LoginForm() {
                     type="button"
                     onClick={() => handleSelectUser(u)}
                     className={cn(
-                      'w-full flex items-center justify-between p-3 rounded-xl border bg-white text-left transition-all duration-150 shadow-2xs group active:scale-[0.99]',
+                      'w-full flex items-center justify-between p-2 sm:p-2.5 rounded-xl border bg-white text-left transition-all duration-150 shadow-2xs group active:scale-[0.99]',
                       info.cardBorder
                     )}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       {/* Avatar with clear branch code */}
                       <div
                         className={cn(
-                          'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs tracking-wider transition shadow-2xs',
+                          'flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg text-[11px] tracking-wider transition shadow-2xs font-extrabold',
                           info.avatarClasses
                         )}
                       >
@@ -631,27 +631,27 @@ export default function LoginForm() {
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition leading-tight">
                             {info.displayName}
                           </span>
                           <span
                             className={cn(
-                              'text-[10px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 shadow-2xs',
+                              'text-[9px] font-bold px-1.5 py-0.2 rounded-full border inline-flex items-center gap-0.5 shadow-2xs',
                               info.badgeClasses
                             )}
                           >
-                            <MapPin className="h-2.5 w-2.5" />
+                            <MapPin className="h-2 w-2" />
                             {info.badgeText}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                        <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium leading-tight mt-0.5">
                           {info.branchLabel} • <span className="text-indigo-600 group-hover:underline">Tap to enter PIN</span>
                         </p>
                       </div>
                     </div>
 
-                    <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition shrink-0 ml-2" />
+                    <ChevronRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition shrink-0 ml-1.5" />
                   </button>
                 )
               })}
@@ -664,9 +664,9 @@ export default function LoginForm() {
       {pinStep === 'pin' && selectedUser && (() => {
         const selectedInfo = getProfileDisplayInfo(selectedUser.full_name)
         return (
-          <div className="space-y-3 animate-in fade-in duration-200">
+          <div className="space-y-2 animate-in fade-in duration-200">
             {/* Back to user list */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
               <button
                 type="button"
                 onClick={() => {
@@ -676,14 +676,14 @@ export default function LoginForm() {
                 }}
                 className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-indigo-600 transition"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-3.5 w-3.5" />
                 <span>Back to Profiles</span>
               </button>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <span
                   className={cn(
-                    'px-2 py-0.5 rounded-md text-[10px] font-extrabold border shadow-2xs',
+                    'px-1.5 py-0.5 rounded text-[9px] font-extrabold border shadow-2xs',
                     selectedInfo.avatarClasses
                   )}
                 >
@@ -693,7 +693,7 @@ export default function LoginForm() {
                   <span className="text-xs font-bold text-slate-900 block leading-tight">
                     {selectedInfo.displayName}
                   </span>
-                  <span className="text-[10px] font-semibold text-slate-500 block leading-tight">
+                  <span className="text-[9px] font-semibold text-slate-500 block leading-tight">
                     {selectedInfo.badgeText}
                   </span>
                 </div>
@@ -701,14 +701,14 @@ export default function LoginForm() {
             </div>
 
           {/* Security Header & 4 Dot Indicators */}
-          <div className="text-center space-y-2">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+          <div className="text-center space-y-1.5">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
               Enter 4-Digit Security PIN
             </p>
 
             <div
               className={cn(
-                'flex items-center justify-center gap-3.5 py-1 transition-transform',
+                'flex items-center justify-center gap-3 py-0.5 transition-transform',
                 isShaking && 'animate-pin-shake'
               )}
             >
@@ -718,7 +718,7 @@ export default function LoginForm() {
                   <div
                     key={idx}
                     className={cn(
-                      'h-4 w-4 rounded-full border-2 transition-all duration-150',
+                      'h-3.5 w-3.5 rounded-full border-2 transition-all duration-150',
                       isShaking
                         ? 'border-rose-500 bg-rose-500 scale-110 shadow-sm'
                         : isFilled
@@ -731,22 +731,22 @@ export default function LoginForm() {
             </div>
 
             {verifying && (
-              <div className="flex items-center justify-center gap-1.5 text-xs text-indigo-600 font-semibold animate-pulse">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <div className="flex items-center justify-center gap-1.5 text-[11px] text-indigo-600 font-semibold animate-pulse">
+                <Loader2 className="h-3 w-3 animate-spin" />
                 <span>Verifying security credentials…</span>
               </div>
             )}
           </div>
 
           {/* 3×4 Touch-Friendly PIN Numpad */}
-          <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto">
+          <div className="grid grid-cols-3 gap-1.5 max-w-[280px] mx-auto">
             {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
               <button
                 key={digit}
                 type="button"
                 onClick={() => handleDigitClick(digit)}
                 disabled={verifying}
-                className="h-12 rounded-2xl border border-slate-200 bg-slate-50/80 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-600 active:scale-95 text-xl font-bold text-slate-800 transition shadow-2xs flex items-center justify-center select-none disabled:opacity-50"
+                className="h-10 sm:h-11 rounded-xl border border-slate-200 bg-slate-50/80 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-600 active:scale-95 text-lg font-bold text-slate-800 transition shadow-2xs flex items-center justify-center select-none disabled:opacity-50"
               >
                 {digit}
               </button>
@@ -757,10 +757,10 @@ export default function LoginForm() {
               type="button"
               onClick={handleClear}
               disabled={verifying || pin.length === 0}
-              className="h-12 rounded-2xl border border-slate-200 bg-slate-100 hover:bg-slate-200 active:scale-95 text-xs font-bold text-slate-600 transition shadow-2xs flex items-center justify-center gap-1 select-none disabled:opacity-40"
+              className="h-10 sm:h-11 rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 active:scale-95 text-[11px] font-bold text-slate-600 transition shadow-2xs flex items-center justify-center gap-1 select-none disabled:opacity-40"
               title="Clear PIN"
             >
-              <RotateCcw className="h-4 w-4" />
+              <RotateCcw className="h-3.5 w-3.5" />
               <span>Clear</span>
             </button>
 
@@ -769,7 +769,7 @@ export default function LoginForm() {
               type="button"
               onClick={() => handleDigitClick('0')}
               disabled={verifying}
-              className="h-12 rounded-2xl border border-slate-200 bg-slate-50/80 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-600 active:scale-95 text-xl font-bold text-slate-800 transition shadow-2xs flex items-center justify-center select-none disabled:opacity-50"
+              className="h-10 sm:h-11 rounded-xl border border-slate-200 bg-slate-50/80 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-600 active:scale-95 text-lg font-bold text-slate-800 transition shadow-2xs flex items-center justify-center select-none disabled:opacity-50"
             >
               0
             </button>
@@ -779,15 +779,15 @@ export default function LoginForm() {
               type="button"
               onClick={handleBackspace}
               disabled={verifying || pin.length === 0}
-              className="h-12 rounded-2xl border border-slate-200 bg-slate-100 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 active:scale-95 text-slate-600 transition shadow-2xs flex items-center justify-center select-none disabled:opacity-40"
+              className="h-10 sm:h-11 rounded-xl border border-slate-200 bg-slate-100 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 active:scale-95 text-slate-600 transition shadow-2xs flex items-center justify-center select-none disabled:opacity-40"
               title="Delete Digit"
             >
-              <Delete className="h-5 w-5" />
+              <Delete className="h-4 w-4" />
             </button>
           </div>
 
-          <p className="text-[11px] text-center text-slate-400">
-            Use keyboard number keys (0–9) or tap the numpad above.
+          <p className="text-[10px] text-center text-slate-400">
+            Keyboard number keys (0–9) or tap numpad above.
           </p>
         </div>
         )

@@ -151,12 +151,12 @@ export default function DashboardShell({ children }: { children: React.ReactNode
       {/* ── Main Workspace Area ─────────────────────────────────────────── */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         {/* Top Header Bar */}
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-3 sm:px-5 shadow-xs">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-2 sm:px-4 lg:px-5 shadow-xs whitespace-nowrap overflow-hidden">
           {/* Left: Sidebar toggle + Breadcrumbs */}
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink">
             <button
               type="button"
-              className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition active:scale-95"
+              className="rounded-lg p-1.5 sm:p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition active:scale-95 shrink-0"
               onClick={toggleSidebar}
               title={desktopSidebarOpen ? 'Collapse Navigation' : 'Expand Navigation'}
               aria-label="Toggle navigation menu"
@@ -169,31 +169,31 @@ export default function DashboardShell({ children }: { children: React.ReactNode
             </button>
 
             {/* Breadcrumb / Title */}
-            <nav className="flex items-center gap-1.5 text-xs min-w-0">
-              <span className="hidden md:inline font-medium text-slate-400">JAPA Core ERP</span>
-              <ChevronRight className="hidden md:inline h-3 w-3 text-slate-300 shrink-0" />
-              <span className="font-bold text-slate-800 text-xs sm:text-sm truncate max-w-[160px] sm:max-w-none">
+            <nav className="flex items-center gap-1.5 text-xs min-w-0 truncate">
+              <span className="hidden xl:inline font-medium text-slate-400">JAPA Core ERP</span>
+              <ChevronRight className="hidden xl:inline h-3 w-3 text-slate-300 shrink-0" />
+              <span className="font-bold text-slate-800 text-xs sm:text-sm truncate max-w-[140px] sm:max-w-[200px] xl:max-w-none">
                 {pageTitle}
               </span>
             </nav>
           </div>
 
           {/* Right: Cashier shortcut + branch selector + fullscreen + notifications */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 xl:gap-2 shrink-0">
             {/* Direct Cashier / POS Launcher (Only for authorized POS users) */}
             {canAccessPos && (
               <Link
                 href="/pos"
                 className={cn(
-                  'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition active:scale-95 shadow-2xs',
+                  'flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-bold transition active:scale-95 shadow-2xs',
                   pathname === '/pos'
                     ? 'border-indigo-600 bg-indigo-600 text-white'
                     : 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:border-rose-300'
                 )}
                 title="Launch Cashier / POS Terminal"
               >
-                <Receipt className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">
+                <Receipt className="h-3.5 w-3.5 shrink-0" />
+                <span className="hidden xl:inline">
                   {pathname === '/pos' ? 'POS Terminal' : 'Cashier POS'}
                 </span>
               </Link>
@@ -201,7 +201,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
 
             {/* Branch / Store Selector — Scoped & Multi-Branch Ready */}
             <div className={cn(
-              "flex items-center gap-1 sm:gap-1.5 rounded-lg border px-2 sm:px-2.5 py-1.5 shadow-2xs transition",
+              "flex items-center gap-1 rounded-lg border px-1.5 xl:px-2.5 py-1.5 shadow-2xs transition",
               impersonatedBranchId
                 ? "border-amber-300 bg-amber-50 text-amber-900"
                 : isBranchLocked
@@ -212,16 +212,19 @@ export default function DashboardShell({ children }: { children: React.ReactNode
                 "h-3.5 w-3.5 shrink-0",
                 impersonatedBranchId ? "text-amber-600 animate-pulse" : "text-indigo-600"
               )} />
+              {/* Tablet: show only shortCode badge pill; Desktop: full select dropdown */}
               <select
                 value={activeBranchId}
                 onChange={(e) => setActiveBranchId(e.target.value)}
                 disabled={isBranchLocked}
-                className="bg-transparent text-xs font-semibold outline-none cursor-pointer max-w-[110px] sm:max-w-[170px] md:max-w-none truncate disabled:cursor-not-allowed"
+                className="bg-transparent text-xs font-semibold outline-none cursor-pointer max-w-[62px] xl:max-w-[160px] 2xl:max-w-none truncate disabled:cursor-not-allowed"
                 title={isBranchLocked ? `Branch locked to ${activeBranch.name}` : 'Switch Branch View'}
               >
                 {availableBranches.map((b) => (
                   <option key={b.id} value={b.id} className="bg-white text-slate-900">
-                    {b.shortCode !== 'ALL' ? `${b.shortCode} — ${b.name.split('(')[0].trim()}` : b.name}
+                    {b.shortCode !== 'ALL'
+                      ? `${b.shortCode} — ${b.name.split('(')[0].trim()}`
+                      : b.name}
                   </option>
                 ))}
               </select>
@@ -232,7 +235,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
                   className="ml-1 text-[10px] bg-amber-200 text-amber-900 px-1 rounded font-bold hover:bg-amber-300 transition"
                   title="Exit View As Branch mode"
                 >
-                  ✕ Exit
+                  ✕
                 </button>
               )}
             </div>
@@ -242,7 +245,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
               type="button"
               onClick={openModeModal}
               className={cn(
-                'flex items-center gap-1.5 rounded-lg border px-2 sm:px-2.5 py-1.5 text-xs font-bold transition active:scale-95 shadow-2xs',
+                'flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-bold transition active:scale-95 shadow-2xs',
                 deviceMode === 'pos'
                   ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
                   : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900'
@@ -252,12 +255,12 @@ export default function DashboardShell({ children }: { children: React.ReactNode
               {deviceMode === 'pos' ? (
                 <>
                   <Tablet className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                  <span className="hidden sm:inline">POS Touch</span>
+                  <span className="hidden xl:inline">POS Touch</span>
                 </>
               ) : (
                 <>
                   <Monitor className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                  <span className="hidden sm:inline">Desktop</span>
+                  <span className="hidden xl:inline">Desktop</span>
                 </>
               )}
             </button>
@@ -271,7 +274,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
                 type="button"
                 onClick={() => setNotificationsOpen((prev) => !prev)}
                 className={cn(
-                  'relative rounded-lg p-1.5 sm:p-2 transition active:scale-95',
+                  'relative rounded-lg p-1.5 transition active:scale-95',
                   notificationsOpen
                     ? 'bg-indigo-50 text-indigo-700'
                     : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
@@ -405,21 +408,31 @@ export default function DashboardShell({ children }: { children: React.ReactNode
               )}
             </div>
 
-            {/* Active User Badge (Visible on sm+ screens) */}
+            {/* Active User Badge */}
             {authUser && (
-              <div className="hidden sm:flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1 shadow-2xs">
-                <div className="flex h-6 w-6 items-center justify-center rounded-md bg-indigo-600 text-xs font-bold text-white shadow-2xs">
+              <>
+                {/* Compact icon-only avatar — tablet widths (sm → xl) */}
+                <div
+                  className="flex xl:hidden items-center justify-center h-7 w-7 rounded-lg bg-indigo-600 text-xs font-bold text-white shadow-2xs shrink-0 cursor-default"
+                  title={`${authUser.full_name} (${userRole})`}
+                >
                   {authUser.full_name?.charAt(0).toUpperCase() || 'U'}
                 </div>
-                <div className="text-left">
-                  <p className="text-xs font-bold text-slate-800 leading-tight truncate max-w-[110px] lg:max-w-[140px]">
-                    {authUser.full_name}
-                  </p>
-                  <p className="text-[10px] text-slate-500 font-medium leading-none">
-                    {authUser.role}
-                  </p>
+                {/* Full badge — desktop widths (xl+) */}
+                <div className="hidden xl:flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1 shadow-2xs">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-md bg-indigo-600 text-xs font-bold text-white shadow-2xs">
+                    {authUser.full_name?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs font-bold text-slate-800 leading-tight truncate max-w-[140px]">
+                      {authUser.full_name}
+                    </p>
+                    <p className="text-[10px] text-slate-500 font-medium leading-none">
+                      {userRole}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              </>
             )}
 
             {/* Direct Header Sign Out (Accessible on all devices & when sidebar is collapsed) */}
@@ -427,7 +440,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
               type="button"
               onClick={handleHeaderSignOut}
               disabled={headerSignOutLoading}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 sm:px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition active:scale-95 shadow-2xs disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 xl:px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition active:scale-95 shadow-2xs disabled:opacity-50"
               title="Sign Out of JAPA Core ERP"
               aria-label="Sign Out"
             >
@@ -436,7 +449,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
               ) : (
                 <LogOut className="h-3.5 w-3.5 text-slate-500" />
               )}
-              <span className="hidden md:inline">Sign Out</span>
+              <span className="hidden xl:inline">Sign Out</span>
             </button>
           </div>
         </header>

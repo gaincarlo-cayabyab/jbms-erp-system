@@ -120,14 +120,14 @@ export default function LoginPage() {
           <div className="absolute bottom-1/4 left-1/4 w-72 h-72 bg-emerald-100/40 rounded-full blur-3xl pointer-events-none" />
 
           {/* Centered container — fits in viewport, card scrolls internally if needed */}
-          <div className="flex-1 flex flex-col items-center justify-center px-3 py-2 sm:px-5 sm:py-3 overflow-hidden">
+          <div className="flex-1 flex flex-col items-center justify-center px-3 py-2 sm:px-5 sm:py-4 overflow-hidden">
 
             {/* Main white card — compact header + scrollable body */}
-            <div className="w-full max-w-sm sm:max-w-md bg-white border border-slate-200/90 rounded-2xl shadow-sm relative z-10 flex flex-col" style={{ maxHeight: 'calc(100vh - 3rem)' }}>
+            <div className="w-full max-w-sm sm:max-w-md bg-white border border-slate-200/90 rounded-2xl shadow-sm relative z-10 flex flex-col max-h-[92vh]">
 
               {/* Card Header — compact single row */}
-              <div className="flex items-center gap-3 px-4 pt-3 pb-2.5 border-b border-slate-100 shrink-0">
-                <div className="relative w-8 h-8 rounded-xl overflow-hidden bg-white shadow-sm border border-slate-200 p-0.5 shrink-0">
+              <div className="flex items-center gap-2.5 px-3.5 sm:px-4 py-2 border-b border-slate-100 shrink-0">
+                <div className="relative w-7 h-7 sm:w-8 sm:h-8 rounded-xl overflow-hidden bg-white shadow-sm border border-slate-200 p-0.5 shrink-0">
                   <Image
                     src="/assets/images/JAPA_logo.jpg"
                     alt="JAPA Global Logo"
@@ -139,10 +139,10 @@ export default function LoginPage() {
                   />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-sm font-black tracking-tight text-slate-900 leading-tight">
+                  <h2 className="text-xs sm:text-sm font-black tracking-tight text-slate-900 leading-tight">
                     JAPA Global
                   </h2>
-                  <p className="text-[10px] font-semibold text-slate-500 leading-tight">
+                  <p className="text-[9px] sm:text-[10px] font-semibold text-slate-500 leading-tight">
                     Enterprise Operations
                   </p>
                 </div>
@@ -153,8 +153,8 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Form Body — scrolls internally if content is taller than remaining space */}
-              <div className="px-4 py-3 overflow-y-auto flex-1">
+              {/* Form Body — zero scroll, snug fit */}
+              <div className="px-3.5 sm:px-4 py-2.5 overflow-y-auto flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <LoginForm />
               </div>
             </div>

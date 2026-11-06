@@ -80,7 +80,7 @@ export function FullscreenToggle({ className }: { className?: string }) {
       type="button"
       onClick={toggle}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white/90 px-2.5 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-100 transition active:scale-95',
+        'inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white/90 px-2 py-1.5 xl:px-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-100 transition active:scale-95',
         className
       )}
       title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen (Kiosk Mode)'}
@@ -88,13 +88,13 @@ export function FullscreenToggle({ className }: { className?: string }) {
     >
       {isFullscreen ? (
         <>
-          <Minimize2 className="h-3.5 w-3.5 text-slate-700" />
-          <span className="hidden sm:inline">Exit Fullscreen</span>
+          <Minimize2 className="h-3.5 w-3.5 text-slate-700 shrink-0" />
+          <span className="hidden 2xl:inline">Exit Fullscreen</span>
         </>
       ) : (
         <>
-          <Maximize2 className="h-3.5 w-3.5 text-slate-700" />
-          <span className="hidden sm:inline">Fullscreen</span>
+          <Maximize2 className="h-3.5 w-3.5 text-slate-700 shrink-0" />
+          <span className="hidden 2xl:inline">Fullscreen</span>
         </>
       )}
     </button>
