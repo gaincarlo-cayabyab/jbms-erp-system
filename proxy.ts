@@ -114,7 +114,7 @@ export async function proxy(request: NextRequest) {
       }
 
       // Default admin account override
-      if (user?.email === 'admin@japacore.com') {
+      if (user?.email === 'admin@japacore.com' || user?.email === 'admin@japa.com') {
         activeRole = 'Admin'
       }
 

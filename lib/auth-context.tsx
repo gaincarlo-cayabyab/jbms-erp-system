@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (sbUser) {
           let role = (sbUser.user_metadata?.role as string) || 'Admin'
-          if (sbUser.email === 'admin@japacore.com') role = 'Admin'
+          if (sbUser.email === 'admin@japacore.com' || sbUser.email === 'admin@japa.com') role = 'Admin'
 
           const fallbackSession: AppUserSession = {
             id: sbUser.id,
@@ -113,3 +113,4 @@ export function useAuth() {
   }
   return context
 }
+
