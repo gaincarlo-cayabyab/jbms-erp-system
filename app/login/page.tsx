@@ -2,7 +2,8 @@ import { Suspense } from "react";
 import Image from "next/image";
 import type { Metadata } from "next";
 import LoginForm from "@/components/auth/login-form";
-import { Store, ShieldCheck, CheckCircle2 } from "lucide-react";
+import Crafting3DShowcase from "@/components/auth/crafting-3d-showcase";
+import { Store, ShieldCheck } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Authentication | JAPA Global — Enterprise Operations",
@@ -71,37 +72,8 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Central Hero */}
-          <div className="z-10 max-w-lg space-y-5 my-auto py-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-indigo-100 text-xs font-semibold">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Multi-Branch POS &amp; Production Terminal</span>
-            </div>
-
-            <h1 className="text-3xl xl:text-4xl font-extrabold leading-tight tracking-tight">
-              Unified Point of Sale &amp; Operational ERP
-            </h1>
-
-            <p className="text-indigo-100/90 text-sm xl:text-base leading-relaxed">
-              Fast, touch-optimized multi-user authentication designed for retail cashiers,
-              warehouse inventory auditors, and 7-stage custom apparel line operators.
-            </p>
-
-            <div className="space-y-3 pt-1">
-              {[
-                'Quick 4-Digit Role & PIN POS Cashier sign-in',
-                'Multi-Store Inventory & Real-Time Stock Auditing',
-                'Live 7-Stage Apparel & Sublimation Production Queue',
-              ].map((feat) => (
-                <div key={feat} className="flex items-center gap-3 text-sm text-indigo-100">
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300">
-                    <CheckCircle2 className="h-4 w-4" />
-                  </div>
-                  <span>{feat}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* 3D Crafting Manufacturing Animation Showcase */}
+          <Crafting3DShowcase />
 
           {/* Bottom Footer */}
           <div className="z-10 flex items-center justify-between text-xs text-indigo-200/80 border-t border-white/10 pt-4">
