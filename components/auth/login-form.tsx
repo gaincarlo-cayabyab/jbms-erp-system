@@ -293,27 +293,39 @@ export default function LoginForm() {
 
   const [mounted, setMounted] = useState(false)
 
-  // Clean up fallback timer on unmount
+  // Prefetch main ERP destinations on mount for instantaneous transitions
   useEffect(() => {
     setMounted(true)
+    try {
+      router.prefetch('/dashboard')
+      router.prefetch('/pos')
+      router.prefetch('/production')
+      router.prefetch('/inventory')
+    } catch {}
     return () => {
       if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
     }
-  }, [])
+  }, [router])
 
   const handleVideoComplete = useCallback(() => {
     if (redirectedRef.current) return
     redirectedRef.current = true
     if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
     router.push(targetDestination)
-    router.refresh()
   }, [router, targetDestination])
 
   const handleVideoPlay = useCallback(() => {
     if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
     fallbackTimerRef.current = setTimeout(() => {
       handleVideoComplete()
-    }, 10500)
+    }, 10200)
+  }, [handleVideoComplete])
+
+  const handleTimeUpdate = useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const video = e.currentTarget
+    if (video.duration && video.currentTime >= video.duration - 0.35) {
+      handleVideoComplete()
+    }
   }, [handleVideoComplete])
 
   // Fetch users for a chosen role via Supabase RPC
@@ -476,11 +488,14 @@ export default function LoginForm() {
             : '/dashboard'
         setTargetDestination(dest)
 
+        try {
+          router.prefetch(dest)
+        } catch {}
+
         if (!document.fullscreenElement) {
           document.documentElement.requestFullscreen?.().catch(() => {})
         }
 
-        toast.success(`Welcome, ${userToVerify.full_name} (${userToVerify.role})!`)
         setShowVideoOverlay(true)
       } else {
         triggerShake()
@@ -985,6 +1000,7 @@ export default function LoginForm() {
             playsInline
             preload="auto"
             onPlay={handleVideoPlay}
+            onTimeUpdate={handleTimeUpdate}
             onEnded={handleVideoComplete}
             onError={handleVideoComplete}
             style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
@@ -993,6 +1009,14 @@ export default function LoginForm() {
             <source src="/assets/video/loading.mp4" type="video/mp4" />
             <source src="/assets/video/transaction_loading.mp4" type="video/mp4" />
           </video>
+
+          {/* Bottom-right Security Footer Badge (as shown in original design) */}
+          <div className="absolute bottom-4 right-6 sm:bottom-6 sm:right-8 z-30 pointer-events-none">
+            <p className="text-[10px] sm:text-[11px] text-slate-500 font-semibold inline-flex items-center gap-1.5 bg-white/90 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-slate-200/90 shadow-2xs">
+              <ShieldCheck className="h-3.5 w-3.5 text-indigo-600" />
+              <span>Encrypted Session &bull; Enterprise Role-Based Access Control</span>
+            </p>
+          </div>
         </div>,
         document.body
       )}
