@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -290,8 +291,11 @@ export default function LoginForm() {
   const redirectedRef = useRef(false)
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const [mounted, setMounted] = useState(false)
+
   // Clean up fallback timer on unmount
   useEffect(() => {
+    setMounted(true)
     return () => {
       if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
     }
@@ -476,6 +480,7 @@ export default function LoginForm() {
           document.documentElement.requestFullscreen?.().catch(() => {})
         }
 
+        toast.success(`Welcome, ${userToVerify.full_name} (${userToVerify.role})!`)
         setShowVideoOverlay(true)
       } else {
         triggerShake()
@@ -957,11 +962,22 @@ export default function LoginForm() {
         <source src="/assets/video/loading.mp4" type="video/mp4" />
       </video>
 
-      {/* ── Fullscreen Light Video Loading Overlay (original style) ──── */}
-      {showVideoOverlay && (
+      {/* ── Fullscreen Light Video Loading Overlay (Portaled to document.body) ──── */}
+      {mounted && showVideoOverlay && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 z-[9999] overflow-hidden animate-in fade-in duration-300"
-          style={{ background: '#F0F0F0' }}
+          id="fullscreen-login-video-overlay"
+          className="fixed inset-0 z-[999999] overflow-hidden animate-in fade-in duration-300"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
+            background: '#F0F0F0',
+            zIndex: 999999,
+          }}
         >
           <video
             autoPlay
@@ -977,7 +993,8 @@ export default function LoginForm() {
             <source src="/assets/video/loading.mp4" type="video/mp4" />
             <source src="/assets/video/transaction_loading.mp4" type="video/mp4" />
           </video>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
