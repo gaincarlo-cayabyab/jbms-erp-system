@@ -18,7 +18,6 @@ import {
   AlertCircle,
   KeyRound,
   MapPin,
-  CheckCircle2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -288,6 +287,7 @@ export default function LoginForm() {
   // Fullscreen video loading overlay
   const [showVideoOverlay, setShowVideoOverlay] = useState(false)
   const [targetDestination, setTargetDestination] = useState<string>('/')
+  const targetDestinationRef = useRef<string>('/')
   const redirectedRef = useRef(false)
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -297,7 +297,7 @@ export default function LoginForm() {
   useEffect(() => {
     setMounted(true)
     try {
-      router.prefetch('/dashboard')
+      router.prefetch('/')
       router.prefetch('/pos')
       router.prefetch('/production')
       router.prefetch('/inventory')
@@ -311,8 +311,12 @@ export default function LoginForm() {
     if (redirectedRef.current) return
     redirectedRef.current = true
     if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
-    router.push(targetDestination)
-  }, [router, targetDestination])
+    const dest = targetDestinationRef.current || targetDestination || '/'
+    // Instantly hide overlay to prevent any frozen frame
+    setShowVideoOverlay(false)
+    // Real navigation guarantees complete unmount of overlay and instant handoff
+    window.location.replace(dest)
+  }, [targetDestination])
 
   const handleVideoPlay = useCallback(() => {
     if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
@@ -323,7 +327,7 @@ export default function LoginForm() {
 
   const handleTimeUpdate = useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
     const video = e.currentTarget
-    if (video.duration && video.currentTime >= video.duration - 0.35) {
+    if (video.duration && video.currentTime >= video.duration - 0.25) {
       handleVideoComplete()
     }
   }, [handleVideoComplete])
@@ -404,38 +408,14 @@ export default function LoginForm() {
 
       const result = data?.[0]
       if (result && result.success) {
-        // Enhanced Middle-Top Welcome Notification
-        toast.custom(
-          () => (
-            <div className="flex items-center gap-3.5 bg-white/95 backdrop-blur-md border border-emerald-300/80 px-4 py-3 rounded-2xl shadow-2xl shadow-emerald-500/15 min-w-[320px] sm:min-w-[420px] animate-in fade-in slide-in-from-top-3 duration-300">
-              <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/25">
-                <CheckCircle2 className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 ring-2 ring-white"></span>
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-extrabold text-slate-900 truncate">
-                    Welcome back, {userToVerify.full_name}!
-                  </h4>
-                  <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
-                    Verified
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 font-medium mt-0.5 flex items-center gap-1.5">
-                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                  <span className="truncate">Enterprise Workspace Session Activated • {userToVerify.role}</span>
-                </p>
-              </div>
-            </div>
-          ),
-          {
-            duration: 4500,
-            position: 'top-center',
-          }
-        )
+        // Single clean bottom-right notification toast (original look)
+        const roleSuffix = userToVerify.full_name.includes(`(${userToVerify.role})`)
+          ? ''
+          : ` (${userToVerify.role})`
+        toast.success(`Welcome, ${userToVerify.full_name}${roleSuffix}!`, {
+          duration: 4500,
+          position: 'bottom-right',
+        })
 
         // Lookup branch_id from app_users or fallback from name
         let branchId: string | undefined = undefined
@@ -485,7 +465,8 @@ export default function LoginForm() {
             ? '/inventory'
             : redirectTo && redirectTo !== '/' && redirectTo !== '/login'
             ? redirectTo
-            : '/dashboard'
+            : '/'
+        targetDestinationRef.current = dest
         setTargetDestination(dest)
 
         try {
@@ -981,7 +962,8 @@ export default function LoginForm() {
       {mounted && showVideoOverlay && typeof document !== 'undefined' && createPortal(
         <div
           id="fullscreen-login-video-overlay"
-          className="fixed inset-0 z-[999999] overflow-hidden animate-in fade-in duration-300"
+          onClick={handleVideoComplete}
+          className="fixed inset-0 z-[999999] overflow-hidden animate-in fade-in duration-300 cursor-pointer"
           style={{
             position: 'fixed',
             top: 0,
@@ -993,6 +975,7 @@ export default function LoginForm() {
             background: '#F0F0F0',
             zIndex: 999999,
           }}
+          title="Tap anywhere to skip to workspace"
         >
           <video
             autoPlay
@@ -1010,8 +993,23 @@ export default function LoginForm() {
             <source src="/assets/video/transaction_loading.mp4" type="video/mp4" />
           </video>
 
-          {/* Bottom-right Security Footer Badge (as shown in original design) */}
-          <div className="absolute bottom-4 right-6 sm:bottom-6 sm:right-8 z-30 pointer-events-none">
+          {/* Bottom-left Skip pill so user is never stuck */}
+          <div className="absolute bottom-4 left-6 sm:bottom-6 sm:left-8 z-30">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleVideoComplete()
+              }}
+              className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-slate-500 hover:text-slate-900 bg-white/80 hover:bg-white px-3.5 py-1.5 rounded-full border border-slate-200/90 shadow-2xs backdrop-blur-md transition-all active:scale-95 cursor-pointer"
+            >
+              <span>Skip to Workspace</span>
+              <span>&rarr;</span>
+            </button>
+          </div>
+
+          {/* Bottom-right Security Footer Badge (positioned cleanly above bottom-right toast) */}
+          <div className="absolute bottom-20 right-6 sm:bottom-20 sm:right-8 z-30 pointer-events-none">
             <p className="text-[10px] sm:text-[11px] text-slate-500 font-semibold inline-flex items-center gap-1.5 bg-white/90 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-slate-200/90 shadow-2xs">
               <ShieldCheck className="h-3.5 w-3.5 text-indigo-600" />
               <span>Encrypted Session &bull; Enterprise Role-Based Access Control</span>
