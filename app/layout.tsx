@@ -68,9 +68,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </DeviceProvider>
           </BranchProvider>
         </AuthProvider>
-        {/* Global Sonner toast notifications — bottom-right */}
+        {/* Global Sonner toast notifications — top-center */}
         <Toaster
-          position="bottom-right"
+          position="top-center"
           richColors
           closeButton
           toastOptions={{

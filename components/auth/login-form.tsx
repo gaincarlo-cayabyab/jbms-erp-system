@@ -18,6 +18,7 @@ import {
   AlertCircle,
   KeyRound,
   MapPin,
+  CheckCircle2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -301,7 +302,7 @@ export default function LoginForm() {
       router.prefetch('/pos')
       router.prefetch('/production')
       router.prefetch('/inventory')
-    } catch {}
+    } catch { }
     return () => {
       if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
     }
@@ -408,14 +409,38 @@ export default function LoginForm() {
 
       const result = data?.[0]
       if (result && result.success) {
-        // Single clean bottom-right notification toast (original look)
-        const roleSuffix = userToVerify.full_name.includes(`(${userToVerify.role})`)
-          ? ''
-          : ` (${userToVerify.role})`
-        toast.success(`Welcome, ${userToVerify.full_name}${roleSuffix}!`, {
-          duration: 4500,
-          position: 'bottom-right',
-        })
+        // Enhanced Middle-Top Welcome Notification Card (Single verified toast)
+        toast.custom(
+          () => (
+            <div className="flex items-center gap-3.5 bg-white/95 backdrop-blur-md border border-emerald-300/80 px-4 py-3 rounded-2xl shadow-2xl shadow-emerald-500/15 min-w-[320px] sm:min-w-[420px] animate-in fade-in slide-in-from-top-3 duration-300">
+              <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/25">
+                <CheckCircle2 className="h-5 w-5" />
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 ring-2 ring-white"></span>
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-extrabold text-slate-900 truncate">
+                    Welcome back, {userToVerify.full_name}!
+                  </h4>
+                  <span className="text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
+                    Verified
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 font-medium mt-0.5 flex items-center gap-1.5">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                  <span className="truncate">Enterprise Workspace Session Activated • {userToVerify.role}</span>
+                </p>
+              </div>
+            </div>
+          ),
+          {
+            duration: 4500,
+            position: 'top-center',
+          }
+        )
 
         // Lookup branch_id from app_users or fallback from name
         let branchId: string | undefined = undefined
@@ -426,7 +451,7 @@ export default function LoginForm() {
             .eq('id', userToVerify.id)
             .maybeSingle()
           branchId = userRec?.branch_id || undefined
-        } catch {}
+        } catch { }
 
         if (!branchId) {
           if (userToVerify.full_name.includes('Manila') || userToVerify.full_name.includes('(MNL)')) {
@@ -454,27 +479,27 @@ export default function LoginForm() {
             const defaultMode = userToVerify.role === 'Cashier' ? 'pos' : 'desktop'
             localStorage.setItem('erp_device_mode', defaultMode)
           }
-        } catch {}
+        } catch { }
 
         const dest =
           userToVerify.role === 'Cashier'
             ? '/pos'
             : userToVerify.role === 'Staff'
-            ? '/production'
-            : userToVerify.role === 'Inventory'
-            ? '/inventory'
-            : redirectTo && redirectTo !== '/' && redirectTo !== '/login'
-            ? redirectTo
-            : '/'
+              ? '/production'
+              : userToVerify.role === 'Inventory'
+                ? '/inventory'
+                : redirectTo && redirectTo !== '/' && redirectTo !== '/login'
+                  ? redirectTo
+                  : '/'
         targetDestinationRef.current = dest
         setTargetDestination(dest)
 
         try {
           router.prefetch(dest)
-        } catch {}
+        } catch { }
 
         if (!document.fullscreenElement) {
-          document.documentElement.requestFullscreen?.().catch(() => {})
+          document.documentElement.requestFullscreen?.().catch(() => { })
         }
 
         setShowVideoOverlay(true)
@@ -853,96 +878,96 @@ export default function LoginForm() {
               </div>
             </div>
 
-          {/* Security Header & 4 Dot Indicators */}
-          <div className="text-center space-y-2 py-1">
-            <p className="text-xs font-black uppercase tracking-wider text-stone-500">
-              Enter 4-Digit Security PIN
-            </p>
+            {/* Security Header & 4 Dot Indicators */}
+            <div className="text-center space-y-2 py-1">
+              <p className="text-xs font-black uppercase tracking-wider text-stone-500">
+                Enter 4-Digit Security PIN
+              </p>
 
-            <div
-              className={cn(
-                'flex items-center justify-center gap-3.5 py-1 transition-transform',
-                isShaking && 'animate-pin-shake'
+              <div
+                className={cn(
+                  'flex items-center justify-center gap-3.5 py-1 transition-transform',
+                  isShaking && 'animate-pin-shake'
+                )}
+              >
+                {[0, 1, 2, 3].map((idx) => {
+                  const isFilled = pin.length > idx
+                  return (
+                    <div
+                      key={idx}
+                      className={cn(
+                        'h-4.5 w-4.5 sm:h-5 sm:w-5 rounded-full border-2 transition-all duration-200',
+                        isShaking
+                          ? 'border-rose-500 bg-rose-500 scale-110 shadow-sm'
+                          : isFilled
+                            ? 'border-indigo-600 bg-indigo-600 scale-125 shadow-md shadow-indigo-300 ring-4 ring-indigo-100'
+                            : 'border-stone-300 bg-stone-100/60'
+                      )}
+                    />
+                  )
+                })}
+              </div>
+
+              {verifying && (
+                <div className="flex items-center justify-center gap-2 text-xs text-indigo-600 font-bold animate-pulse">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Verifying security credentials…</span>
+                </div>
               )}
-            >
-              {[0, 1, 2, 3].map((idx) => {
-                const isFilled = pin.length > idx
-                return (
-                  <div
-                    key={idx}
-                    className={cn(
-                      'h-4.5 w-4.5 sm:h-5 sm:w-5 rounded-full border-2 transition-all duration-200',
-                      isShaking
-                        ? 'border-rose-500 bg-rose-500 scale-110 shadow-sm'
-                        : isFilled
-                        ? 'border-indigo-600 bg-indigo-600 scale-125 shadow-md shadow-indigo-300 ring-4 ring-indigo-100'
-                        : 'border-stone-300 bg-stone-100/60'
-                    )}
-                  />
-                )
-              })}
             </div>
 
-            {verifying && (
-              <div className="flex items-center justify-center gap-2 text-xs text-indigo-600 font-bold animate-pulse">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Verifying security credentials…</span>
-              </div>
-            )}
-          </div>
+            {/* 3×4 Large Touch-Friendly PIN Numpad for Tablet/POS */}
+            <div className="grid grid-cols-3 gap-3 sm:gap-4 w-full max-w-[380px] sm:max-w-[420px] mx-auto my-2 sm:my-3">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
+                <button
+                  key={digit}
+                  type="button"
+                  onClick={() => handleDigitClick(digit)}
+                  disabled={verifying}
+                  className="h-16 sm:h-18 lg:h-20 rounded-2xl border border-stone-200/90 bg-stone-50/80 hover:bg-stone-100 hover:border-stone-300 active:scale-95 active:bg-stone-200/80 text-3xl sm:text-4xl font-black text-stone-800 transition-all shadow-sm flex items-center justify-center select-none disabled:opacity-50 touch-manipulation cursor-pointer"
+                >
+                  {digit}
+                </button>
+              ))}
 
-          {/* 3×4 Large Touch-Friendly PIN Numpad for Tablet/POS */}
-          <div className="grid grid-cols-3 gap-3 sm:gap-4 w-full max-w-[380px] sm:max-w-[420px] mx-auto my-2 sm:my-3">
-            {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
+              {/* Clear */}
               <button
-                key={digit}
                 type="button"
-                onClick={() => handleDigitClick(digit)}
+                onClick={handleClear}
+                disabled={verifying || pin.length === 0}
+                className="h-16 sm:h-18 lg:h-20 rounded-2xl border border-stone-200/90 bg-stone-100/80 hover:bg-stone-200 active:scale-95 text-sm sm:text-base font-bold text-stone-600 transition-all shadow-sm flex items-center justify-center gap-1.5 select-none disabled:opacity-40 touch-manipulation cursor-pointer"
+                title="Clear PIN"
+              >
+                <RotateCcw className="h-5 w-5 sm:h-6 sm:w-6" />
+                <span>Clear</span>
+              </button>
+
+              {/* Zero */}
+              <button
+                type="button"
+                onClick={() => handleDigitClick('0')}
                 disabled={verifying}
                 className="h-16 sm:h-18 lg:h-20 rounded-2xl border border-stone-200/90 bg-stone-50/80 hover:bg-stone-100 hover:border-stone-300 active:scale-95 active:bg-stone-200/80 text-3xl sm:text-4xl font-black text-stone-800 transition-all shadow-sm flex items-center justify-center select-none disabled:opacity-50 touch-manipulation cursor-pointer"
               >
-                {digit}
+                0
               </button>
-            ))}
 
-            {/* Clear */}
-            <button
-              type="button"
-              onClick={handleClear}
-              disabled={verifying || pin.length === 0}
-              className="h-16 sm:h-18 lg:h-20 rounded-2xl border border-stone-200/90 bg-stone-100/80 hover:bg-stone-200 active:scale-95 text-sm sm:text-base font-bold text-stone-600 transition-all shadow-sm flex items-center justify-center gap-1.5 select-none disabled:opacity-40 touch-manipulation cursor-pointer"
-              title="Clear PIN"
-            >
-              <RotateCcw className="h-5 w-5 sm:h-6 sm:w-6" />
-              <span>Clear</span>
-            </button>
+              {/* Backspace */}
+              <button
+                type="button"
+                onClick={handleBackspace}
+                disabled={verifying || pin.length === 0}
+                className="h-16 sm:h-18 lg:h-20 rounded-2xl border border-stone-200/90 bg-stone-100/80 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 active:scale-95 text-stone-600 transition-all shadow-sm flex items-center justify-center select-none disabled:opacity-40 touch-manipulation cursor-pointer"
+                title="Delete Digit"
+              >
+                <Delete className="h-6 w-6 sm:h-7 sm:w-7" />
+              </button>
+            </div>
 
-            {/* Zero */}
-            <button
-              type="button"
-              onClick={() => handleDigitClick('0')}
-              disabled={verifying}
-              className="h-16 sm:h-18 lg:h-20 rounded-2xl border border-stone-200/90 bg-stone-50/80 hover:bg-stone-100 hover:border-stone-300 active:scale-95 active:bg-stone-200/80 text-3xl sm:text-4xl font-black text-stone-800 transition-all shadow-sm flex items-center justify-center select-none disabled:opacity-50 touch-manipulation cursor-pointer"
-            >
-              0
-            </button>
-
-            {/* Backspace */}
-            <button
-              type="button"
-              onClick={handleBackspace}
-              disabled={verifying || pin.length === 0}
-              className="h-16 sm:h-18 lg:h-20 rounded-2xl border border-stone-200/90 bg-stone-100/80 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 active:scale-95 text-stone-600 transition-all shadow-sm flex items-center justify-center select-none disabled:opacity-40 touch-manipulation cursor-pointer"
-              title="Delete Digit"
-            >
-              <Delete className="h-6 w-6 sm:h-7 sm:w-7" />
-            </button>
+            <p className="text-[11px] sm:text-xs text-center text-stone-400 mt-1">
+              Keyboard number keys (0–9) or tap numpad above.
+            </p>
           </div>
-
-          <p className="text-[11px] sm:text-xs text-center text-stone-400 mt-1">
-            Keyboard number keys (0–9) or tap numpad above.
-          </p>
-        </div>
         )
       })()}
 
@@ -1008,8 +1033,8 @@ export default function LoginForm() {
             </button>
           </div>
 
-          {/* Bottom-right Security Footer Badge (positioned cleanly above bottom-right toast) */}
-          <div className="absolute bottom-20 right-6 sm:bottom-20 sm:right-8 z-30 pointer-events-none">
+          {/* Bottom-right Security Footer Badge */}
+          <div className="absolute bottom-4 right-6 sm:bottom-6 sm:right-8 z-30 pointer-events-none">
             <p className="text-[10px] sm:text-[11px] text-slate-500 font-semibold inline-flex items-center gap-1.5 bg-white/90 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-slate-200/90 shadow-2xs">
               <ShieldCheck className="h-3.5 w-3.5 text-indigo-600" />
               <span>Encrypted Session &bull; Enterprise Role-Based Access Control</span>
