@@ -4,11 +4,9 @@ import { Suspense, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
 import Sidebar from './sidebar'
-import { Menu, X, Bell, ChevronRight, Store, Receipt, AlertTriangle, Layers, LogOut, Loader2, Monitor, Tablet } from 'lucide-react'
+import { Menu, X, Bell, ChevronRight, Store, Receipt, AlertTriangle, Layers, Monitor, Tablet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { FullscreenToggle } from '@/components/ui/auto-fullscreen'
-import { useConfirm } from '@/components/ui/confirm-dialog'
-import { performSignOut } from '@/lib/auth'
 import { useAuth } from '@/lib/auth-context'
 import { useBranch } from '@/lib/branch-context'
 import { useDeviceMode } from '@/lib/device-context'
@@ -46,7 +44,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
   // Desktop / Tablet Landscape collapsible sidebar state (>= 1024px)
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true)
-  const { user: authUser, logout } = useAuth()
+  const { user: authUser } = useAuth()
   const {
     activeBranchId,
     activeBranch,
@@ -59,8 +57,6 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   } = useBranch()
   const { deviceMode, openModeModal } = useDeviceMode()
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [headerSignOutLoading, setHeaderSignOutLoading] = useState(false)
-  const confirm = useConfirm()
   const pathname = usePathname()
 
   const rawRole = authUser?.role || 'Staff'
@@ -72,18 +68,6 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   const canAccessInventory = userRole === 'Admin' || userRole === 'Manager' || userRole === 'Inventory' || userRole === 'Staff'
   const canAccessSales = userRole === 'Admin' || userRole === 'Manager'
   const canAccessProduction = userRole === 'Admin' || userRole === 'Manager' || userRole === 'Staff' || userRole === 'Inventory'
-
-  async function handleHeaderSignOut() {
-    const ok = await confirm({
-      title: 'Sign Out of JAPA Core ERP?',
-      message: 'You will need to sign in again to access the operations workspace.',
-      confirmText: 'Sign Out',
-      variant: 'warning',
-    })
-    if (!ok) return
-    setHeaderSignOutLoading(true)
-    await logout()
-  }
 
   // Detect screen size and initialize sidebar preference
   useEffect(() => {
@@ -407,50 +391,6 @@ export default function DashboardShell({ children }: { children: React.ReactNode
                 </>
               )}
             </div>
-
-            {/* Active User Badge */}
-            {authUser && (
-              <>
-                {/* Compact icon-only avatar — tablet widths (sm → xl) */}
-                <div
-                  className="flex xl:hidden items-center justify-center h-7 w-7 rounded-lg bg-indigo-600 text-xs font-bold text-white shadow-2xs shrink-0 cursor-default"
-                  title={`${authUser.full_name} (${userRole})`}
-                >
-                  {authUser.full_name?.charAt(0).toUpperCase() || 'U'}
-                </div>
-                {/* Full badge — desktop widths (xl+) */}
-                <div className="hidden xl:flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1 shadow-2xs">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-md bg-indigo-600 text-xs font-bold text-white shadow-2xs">
-                    {authUser.full_name?.charAt(0).toUpperCase() || 'U'}
-                  </div>
-                  <div className="text-left">
-                    <p className="text-xs font-bold text-slate-800 leading-tight truncate max-w-[140px]">
-                      {authUser.full_name}
-                    </p>
-                    <p className="text-[10px] text-slate-500 font-medium leading-none">
-                      {userRole}
-                    </p>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Direct Header Sign Out (Accessible on all devices & when sidebar is collapsed) */}
-            <button
-              type="button"
-              onClick={handleHeaderSignOut}
-              disabled={headerSignOutLoading}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 xl:px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition active:scale-95 shadow-2xs disabled:opacity-50"
-              title="Sign Out of JAPA Core ERP"
-              aria-label="Sign Out"
-            >
-              {headerSignOutLoading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-rose-600" />
-              ) : (
-                <LogOut className="h-3.5 w-3.5 text-slate-500" />
-              )}
-              <span className="hidden xl:inline">Sign Out</span>
-            </button>
           </div>
         </header>
 
