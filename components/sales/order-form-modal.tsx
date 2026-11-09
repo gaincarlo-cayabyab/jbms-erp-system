@@ -21,8 +21,9 @@ import { OrderStatus, PaymentStatus, SalesOrder } from '@/types/sales'
 interface OrderFormModalProps {
   isOpen: boolean
   onClose: () => void
-  onSuccess: (newOrder: SalesOrder) => void
+  onSuccess: (newOrder: SalesOrder, isEdit?: boolean) => void
   customers: Customer[]
+  orderToEdit?: SalesOrder | null
 }
 
 interface LineItemDraft {
@@ -37,7 +38,9 @@ export default function OrderFormModal({
   onClose,
   onSuccess,
   customers,
+  orderToEdit,
 }: OrderFormModalProps) {
+  const isEditMode = Boolean(orderToEdit)
   const [orderType, setOrderType] = useState<'quotation' | 'sales_order'>('quotation')
   const [orderNumber, setOrderNumber] = useState('')
   const [customerId, setCustomerId] = useState('')
@@ -50,15 +53,50 @@ export default function OrderFormModal({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // Generate initial Order/Quotation Number on open
+  // Populate or generate Order/Quotation Number on open
   useEffect(() => {
     if (isOpen) {
-      const prefix = orderType === 'quotation' ? 'QT' : 'SO'
-      const datePart = new Date().toISOString().slice(2, 7).replace('-', '')
-      const randPart = Math.floor(1000 + Math.random() * 9000)
-      setOrderNumber(`${prefix}-${datePart}-${randPart}`)
+      setErrorMessage(null)
+      if (orderToEdit) {
+        setOrderNumber(orderToEdit.order_number)
+        setCustomerId(orderToEdit.customer_id || '')
+        setOrderStatus(orderToEdit.order_status)
+        setPaymentStatus(orderToEdit.payment_status)
+        setBranch(orderToEdit.branch || 'Main Branch')
+        if (orderToEdit.items && orderToEdit.items.length > 0) {
+          setLineItems(
+            orderToEdit.items.map((it) => ({
+              id: it.id || Math.random().toString(),
+              item_name: it.item_name,
+              quantity: it.quantity,
+              unit_price: it.unit_price,
+            }))
+          )
+        } else {
+          setLineItems([
+            {
+              id: '1',
+              item_name: 'General Order Services',
+              quantity: 1,
+              unit_price: orderToEdit.total_amount || 0,
+            },
+          ])
+        }
+      } else {
+        const prefix = orderType === 'quotation' ? 'QT' : 'SO'
+        const datePart = new Date().toISOString().slice(2, 7).replace('-', '')
+        const randPart = Math.floor(1000 + Math.random() * 9000)
+        setOrderNumber(`${prefix}-${datePart}-${randPart}`)
+        setCustomerId('')
+        setOrderStatus('Draft')
+        setPaymentStatus('Pending')
+        setBranch('Main Branch')
+        setLineItems([
+          { id: '1', item_name: 'Custom Tarpaulin Printing (3x4 ft)', quantity: 2, unit_price: 350 },
+        ])
+      }
     }
-  }, [isOpen, orderType])
+  }, [isOpen, orderType, orderToEdit])
 
   if (!isOpen) return null
 
@@ -130,15 +168,24 @@ export default function OrderFormModal({
         branch: branch || 'Main Branch',
       }
 
-      let res = await supabase
-        .from('sales_orders')
-        .insert([payload])
-        .select('*, customers(*)')
-        .single()
+      let res
+      if (isEditMode && orderToEdit) {
+        res = await supabase
+          .from('sales_orders')
+          .update(payload)
+          .eq('id', orderToEdit.id)
+          .select('*, customers(*)')
+          .single()
+      } else {
+        res = await supabase
+          .from('sales_orders')
+          .insert([payload])
+          .select('*, customers(*)')
+          .single()
+      }
 
       // If check constraint fails because 'Approved'/'Invoiced' are not in original schema:
       if (res.error && res.error.code === '23514') {
-        // Fallback status mapping for legacy schema
         const fallbackStatus =
           orderStatus === 'Approved' || orderStatus === 'Invoiced'
             ? 'Confirmed'
@@ -147,11 +194,20 @@ export default function OrderFormModal({
             : 'Draft'
 
         payload.order_status = fallbackStatus
-        res = await supabase
-          .from('sales_orders')
-          .insert([payload])
-          .select('*, customers(*)')
-          .single()
+        if (isEditMode && orderToEdit) {
+          res = await supabase
+            .from('sales_orders')
+            .update(payload)
+            .eq('id', orderToEdit.id)
+            .select('*, customers(*)')
+            .single()
+        } else {
+          res = await supabase
+            .from('sales_orders')
+            .insert([payload])
+            .select('*, customers(*)')
+            .single()
+        }
       }
 
       if (res.error) {
@@ -212,7 +268,7 @@ export default function OrderFormModal({
         }
       }
 
-      onSuccess(completeOrder)
+      onSuccess(completeOrder, isEditMode)
       onClose()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'An error occurred.'
@@ -241,14 +297,14 @@ export default function OrderFormModal({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-bold text-zinc-900">
-                {orderType === 'quotation' ? 'Draft New Quotation' : 'Create Sales Order'}
+                {isEditMode ? `Edit Order #${orderNumber}` : orderType === 'quotation' ? 'Draft New Quotation' : 'Create Sales Order'}
               </h2>
               <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">
-                {orderType === 'quotation' ? 'Quotation' : 'Sales Order'}
+                {isEditMode ? 'Edit Mode' : orderType === 'quotation' ? 'Quotation' : 'Sales Order'}
               </span>
             </div>
             <p className="text-xs text-zinc-500">
-              Configure customer account, itemized line items, pricing, and fulfillment status.
+              {isEditMode ? 'Update customer account, line items, pricing, and fulfillment status.' : 'Configure customer account, itemized line items, pricing, and fulfillment status.'}
             </p>
           </div>
           <button

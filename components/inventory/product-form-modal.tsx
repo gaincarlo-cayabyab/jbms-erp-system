@@ -161,7 +161,31 @@ export default function ProductFormModal({
         throw new Error(res.error.message || 'Failed to save product.')
       }
 
-      onSuccess(res.data as ProductItem, isEditMode)
+      // Seed / update branch-specific inventory_stock so the item appears across all branch views
+      const savedProd = res.data as ProductItem
+      if (savedProd?.id) {
+        await supabase.from('inventory_stock').upsert(
+          [
+            {
+              branch_id: 'dagupan_main',
+              product_id: savedProd.id,
+              quantity_on_hand: stockQtyNum,
+              reorder_level: reorderLevelNum,
+              last_updated: new Date().toISOString(),
+            },
+            {
+              branch_id: 'manila_branch',
+              product_id: savedProd.id,
+              quantity_on_hand: stockQtyNum,
+              reorder_level: reorderLevelNum,
+              last_updated: new Date().toISOString(),
+            },
+          ],
+          { onConflict: 'branch_id,product_id' }
+        )
+      }
+
+      onSuccess(savedProd, isEditMode)
       onClose()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'An error occurred.'

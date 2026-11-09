@@ -1,14 +1,23 @@
 'use client'
 
-import { X, Printer, Building, User, Calendar, FileText, CheckCircle2, Clock } from 'lucide-react'
+import { X, Printer, Building, User, Calendar, FileText, CheckCircle2, Clock, Edit2, Trash2, Ban } from 'lucide-react'
 import { SalesOrder } from '@/types/sales'
 
 interface OrderDetailModalProps {
   order: SalesOrder | null
   onClose: () => void
+  onEdit?: (order: SalesOrder) => void
+  onDelete?: (order: SalesOrder) => void
+  onCancel?: (order: SalesOrder) => void
 }
 
-export default function OrderDetailModal({ order, onClose }: OrderDetailModalProps) {
+export default function OrderDetailModal({
+  order,
+  onClose,
+  onEdit,
+  onDelete,
+  onCancel,
+}: OrderDetailModalProps) {
   if (!order) return null
 
   const formatCurrency = (val: number | string) => {
@@ -158,7 +167,49 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
         </div>
 
         {/* Footer */}
-        <div className="border-t border-zinc-100 px-6 py-3 bg-zinc-50/50 flex justify-end">
+        <div className="border-t border-zinc-100 px-6 py-3.5 bg-zinc-50/50 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            {onEdit && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose()
+                  onEdit(order)
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition"
+              >
+                <Edit2 className="h-3.5 w-3.5" />
+                <span>Edit Order</span>
+              </button>
+            )}
+            {onCancel && order.order_status !== 'Cancelled' && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose()
+                  onCancel(order)
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100 transition"
+              >
+                <Ban className="h-3.5 w-3.5" />
+                <span>Cancel / Void</span>
+              </button>
+            )}
+            {onDelete && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose()
+                  onDelete(order)
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Delete</span>
+              </button>
+            )}
+          </div>
+
           <button
             type="button"
             onClick={onClose}

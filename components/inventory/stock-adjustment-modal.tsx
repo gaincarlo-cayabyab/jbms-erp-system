@@ -12,6 +12,7 @@ import {
   FileEdit,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useBranch } from '@/lib/branch-context'
 import { ProductItem } from '@/types/inventory'
 
 interface StockAdjustmentModalProps {
@@ -25,6 +26,7 @@ export default function StockAdjustmentModal({
   onClose,
   onSuccess,
 }: StockAdjustmentModalProps) {
+  const { activeBranchId } = useBranch()
   const [adjustmentType, setAdjustmentType] = useState<'add' | 'subtract' | 'set'>('add')
   const [amount, setAmount] = useState<string>('10')
   const [reason, setReason] = useState<string>('Restocked from Supplier')
@@ -73,6 +75,25 @@ export default function StockAdjustmentModal({
           )
         }
         throw new Error(error.message || 'Failed to adjust stock level.')
+      }
+
+      // Also sync branch-specific inventory_stock table so the adjustment persists in branch views
+      const targetBranches =
+        !activeBranchId || activeBranchId === 'all'
+          ? ['dagupan_main', 'manila_branch']
+          : [activeBranchId]
+
+      for (const bId of targetBranches) {
+        await supabase.from('inventory_stock').upsert(
+          {
+            branch_id: bId,
+            product_id: product.id,
+            quantity_on_hand: calculatedNewStock,
+            reorder_level: product.reorder_level || 10,
+            last_updated: new Date().toISOString(),
+          },
+          { onConflict: 'branch_id,product_id' }
+        )
       }
 
       onSuccess(data as ProductItem)

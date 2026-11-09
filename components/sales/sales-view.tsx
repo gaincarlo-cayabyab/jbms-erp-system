@@ -27,9 +27,14 @@ import {
   Eye,
   FileCheck,
   Receipt,
+  Edit2,
+  Trash2,
+  Ban,
 } from 'lucide-react'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 
 export default function SalesView() {
+  const confirm = useConfirm()
   const searchParams = useSearchParams()
   const [orders, setOrders] = useState<SalesOrder[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -40,6 +45,7 @@ export default function SalesView() {
   const [paymentFilter, setPaymentFilter] = useState<string>('all')
   const [activeTab, setActiveTab] = useState<'all' | 'quotes' | 'orders' | 'pos'>('all')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingOrder, setEditingOrder] = useState<SalesOrder | null>(null)
   const [selectedOrder, setSelectedOrder] = useState<SalesOrder | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -89,9 +95,78 @@ export default function SalesView() {
     loadData()
   }, [])
 
-  const handleOrderCreated = (newOrder: SalesOrder) => {
-    setOrders((prev) => [newOrder, ...prev])
-    toast.success(`Order/Quotation "${newOrder.order_number}" created successfully.`)
+  const handleOrderSaved = (savedOrder: SalesOrder, isEdit?: boolean) => {
+    if (isEdit) {
+      setOrders((prev) =>
+        prev.map((o) => (o.id === savedOrder.id ? savedOrder : o))
+      )
+      toast.success(`Order "${savedOrder.order_number}" updated successfully.`)
+    } else {
+      setOrders((prev) => [savedOrder, ...prev])
+      toast.success(`Order/Quotation "${savedOrder.order_number}" created successfully.`)
+    }
+    setEditingOrder(null)
+  }
+
+  const handleEditOrder = (order: SalesOrder) => {
+    setEditingOrder(order)
+    setIsModalOpen(true)
+  }
+
+  const handleDeleteOrder = async (order: SalesOrder) => {
+    const ok = await confirm({
+      title: `Delete Order ${order.order_number}?`,
+      message: `Are you sure you want to permanently delete order ${order.order_number} (${formatCurrency(order.total_amount)})? This cannot be undone.`,
+      confirmText: 'Delete Order',
+      variant: 'danger',
+    })
+    if (!ok) return
+
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('sales_orders')
+        .delete()
+        .eq('id', order.id)
+
+      if (error) throw new Error(error.message)
+
+      setOrders((prev) => prev.filter((o) => o.id !== order.id))
+      toast.success(`Order ${order.order_number} deleted.`)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to delete order'
+      toast.error(`Error deleting order: ${msg}`)
+    }
+  }
+
+  const handleCancelOrder = async (order: SalesOrder) => {
+    const ok = await confirm({
+      title: `Cancel Order ${order.order_number}?`,
+      message: `Mark this order as Cancelled? This preserves the audit trail while voiding the transaction.`,
+      confirmText: 'Cancel Order',
+      variant: 'warning',
+    })
+    if (!ok) return
+
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('sales_orders')
+        .update({ order_status: 'Cancelled' })
+        .eq('id', order.id)
+        .select('*, customers(*)')
+        .single()
+
+      if (error) throw new Error(error.message)
+
+      setOrders((prev) =>
+        prev.map((o) => (o.id === order.id ? (data as SalesOrder) : o))
+      )
+      toast.success(`Order ${order.order_number} marked as Cancelled.`)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to cancel order'
+      toast.error(`Error cancelling order: ${msg}`)
+    }
   }
 
   // Filtered and searched orders
@@ -561,14 +636,33 @@ export default function SalesView() {
                           className="px-6 py-4 text-center"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <button
-                            type="button"
-                            onClick={() => setSelectedOrder(order)}
-                            className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 transition"
-                          >
-                            <Eye className="h-3.5 w-3.5 text-zinc-400" />
-                            View
-                          </button>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedOrder(order)}
+                              className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 transition"
+                              title="View order details"
+                            >
+                              <Eye className="h-3.5 w-3.5 text-zinc-400" />
+                              <span>View</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleEditOrder(order)}
+                              className="rounded-md border border-zinc-200 bg-white p-1 text-zinc-600 hover:text-indigo-600 hover:bg-zinc-50 transition"
+                              title="Edit order"
+                            >
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteOrder(order)}
+                              className="rounded-md border border-zinc-200 bg-white p-1 text-zinc-400 hover:text-rose-600 hover:bg-zinc-50 transition"
+                              title="Delete order"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )
@@ -634,18 +728,25 @@ export default function SalesView() {
         </div>
       </div>
 
-      {/* Draft Order Modal */}
+      {/* Draft / Edit Order Modal */}
       <OrderFormModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={handleOrderCreated}
+        onClose={() => {
+          setIsModalOpen(false)
+          setEditingOrder(null)
+        }}
+        onSuccess={handleOrderSaved}
         customers={customers}
+        orderToEdit={editingOrder}
       />
 
       {/* Order Detail Modal */}
       <OrderDetailModal
         order={selectedOrder}
         onClose={() => setSelectedOrder(null)}
+        onEdit={(ord) => handleEditOrder(ord)}
+        onDelete={(ord) => handleDeleteOrder(ord)}
+        onCancel={(ord) => handleCancelOrder(ord)}
       />
     </DashboardShell>
   )
