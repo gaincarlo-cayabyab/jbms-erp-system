@@ -73,8 +73,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           position="top-center"
           richColors
           closeButton
+          style={{ zIndex: 99999999 }}
           toastOptions={{
-            duration: 4000,
+            duration: 4500,
             classNames: {
               toast:
                 "font-sans text-sm shadow-xl border border-slate-200 rounded-2xl",

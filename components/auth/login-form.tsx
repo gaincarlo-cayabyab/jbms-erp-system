@@ -988,7 +988,7 @@ export default function LoginForm() {
         <div
           id="fullscreen-login-video-overlay"
           onClick={handleVideoComplete}
-          className="fixed inset-0 z-[999999] overflow-hidden animate-in fade-in duration-300 cursor-pointer"
+          className="fixed inset-0 z-[9999] overflow-hidden animate-in fade-in duration-300 cursor-pointer"
           style={{
             position: 'fixed',
             top: 0,
@@ -998,7 +998,7 @@ export default function LoginForm() {
             width: '100vw',
             height: '100vh',
             background: '#F0F0F0',
-            zIndex: 999999,
+            zIndex: 9999,
           }}
           title="Tap anywhere to skip to workspace"
         >
