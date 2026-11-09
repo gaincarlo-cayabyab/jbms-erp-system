@@ -163,7 +163,7 @@ export const DAGUPAN_CASHIER_STAFF: AppUser[] = [
   { id: 'd1111111-1111-4000-8000-000000000003', full_name: 'JAPA Lanie', role: 'Cashier' },
 ]
 
-type PinStep = 'role' | 'user' | 'cashier-staff' | 'pin'
+type PinStep = 'role' | 'user' | 'cashier-staff' | 'pin' | 'authenticated'
 
 interface ProfileDisplayInfo {
   displayName: string
@@ -321,9 +321,8 @@ export default function LoginForm() {
     redirectedRef.current = true
     if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
     const dest = targetDestinationRef.current || targetDestination || '/'
-    // Instantly hide overlay to prevent any frozen frame
-    setShowVideoOverlay(false)
-    // Real navigation guarantees complete unmount of overlay and instant handoff
+    // Keep overlay covering the viewport so the user never sees any flash of underlying screens
+    // window.location.replace cleanly swaps the entire document directly into the dashboard
     window.location.replace(dest)
   }, [targetDestination])
 
@@ -336,7 +335,7 @@ export default function LoginForm() {
 
   const handleTimeUpdate = useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
     const video = e.currentTarget
-    if (video.duration && video.currentTime >= video.duration - 0.25) {
+    if (video.duration && video.currentTime >= video.duration - 0.1) {
       handleVideoComplete()
     }
   }, [handleVideoComplete])
@@ -514,6 +513,7 @@ export default function LoginForm() {
           document.documentElement.requestFullscreen?.().catch(() => { })
         }
 
+        setPinStep('authenticated')
         setShowVideoOverlay(true)
       } else {
         playErrorBuzz()
@@ -1000,6 +1000,27 @@ export default function LoginForm() {
           </div>
         )
       })()}
+
+      {/* ── STEP 4: AUTHENTICATED / ENTERING WORKSPACE ──────────────── */}
+      {pinStep === 'authenticated' && (
+        <div className="flex flex-col items-center justify-center py-10 space-y-3 text-center animate-in fade-in duration-200">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 shadow-2xs">
+            <CheckCircle2 className="h-6 w-6" />
+          </div>
+          <div>
+            <h3 className="text-sm sm:text-base font-black text-stone-900 leading-tight">
+              Session Authenticated
+            </h3>
+            <p className="text-xs text-stone-500 leading-tight mt-1">
+              Entering {selectedUser?.full_name || 'JAPA Workspace'}…
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-indigo-600 font-bold animate-pulse pt-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Loading workspace…</span>
+          </div>
+        </div>
+      )}
 
       {/* ── Hidden video preload ──────────────────────────────────────── */}
       <video
