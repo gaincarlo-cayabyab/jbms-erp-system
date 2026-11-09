@@ -216,3 +216,4 @@ VALUES
   ('manila_branch', 'Petty Cash Fund — Manila', 'petty_cash', NULL, 'PHP', 8000.00, true),
   ('manila_branch', 'JAPA Manila GCash Merchant', 'ewallet', '0918-987-6543', 'PHP', 20000.00, true)
 ON CONFLICT DO NOTHING;
+

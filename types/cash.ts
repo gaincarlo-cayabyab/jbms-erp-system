@@ -110,3 +110,4 @@ export interface CashSummaryStats {
   dailyOutflows: number
   netCashFlow: number
 }
+

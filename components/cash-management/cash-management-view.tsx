@@ -19,6 +19,7 @@ import {
 import { useBranch } from '@/lib/branch-context'
 import { soundEffects } from '@/lib/sound-effects'
 import { toast } from 'sonner'
+import DashboardShell from '@/components/dashboard-shell'
 import RecordTransactionModal from './record-transaction-modal'
 import AccountTransferModal from './account-transfer-modal'
 import ShiftReconciliationModal from './shift-reconciliation-modal'
@@ -213,7 +214,8 @@ export default function CashManagementView() {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+    <DashboardShell>
+      <div className="flex-1 space-y-6 max-w-7xl mx-auto">
       {/* ── Top Header & Branch Switcher ────────────────────────────────────── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -875,6 +877,8 @@ export default function CashManagementView() {
         onClose={() => setReconciliationModalOpen(false)}
         onSuccess={() => loadData(true)}
       />
-    </div>
+      </div>
+    </DashboardShell>
   )
 }
+
