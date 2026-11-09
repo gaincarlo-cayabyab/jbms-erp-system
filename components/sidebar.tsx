@@ -38,26 +38,11 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
+  // ── Core Revenue & Operations ─────────────────────────────────
   {
     label: 'Dashboard Overview',
     href: '/',
     icon: LayoutDashboard,
-    allowedRoles: ['Admin', 'Manager'],
-  },
-  {
-    label: 'Cashier / POS',
-    href: '/pos',
-    icon: Receipt,
-    badge: 'POS',
-    badgeClass: 'bg-rose-50 text-rose-700 border border-rose-200',
-    allowedRoles: ['Admin', 'Manager', 'Cashier'],
-  },
-  {
-    label: 'CRM / Customers',
-    href: '/customers',
-    icon: Users,
-    badge: 'CRM',
-    badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200',
     allowedRoles: ['Admin', 'Manager'],
   },
   {
@@ -69,12 +54,30 @@ const navItems: NavItem[] = [
     allowedRoles: ['Admin', 'Manager'],
   },
   {
-    label: 'Production Queue',
-    href: '/production',
-    icon: Layers,
-    badge: '7-Stage',
-    badgeClass: 'bg-violet-50 text-violet-700 border border-violet-200',
-    allowedRoles: ['Admin', 'Manager', 'Inventory', 'Staff'],
+    label: 'Cash Management',
+    href: '/cash-management',
+    icon: Wallet,
+    badge: 'Cash',
+    badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+    allowedRoles: ['Admin', 'Manager'],
+  },
+  {
+    label: 'Financials & P&L Reports',
+    href: '/financials',
+    icon: DollarSign,
+    restricted: true,
+    badge: 'P&L',
+    badgeClass: 'bg-teal-50 text-teal-700 border border-teal-200',
+    allowedRoles: ['Admin'],
+  },
+  // ── Customer & Inventory ──────────────────────────────────────
+  {
+    label: 'CRM / Customers',
+    href: '/customers',
+    icon: Users,
+    badge: 'CRM',
+    badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200',
+    allowedRoles: ['Admin', 'Manager'],
   },
   {
     label: 'Multi-Store Inventory',
@@ -93,22 +96,14 @@ const navItems: NavItem[] = [
     allowedRoles: ['Admin', 'Manager', 'Inventory'],
   },
   {
-    label: 'Cash Management',
-    href: '/cash-management',
-    icon: Wallet,
-    badge: 'Cash',
-    badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-    allowedRoles: ['Admin', 'Manager'],
+    label: 'Production Queue',
+    href: '/production',
+    icon: Layers,
+    badge: '7-Stage',
+    badgeClass: 'bg-violet-50 text-violet-700 border border-violet-200',
+    allowedRoles: ['Admin', 'Manager', 'Inventory', 'Staff'],
   },
-  {
-    label: 'Financials & Expenses',
-    href: '/financials',
-    icon: DollarSign,
-    restricted: true,
-    badge: 'P&L',
-    badgeClass: 'bg-teal-50 text-teal-700 border border-teal-200',
-    allowedRoles: ['Admin'],
-  },
+  // ── Admin-Only ────────────────────────────────────────────────
   {
     label: 'Attendance & Payroll',
     href: '/payroll',
@@ -126,6 +121,15 @@ const navItems: NavItem[] = [
     badge: 'Audit',
     badgeClass: 'bg-slate-100 text-slate-700 border border-slate-300',
     allowedRoles: ['Admin'],
+  },
+  // ── POS Terminal (Cashier & Manager only — not Admin) ─────────
+  {
+    label: 'Cashier / POS',
+    href: '/pos',
+    icon: Receipt,
+    badge: 'POS',
+    badgeClass: 'bg-rose-50 text-rose-700 border border-rose-200',
+    allowedRoles: ['Manager', 'Cashier'],
   },
 ]
 

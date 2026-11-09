@@ -35,6 +35,7 @@ const ROLE_ALLOWED_ROUTES: Record<string, string[]> = {
     '/production',
     '/inventory',
     '/transfers',
+    '/cash-management',
     '/financials',
     '/payroll',
     '/audit',
@@ -49,6 +50,7 @@ const ROLE_ALLOWED_ROUTES: Record<string, string[]> = {
     '/production',
     '/inventory',
     '/transfers',
+    '/cash-management',
   ],
   Cashier: [
     '/pos',
