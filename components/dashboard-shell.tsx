@@ -34,6 +34,7 @@ const BREADCRUMB_MAP: Record<string, string> = {
   '/production': 'Production Queue & Job Orders',
   '/inventory': 'Multi-Store Inventory',
   '/transfers': 'Inter-Branch Stock Transfers',
+  '/cash-management': 'Cash Management & Treasury',
   '/financials': 'Financials & Expenses',
   '/payroll': 'Attendance & Payroll',
   '/audit': 'System Security & Audit Logs',

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { recordCashTransaction } from '@/app/actions/cash'
 import { Expense, ExpenseFormData } from '@/types/financials'
 
 const LOCAL_STORAGE_KEY = 'japa_core_erp_expenses'
@@ -154,6 +155,62 @@ export async function recordExpense(
       .single()
 
     if (!error && data) {
+      // Cash Management Hook: Record Outflow Voucher (CDV)
+      if (numericAmount > 0) {
+        try {
+          const branchId = payload.branch?.toLowerCase().includes('manila')
+            ? 'manila_branch'
+            : 'dagupan_main'
+          const isPetty = payload.payment_method === 'Cash' && numericAmount <= 5000
+          const preferredType = isPetty
+            ? 'petty_cash'
+            : payload.payment_method === 'GCash' || payload.payment_method === 'Maya'
+            ? 'ewallet'
+            : 'bank_checking'
+
+          const { data: targetAccount } = await supabase
+            .from('cash_accounts')
+            .select('id')
+            .eq('branch_id', branchId)
+            .eq('account_type', preferredType)
+            .limit(1)
+            .maybeSingle()
+
+          const catName = isPetty ? 'Petty Cash Expenditure' : 'Utilities & OpEx'
+          const { data: cat } = await supabase
+            .from('cash_categories')
+            .select('id')
+            .eq('category_name', catName)
+            .maybeSingle()
+
+          if (targetAccount?.id && cat?.id) {
+            const methodMap: Record<string, 'cash' | 'check' | 'bank_transfer' | 'ewallet'> = {
+              Cash: 'cash',
+              GCash: 'ewallet',
+              Maya: 'ewallet',
+              'Bank Transfer': 'bank_transfer',
+              Cheque: 'check',
+              'Credit Card': 'bank_transfer',
+            }
+
+            await recordCashTransaction({
+              branchId,
+              cashAccountId: targetAccount.id,
+              categoryId: cat.id,
+              flowType: 'outflow',
+              amount: numericAmount,
+              paymentMethod: methodMap[payload.payment_method] || 'cash',
+              referenceNo: payload.reference_no || undefined,
+              sourceModule: 'opex',
+              payeeOrPayer: payload.description || 'Expense Payee',
+              notes: `${payload.category} — ${payload.description}`,
+            })
+          }
+        } catch (cashErr) {
+          console.warn('Could not record cash disbursement for expense:', cashErr)
+        }
+      }
+
       return { data: data as Expense, isUsingMock: false }
     }
   } catch {

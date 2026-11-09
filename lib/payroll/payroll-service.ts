@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
+import { recordCashTransaction } from '@/app/actions/cash';
 import type {
   PayrollRecord,
   AttendanceLog,
@@ -287,12 +288,60 @@ export async function logAttendance(formData: AttendanceFormData): Promise<Atten
 export async function markPayrollAsPaid(id: string): Promise<void> {
   try {
     const supabase = createClient();
+
+    // Fetch record details before or after update
+    const { data: rec } = await supabase
+      .from('payroll_records')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
     const { error } = await supabase
       .from('payroll_records')
       .update({ status: 'Paid', payment_date: new Date().toISOString().split('T')[0] })
       .eq('id', id);
 
     if (error) throw error;
+
+    // Cash Management Hook: Record Outflow Voucher (CDV)
+    if (rec && rec.total_net_pay > 0) {
+      try {
+        const branchId = rec.branch?.toLowerCase().includes('manila') ? 'manila_branch' : 'dagupan_main';
+        
+        // Find corporate checking account or vault
+        const { data: targetAccount } = await supabase
+          .from('cash_accounts')
+          .select('id')
+          .eq('branch_id', branchId)
+          .in('account_type', ['bank_checking', 'vault'])
+          .limit(1)
+          .maybeSingle();
+
+        const { data: payrollCategory } = await supabase
+          .from('cash_categories')
+          .select('id')
+          .eq('category_name', 'Payroll Payout')
+          .maybeSingle();
+
+        if (targetAccount?.id && payrollCategory?.id) {
+          await recordCashTransaction({
+            branchId,
+            cashAccountId: targetAccount.id,
+            categoryId: payrollCategory.id,
+            flowType: 'outflow',
+            amount: Number(rec.total_net_pay),
+            paymentMethod: 'bank_transfer',
+            referenceNo: `PAYROLL-${rec.id.slice(0, 8)}`,
+            sourceModule: 'payroll',
+            payeeOrPayer: rec.staff_name || 'Employee Salary',
+            notes: `Salary Payout: ${rec.role || 'Staff'} (${rec.pay_period_start} to ${rec.pay_period_end})`,
+          });
+        }
+      } catch (cashErr) {
+        console.warn('Could not record cash disbursement for payroll:', cashErr);
+      }
+    }
+
     return;
   } catch {
     const existing = loadFromStorage<PayrollRecord>(LS_PAYROLL_KEY, MOCK_PAYROLL);

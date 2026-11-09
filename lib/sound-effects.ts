@@ -280,3 +280,12 @@ export function playErrorBuzz() {
     triggerErrorBuzz(ctx)
   } catch {}
 }
+
+export const soundEffects = {
+  keyClick: (digit?: string) => playPinKeySound(digit),
+  backspace: () => playBackspaceSound(),
+  clear: () => playClearSound(),
+  success: () => playSuccessChime(),
+  error: () => playErrorBuzz(),
+}
+

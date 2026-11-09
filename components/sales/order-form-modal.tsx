@@ -14,6 +14,7 @@ import {
   Calculator,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { recordCashTransaction } from '@/app/actions/cash'
 import { Customer } from '@/types/customer'
 import { OrderStatus, PaymentStatus, SalesOrder } from '@/types/sales'
 
@@ -172,6 +173,43 @@ export default function OrderFormModal({
           ...item,
           subtotal: (Number(item.quantity) || 0) * (Number(item.unit_price) || 0),
         })),
+      }
+
+      // Cash Management Hook: If paid on creation, record cash inflow
+      if (paymentStatus === 'Paid' && totalAmount > 0) {
+        try {
+          const branchId = branch?.toLowerCase().includes('manila') ? 'manila_branch' : 'dagupan_main'
+          const { data: targetAccount } = await supabase
+            .from('cash_accounts')
+            .select('id')
+            .eq('branch_id', branchId)
+            .in('account_type', ['bank_checking', 'vault', 'cash_drawer'])
+            .limit(1)
+            .maybeSingle()
+
+          const { data: arCat } = await supabase
+            .from('cash_categories')
+            .select('id')
+            .eq('category_name', 'Accounts Receivable Settlement')
+            .maybeSingle()
+
+          if (targetAccount?.id && arCat?.id) {
+            await recordCashTransaction({
+              branchId,
+              cashAccountId: targetAccount.id,
+              categoryId: arCat.id,
+              flowType: 'inflow',
+              amount: totalAmount,
+              paymentMethod: 'bank_transfer',
+              referenceNo: orderNumber,
+              sourceModule: 'sales',
+              payeeOrPayer: customers.find((c) => c.id === customerId)?.name || 'Client Order',
+              notes: `Sales Order Settlement — Order #${orderNumber}`,
+            })
+          }
+        } catch (cashErr) {
+          console.warn('Could not record cash transaction for sales order:', cashErr)
+        }
       }
 
       onSuccess(completeOrder)

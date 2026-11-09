@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Transaction } from '@/types/pos'
+import { recordCashTransaction } from '@/app/actions/cash'
 import { Loader2 } from 'lucide-react'
 
 interface Props {
@@ -47,6 +48,54 @@ export default function POSTransactionModal({ transaction, onComplete }: Props) 
           })
         } catch (salesErr) {
           console.warn('Could not auto-insert to sales_orders:', salesErr)
+        }
+
+        // 4. Hook Cash Management: Record Inflow (CRV)
+        try {
+          const branchId = transaction.branchName?.toLowerCase().includes('manila')
+            ? 'manila_branch'
+            : 'dagupan_main'
+
+          const isEwallet = transaction.paymentMethod === 'GCASH'
+          const targetType = isEwallet ? 'ewallet' : 'cash_drawer'
+
+          const { data: targetAccount } = await supabase
+            .from('cash_accounts')
+            .select('id')
+            .eq('branch_id', branchId)
+            .eq('account_type', targetType)
+            .limit(1)
+            .maybeSingle()
+
+          const { data: posCategory } = await supabase
+            .from('cash_categories')
+            .select('id')
+            .eq('category_name', 'POS Retail Sales')
+            .maybeSingle()
+
+          if (targetAccount?.id && posCategory?.id) {
+            const methodMap: Record<string, 'cash' | 'check' | 'bank_transfer' | 'ewallet'> = {
+              CASH: 'cash',
+              GCASH: 'ewallet',
+              CARD: 'bank_transfer',
+              BANK_TRANSFER: 'bank_transfer',
+            }
+
+            await recordCashTransaction({
+              branchId,
+              cashAccountId: targetAccount.id,
+              categoryId: posCategory.id,
+              flowType: 'inflow',
+              amount: transaction.grandTotal,
+              paymentMethod: methodMap[transaction.paymentMethod] || 'cash',
+              referenceNo: transaction.invoiceNo,
+              sourceModule: 'pos',
+              payeeOrPayer: `Walk-in Customer (${transaction.cashierName || 'Cashier'})`,
+              notes: `POS Retail Checkout — Items: ${transaction.items.length}`,
+            })
+          }
+        } catch (cashErr) {
+          console.warn('Could not record cash transaction for POS order:', cashErr)
         }
 
         // Ensure user sees the high-end animation smoothly (at least 2.2 seconds)

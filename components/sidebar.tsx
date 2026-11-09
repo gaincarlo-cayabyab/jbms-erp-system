@@ -19,6 +19,7 @@ import {
   Loader2,
   ArrowLeftRight,
   History,
+  Wallet,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -90,6 +91,14 @@ const navItems: NavItem[] = [
     badge: 'STO',
     badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200',
     allowedRoles: ['Admin', 'Manager', 'Inventory'],
+  },
+  {
+    label: 'Cash Management',
+    href: '/cash-management',
+    icon: Wallet,
+    badge: 'Cash',
+    badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+    allowedRoles: ['Admin', 'Manager'],
   },
   {
     label: 'Financials & Expenses',
