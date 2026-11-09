@@ -69,7 +69,6 @@ export default function ExecutiveDashboard() {
   const [expenses, setExpenses] = useState<Expense[]>([])
 
   // User state
-  const [userEmail, setUserEmail] = useState('admin@japacore.com')
   const [userRole, setUserRole] = useState('Admin')
 
   const fetchData = useCallback(async () => {
@@ -79,7 +78,6 @@ export default function ExecutiveDashboard() {
       // Fetch user profile
       const { data: authData } = await supabase.auth.getUser()
       if (authData.user) {
-        setUserEmail(authData.user.email || 'admin@japacore.com')
         const { data: prof } = await supabase
           .from('profiles')
           .select('role, full_name')
@@ -362,16 +360,6 @@ export default function ExecutiveDashboard() {
       {/* ── Top Executive Header ────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              Live ERP Operations
-            </span>
-            <span className="text-xs text-zinc-400">•</span>
-            <span className="text-xs font-medium text-zinc-500">
-              Role: <strong className="text-zinc-800">{userRole}</strong> ({userEmail})
-            </span>
-          </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-900">
             Executive Dashboard
           </h1>
