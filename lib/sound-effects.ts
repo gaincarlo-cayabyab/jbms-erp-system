@@ -1,16 +1,17 @@
 'use client'
 
 /**
- * Premium Haptic Sound Synthesizer for Enterprise PIN Keypad.
- * Modeled after luxury mechanical keyboard "thock" switches (lubed custom switches)
- * and iOS/Stripe terminal tactile feedback.
+ * Enterprise Luxury Haptic Sound Synthesizer.
+ * Designed specifically for POS & PIN Keypads on mobile/tablet devices.
  * 
- * Uses filtered acoustic transients and warm resonant decay — strictly avoiding
- * harsh synthetic beeps or grating high-frequency square/triangle waves.
+ * Features:
+ * - Pure Sine Wave acoustic modelling (zero harshness, zero synthetic buzz).
+ * - Calibrated frequency sweep (1250Hz -> 650Hz) engineered to be 100% audible on tablet speakers.
+ * - Teardrop gain envelope (3ms linear attack + 42ms exponential decay) preventing speaker pop.
+ * - Handles Android AudioContext suspension with automatic async unlock.
  */
 
 let audioCtx: AudioContext | null = null
-let noiseBuffer: AudioBuffer | null = null
 
 export function initAudio(): AudioContext | null {
   if (typeof window === 'undefined') return null
@@ -28,251 +29,254 @@ export function initAudio(): AudioContext | null {
     if (audioCtx && audioCtx.state === 'suspended') {
       audioCtx.resume().catch(() => {})
     }
-
-    // Pre-generate noise buffer for tactile switch contacts
-    if (audioCtx && !noiseBuffer) {
-      const sampleRate = audioCtx.sampleRate
-      const bufferSize = Math.floor(sampleRate * 0.015) // 15ms acoustic impulse
-      noiseBuffer = audioCtx.createBuffer(1, bufferSize, sampleRate)
-      const output = noiseBuffer.getChannelData(0)
-      for (let i = 0; i < bufferSize; i++) {
-        // Exponentially decaying acoustic white noise impulse
-        output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.28))
-      }
-    }
   } catch {}
 
   return audioCtx
 }
 
-function getAudioContext(): AudioContext | null {
-  return initAudio()
+/**
+ * Internal synthesis for the luxury mechanical tactile "tock"
+ */
+function triggerPinSound(ctx: AudioContext, digit?: string) {
+  try {
+    const now = ctx.currentTime
+    const digitNum = digit ? parseInt(digit, 10) || 5 : 5
+    // Micro-pitch variation (1150Hz - 1350Hz) so each key feels tactile and organic
+    const startFreq = 1180 + digitNum * 18
+    const endFreq = 620 + digitNum * 8
+
+    // Primary warm sine wave (sweet rounded pop)
+    const osc1 = ctx.createOscillator()
+    const gain1 = ctx.createGain()
+
+    osc1.type = 'sine'
+    osc1.frequency.setValueAtTime(startFreq, now)
+    osc1.frequency.exponentialRampToValueAtTime(endFreq, now + 0.038)
+
+    // Smooth teardrop envelope: 3ms attack prevents DAC click, 42ms natural decay
+    gain1.gain.setValueAtTime(0.01, now)
+    gain1.gain.linearRampToValueAtTime(0.9, now + 0.003)
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.045)
+
+    osc1.connect(gain1)
+    gain1.connect(ctx.destination)
+
+    osc1.start(now)
+    osc1.stop(now + 0.048)
+
+    // Subtle luxury harmonic overtone (adds tactile depth)
+    const osc2 = ctx.createOscillator()
+    const gain2 = ctx.createGain()
+
+    osc2.type = 'sine'
+    osc2.frequency.setValueAtTime(startFreq * 1.75, now)
+    osc2.frequency.exponentialRampToValueAtTime(endFreq * 1.75, now + 0.025)
+
+    gain2.gain.setValueAtTime(0.01, now)
+    gain2.gain.linearRampToValueAtTime(0.28, now + 0.002)
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.028)
+
+    osc2.connect(gain2)
+    gain2.connect(ctx.destination)
+
+    osc2.start(now)
+    osc2.stop(now + 0.03)
+  } catch {}
 }
 
 /**
- * Premium Luxury Mechanical "Thock"
- * Produces a warm, rich, damped wooden/pebble keycap sound with zero harshness.
+ * Play luxury mechanical PIN key tap
  */
 export function playPinKeySound(digit?: string) {
   try {
-    const ctx = getAudioContext()
+    const ctx = initAudio()
     if (!ctx) return
 
     if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {})
+      ctx.resume().then(() => {
+        triggerPinSound(ctx, digit)
+      }).catch(() => {})
+      return
     }
 
-    const now = ctx.currentTime
-    const digitNum = digit ? parseInt(digit, 10) || 5 : 5
-    // Micro-pitch modulation (360Hz - 480Hz) — warm, deep, comfortable on the ears
-    const centerFreq = 380 + digitNum * 12
-
-    // Master bus with gentle acoustic low-pass to eliminate all harshness
-    const masterLowPass = ctx.createBiquadFilter()
-    masterLowPass.type = 'lowpass'
-    masterLowPass.frequency.setValueAtTime(1400, now)
-    masterLowPass.Q.setValueAtTime(0.7, now)
-
-    const masterGain = ctx.createGain()
-    masterGain.gain.setValueAtTime(0.75, now)
-    masterLowPass.connect(masterGain)
-    masterGain.connect(ctx.destination)
-
-    // Layer 1: Acoustic mechanical switch contact (Filtered organic impulse)
-    if (noiseBuffer) {
-      const noiseSource = ctx.createBufferSource()
-      noiseSource.buffer = noiseBuffer
-
-      const noiseFilter = ctx.createBiquadFilter()
-      noiseFilter.type = 'bandpass'
-      noiseFilter.frequency.setValueAtTime(1100, now)
-      noiseFilter.Q.setValueAtTime(1.5, now)
-
-      const noiseGain = ctx.createGain()
-      noiseGain.gain.setValueAtTime(0.65, now)
-      noiseGain.gain.exponentialRampToValueAtTime(0.005, now + 0.015)
-
-      noiseSource.connect(noiseFilter)
-      noiseFilter.connect(noiseGain)
-      noiseGain.connect(masterLowPass)
-
-      noiseSource.start(now)
-      noiseSource.stop(now + 0.018)
-    }
-
-    // Layer 2: Warm deep resonant chamber ("thock" sine body)
-    const bodyOsc = ctx.createOscillator()
-    const bodyGain = ctx.createGain()
-
-    bodyOsc.type = 'sine'
-    bodyOsc.frequency.setValueAtTime(centerFreq, now)
-    bodyOsc.frequency.exponentialRampToValueAtTime(140, now + 0.045)
-
-    bodyGain.gain.setValueAtTime(0.7, now)
-    bodyGain.gain.exponentialRampToValueAtTime(0.005, now + 0.048)
-
-    bodyOsc.connect(bodyGain)
-    bodyGain.connect(masterLowPass)
-
-    bodyOsc.start(now)
-    bodyOsc.stop(now + 0.052)
-  } catch {
-    // Ignore audio errors gracefully
-  }
+    triggerPinSound(ctx, digit)
+  } catch {}
 }
 
 /**
- * Tactile wooden backspace tap
+ * Tactile downward drop tone for Backspace
  */
+function triggerBackspaceSound(ctx: AudioContext) {
+  try {
+    const now = ctx.currentTime
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(850, now)
+    osc.frequency.exponentialRampToValueAtTime(450, now + 0.045)
+
+    gain.gain.setValueAtTime(0.01, now)
+    gain.gain.linearRampToValueAtTime(0.75, now + 0.003)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05)
+
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+
+    osc.start(now)
+    osc.stop(now + 0.052)
+  } catch {}
+}
+
 export function playBackspaceSound() {
   try {
-    const ctx = getAudioContext()
+    const ctx = initAudio()
     if (!ctx) return
+
     if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {})
+      ctx.resume().then(() => triggerBackspaceSound(ctx)).catch(() => {})
+      return
     }
 
-    const now = ctx.currentTime
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    const filter = ctx.createBiquadFilter()
-
-    filter.type = 'lowpass'
-    filter.frequency.setValueAtTime(1100, now)
-
-    osc.type = 'sine'
-    osc.frequency.setValueAtTime(310, now)
-    osc.frequency.exponentialRampToValueAtTime(110, now + 0.05)
-
-    gain.gain.setValueAtTime(0.65, now)
-    gain.gain.exponentialRampToValueAtTime(0.005, now + 0.052)
-
-    osc.connect(filter)
-    filter.connect(gain)
-    gain.connect(ctx.destination)
-
-    osc.start(now)
-    osc.stop(now + 0.055)
+    triggerBackspaceSound(ctx)
   } catch {}
 }
 
 /**
- * Soft tactile reset sweep
+ * Double tactile sweep for Clear
  */
+function triggerClearSound(ctx: AudioContext) {
+  try {
+    const now = ctx.currentTime
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(950, now)
+    osc.frequency.exponentialRampToValueAtTime(520, now + 0.055)
+
+    gain.gain.setValueAtTime(0.01, now)
+    gain.gain.linearRampToValueAtTime(0.7, now + 0.003)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06)
+
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+
+    osc.start(now)
+    osc.stop(now + 0.065)
+  } catch {}
+}
+
 export function playClearSound() {
   try {
-    const ctx = getAudioContext()
+    const ctx = initAudio()
     if (!ctx) return
+
     if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {})
+      ctx.resume().then(() => triggerClearSound(ctx)).catch(() => {})
+      return
     }
 
-    const now = ctx.currentTime
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    const filter = ctx.createBiquadFilter()
-
-    filter.type = 'lowpass'
-    filter.frequency.setValueAtTime(1200, now)
-
-    osc.type = 'sine'
-    osc.frequency.setValueAtTime(260, now)
-    osc.frequency.exponentialRampToValueAtTime(95, now + 0.065)
-
-    gain.gain.setValueAtTime(0.6, now)
-    gain.gain.exponentialRampToValueAtTime(0.005, now + 0.068)
-
-    osc.connect(filter)
-    filter.connect(gain)
-    gain.connect(ctx.destination)
-
-    osc.start(now)
-    osc.stop(now + 0.072)
+    triggerClearSound(ctx)
   } catch {}
 }
 
 /**
- * Luxury Hotel / Banking verification chime (Velvety Marimba C5 -> G5)
+ * Luxury Hotel / Apple Pay grade verification chime (A5 -> E6)
  */
-export function playSuccessChime() {
+function triggerSuccessChime(ctx: AudioContext) {
   try {
-    const ctx = getAudioContext()
-    if (!ctx) return
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {})
-    }
-
     const now = ctx.currentTime
 
-    // Filter to give that warm Rhodes / Marimba bell tone
-    const filter = ctx.createBiquadFilter()
-    filter.type = 'lowpass'
-    filter.frequency.setValueAtTime(1800, now)
-    filter.connect(ctx.destination)
-
-    // Note 1: C5 (523.25 Hz)
+    // Note 1: A5 (880 Hz)
     const osc1 = ctx.createOscillator()
     const gain1 = ctx.createGain()
     osc1.type = 'sine'
-    osc1.frequency.setValueAtTime(523.25, now)
-    gain1.gain.setValueAtTime(0.5, now)
-    gain1.gain.exponentialRampToValueAtTime(0.005, now + 0.22)
+    osc1.frequency.setValueAtTime(880, now)
+    gain1.gain.setValueAtTime(0.01, now)
+    gain1.gain.linearRampToValueAtTime(0.6, now + 0.005)
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.22)
     osc1.connect(gain1)
-    gain1.connect(filter)
+    gain1.connect(ctx.destination)
     osc1.start(now)
-    osc1.stop(now + 0.25)
+    osc1.stop(now + 0.24)
 
-    // Note 2: G5 (783.99 Hz)
+    // Note 2: E6 (1318.5 Hz) - Pure glass sparkle
     const osc2 = ctx.createOscillator()
     const gain2 = ctx.createGain()
     osc2.type = 'sine'
-    osc2.frequency.setValueAtTime(783.99, now + 0.09)
-    gain2.gain.setValueAtTime(0.55, now + 0.09)
-    gain2.gain.exponentialRampToValueAtTime(0.005, now + 0.38)
+    osc2.frequency.setValueAtTime(1318.5, now + 0.08)
+    gain2.gain.setValueAtTime(0.01, now + 0.08)
+    gain2.gain.linearRampToValueAtTime(0.65, now + 0.085)
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.38)
     osc2.connect(gain2)
-    gain2.connect(filter)
-    osc2.start(now + 0.09)
-    osc2.stop(now + 0.42)
+    gain2.connect(ctx.destination)
+    osc2.start(now + 0.08)
+    osc2.stop(now + 0.4)
+  } catch {}
+}
+
+export function playSuccessChime() {
+  try {
+    const ctx = initAudio()
+    if (!ctx) return
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(() => triggerSuccessChime(ctx)).catch(() => {})
+      return
+    }
+
+    triggerSuccessChime(ctx)
   } catch {}
 }
 
 /**
- * Soft dual wooden knock on invalid PIN (replaces harsh buzz)
+ * Soft double tactile knock on invalid PIN
  */
-export function playErrorBuzz() {
+function triggerErrorBuzz(ctx: AudioContext) {
   try {
-    const ctx = getAudioContext()
-    if (!ctx) return
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {})
-    }
-
     const now = ctx.currentTime
 
     // Knock 1
     const osc1 = ctx.createOscillator()
     const gain1 = ctx.createGain()
     osc1.type = 'sine'
-    osc1.frequency.setValueAtTime(180, now)
-    osc1.frequency.exponentialRampToValueAtTime(80, now + 0.06)
-    gain1.gain.setValueAtTime(0.45, now)
-    gain1.gain.exponentialRampToValueAtTime(0.005, now + 0.065)
+    osc1.frequency.setValueAtTime(420, now)
+    osc1.frequency.exponentialRampToValueAtTime(180, now + 0.05)
+    gain1.gain.setValueAtTime(0.01, now)
+    gain1.gain.linearRampToValueAtTime(0.6, now + 0.003)
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.06)
     osc1.connect(gain1)
     gain1.connect(ctx.destination)
     osc1.start(now)
-    osc1.stop(now + 0.07)
+    osc1.stop(now + 0.065)
 
     // Knock 2
     const osc2 = ctx.createOscillator()
     const gain2 = ctx.createGain()
     osc2.type = 'sine'
-    osc2.frequency.setValueAtTime(160, now + 0.08)
-    osc2.frequency.exponentialRampToValueAtTime(70, now + 0.14)
-    gain2.gain.setValueAtTime(0.4, now + 0.08)
-    gain2.gain.exponentialRampToValueAtTime(0.005, now + 0.145)
+    osc2.frequency.setValueAtTime(360, now + 0.07)
+    osc2.frequency.exponentialRampToValueAtTime(150, now + 0.12)
+    gain2.gain.setValueAtTime(0.01, now + 0.07)
+    gain2.gain.linearRampToValueAtTime(0.55, now + 0.073)
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.13)
     osc2.connect(gain2)
     gain2.connect(ctx.destination)
-    osc2.start(now + 0.08)
-    osc2.stop(now + 0.15)
+    osc2.start(now + 0.07)
+    osc2.stop(now + 0.135)
+  } catch {}
+}
+
+export function playErrorBuzz() {
+  try {
+    const ctx = initAudio()
+    if (!ctx) return
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(() => triggerErrorBuzz(ctx)).catch(() => {})
+      return
+    }
+
+    triggerErrorBuzz(ctx)
   } catch {}
 }
