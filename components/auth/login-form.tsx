@@ -24,6 +24,14 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth-context'
 import { requestAppFullscreen } from '@/components/ui/auto-fullscreen'
+import {
+  initAudio,
+  playPinKeySound,
+  playBackspaceSound,
+  playClearSound,
+  playSuccessChime,
+  playErrorBuzz,
+} from '@/lib/sound-effects'
 import type { Database } from '@/types/supabase'
 
 export type AppRole = 'Admin' | 'Manager' | 'Cashier' | 'Inventory' | 'Staff'
@@ -359,6 +367,7 @@ export default function LoginForm() {
 
   // Step 1: Select Role
   function handleSelectRole(role: AppRole) {
+    initAudio()
     requestAppFullscreen()
     setSelectedRole(role)
     setPinStep('user')
@@ -367,6 +376,7 @@ export default function LoginForm() {
 
   // Step 2: Select User / Terminal
   function handleSelectUser(user: AppUser) {
+    initAudio()
     requestAppFullscreen()
     if (selectedRole === 'Cashier' && (user.full_name.includes('Dagupan') || user.full_name.includes('(DAG)'))) {
       setPinStep('cashier-staff')
@@ -380,6 +390,7 @@ export default function LoginForm() {
 
   // Step 2b: Select Cashier Shift Staff (Pearly, Ivan, Lanie)
   function handleSelectCashierStaff(staff: AppUser) {
+    initAudio()
     requestAppFullscreen()
     setSelectedUser(staff)
     setPin('')
@@ -409,6 +420,7 @@ export default function LoginForm() {
 
       const result = data?.[0]
       if (result && result.success) {
+        playSuccessChime()
         // Enhanced Middle-Top Welcome Notification Card (Single verified toast)
         toast.custom(
           () => (
@@ -504,11 +516,13 @@ export default function LoginForm() {
 
         setShowVideoOverlay(true)
       } else {
+        playErrorBuzz()
         triggerShake()
         setPin('')
         setErrorMessage(result?.message || 'Invalid PIN code. Please check and try again.')
       }
     } catch (err: unknown) {
+      playErrorBuzz()
       const msg = err instanceof Error ? err.message : 'PIN verification failed'
       triggerShake()
       setPin('')
@@ -518,10 +532,15 @@ export default function LoginForm() {
     }
   }, [loginWithPinSession, redirectTo, triggerShake])
 
-  // Handle numpad digit click
+  // Handle numpad digit click with zero-latency audio and responsive tactile feel
   const handleDigitClick = useCallback((digit: string) => {
-    requestAppFullscreen()
     if (verifying || !selectedUser) return
+
+    // 0ms tactile mechanical sound + haptic vibration
+    playPinKeySound(digit)
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate(10) } catch {}
+    }
 
     setPin((prev) => {
       if (prev.length >= 4) return prev
@@ -529,7 +548,10 @@ export default function LoginForm() {
       setErrorMessage(null)
 
       if (nextPin.length === 4) {
-        verifyPin(nextPin, selectedUser)
+        // Yield to browser paint so 4th indicator dot illuminates instantly before RPC verification
+        setTimeout(() => {
+          verifyPin(nextPin, selectedUser)
+        }, 50)
       }
       return nextPin
     })
@@ -537,12 +559,20 @@ export default function LoginForm() {
 
   const handleBackspace = useCallback(() => {
     if (verifying) return
+    playBackspaceSound()
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate(8) } catch {}
+    }
     setPin((prev) => prev.slice(0, -1))
     setErrorMessage(null)
   }, [verifying])
 
   const handleClear = useCallback(() => {
     if (verifying) return
+    playClearSound()
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate(12) } catch {}
+    }
     setPin('')
     setErrorMessage(null)
   }, [verifying])
@@ -896,12 +926,12 @@ export default function LoginForm() {
                     <div
                       key={idx}
                       className={cn(
-                        'h-4.5 w-4.5 sm:h-5 sm:w-5 rounded-full border-2 transition-all duration-200',
+                        'h-4.5 w-4.5 sm:h-5 sm:w-5 rounded-full border-2 transform-gpu transition-all duration-100',
                         isShaking
                           ? 'border-rose-500 bg-rose-500 scale-110 shadow-sm'
                           : isFilled
                             ? 'border-indigo-600 bg-indigo-600 scale-125 shadow-md shadow-indigo-300 ring-4 ring-indigo-100'
-                            : 'border-stone-300 bg-stone-100/60'
+                            : 'border-stone-300 bg-stone-100/60 scale-100'
                       )}
                     />
                   )
@@ -917,14 +947,14 @@ export default function LoginForm() {
             </div>
 
             {/* 3×4 Large Touch-Friendly PIN Numpad for Tablet/POS */}
-            <div className="grid grid-cols-3 gap-3 sm:gap-4 w-full max-w-[380px] sm:max-w-[420px] mx-auto my-2 sm:my-3">
+            <div className="grid grid-cols-3 gap-3 sm:gap-4 w-full max-w-[380px] sm:max-w-[420px] mx-auto my-2 sm:my-3 select-none">
               {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
                 <button
                   key={digit}
                   type="button"
                   onClick={() => handleDigitClick(digit)}
                   disabled={verifying}
-                  className="h-16 sm:h-18 lg:h-20 rounded-2xl border border-stone-200/90 bg-stone-50/80 hover:bg-stone-100 hover:border-stone-300 active:scale-95 active:bg-stone-200/80 text-3xl sm:text-4xl font-black text-stone-800 transition-all shadow-sm flex items-center justify-center select-none disabled:opacity-50 touch-manipulation cursor-pointer"
+                  className="h-16 sm:h-18 lg:h-20 rounded-2xl border border-stone-200/90 bg-stone-50/90 hover:bg-stone-100 hover:border-stone-300 active:scale-90 active:bg-stone-200/90 active:border-stone-400 text-3xl sm:text-4xl font-black text-stone-800 transform-gpu transition-transform duration-75 shadow-sm flex items-center justify-center select-none disabled:opacity-50 touch-manipulation cursor-pointer will-change-transform"
                 >
                   {digit}
                 </button>
@@ -935,7 +965,7 @@ export default function LoginForm() {
                 type="button"
                 onClick={handleClear}
                 disabled={verifying || pin.length === 0}
-                className="h-16 sm:h-18 lg:h-20 rounded-2xl border border-stone-200/90 bg-stone-100/80 hover:bg-stone-200 active:scale-95 text-sm sm:text-base font-bold text-stone-600 transition-all shadow-sm flex items-center justify-center gap-1.5 select-none disabled:opacity-40 touch-manipulation cursor-pointer"
+                className="h-16 sm:h-18 lg:h-20 rounded-2xl border border-stone-200/90 bg-stone-100/90 hover:bg-stone-200 active:scale-90 active:bg-stone-300 text-sm sm:text-base font-bold text-stone-600 transform-gpu transition-transform duration-75 shadow-sm flex items-center justify-center gap-1.5 select-none disabled:opacity-40 touch-manipulation cursor-pointer will-change-transform"
                 title="Clear PIN"
               >
                 <RotateCcw className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -947,7 +977,7 @@ export default function LoginForm() {
                 type="button"
                 onClick={() => handleDigitClick('0')}
                 disabled={verifying}
-                className="h-16 sm:h-18 lg:h-20 rounded-2xl border border-stone-200/90 bg-stone-50/80 hover:bg-stone-100 hover:border-stone-300 active:scale-95 active:bg-stone-200/80 text-3xl sm:text-4xl font-black text-stone-800 transition-all shadow-sm flex items-center justify-center select-none disabled:opacity-50 touch-manipulation cursor-pointer"
+                className="h-16 sm:h-18 lg:h-20 rounded-2xl border border-stone-200/90 bg-stone-50/90 hover:bg-stone-100 hover:border-stone-300 active:scale-90 active:bg-stone-200/90 active:border-stone-400 text-3xl sm:text-4xl font-black text-stone-800 transform-gpu transition-transform duration-75 shadow-sm flex items-center justify-center select-none disabled:opacity-50 touch-manipulation cursor-pointer will-change-transform"
               >
                 0
               </button>
@@ -957,7 +987,7 @@ export default function LoginForm() {
                 type="button"
                 onClick={handleBackspace}
                 disabled={verifying || pin.length === 0}
-                className="h-16 sm:h-18 lg:h-20 rounded-2xl border border-stone-200/90 bg-stone-100/80 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 active:scale-95 text-stone-600 transition-all shadow-sm flex items-center justify-center select-none disabled:opacity-40 touch-manipulation cursor-pointer"
+                className="h-16 sm:h-18 lg:h-20 rounded-2xl border border-stone-200/90 bg-stone-100/90 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 active:scale-90 active:bg-rose-100 active:text-rose-700 text-stone-600 transform-gpu transition-transform duration-75 shadow-sm flex items-center justify-center select-none disabled:opacity-40 touch-manipulation cursor-pointer will-change-transform"
                 title="Delete Digit"
               >
                 <Delete className="h-6 w-6 sm:h-7 sm:w-7" />
