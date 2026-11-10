@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import DashboardShell from '@/components/dashboard-shell'
 import FinancialsSummaryCards from './financials-summary-cards'
+import FinancialsChartsAndAdvisor from './financials-charts-and-advisor'
 import ExpenseFormModal from './expense-form-modal'
 import { createClient } from '@/lib/supabase/client'
 import { getExpenses, removeExpense } from '@/lib/financials/expense-service'
@@ -30,6 +31,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   FileSpreadsheet,
+  Sparkles,
 } from 'lucide-react'
 
 export default function FinancialsView() {
@@ -37,6 +39,7 @@ export default function FinancialsView() {
   const [activeTab, setActiveTab] = useState<'income' | 'expenses' | 'pnl'>('income')
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [posSalesTotal, setPosSalesTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [isUsingMockNotice, setIsUsingMockNotice] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -74,6 +77,17 @@ export default function FinancialsView() {
       if (expRes.isUsingMock && expRes.error) {
         setIsUsingMockNotice(expRes.error)
       }
+
+      // 3. Fetch POS retail sales from cash_transactions
+      const { data: posTxs } = await supabase
+        .from('cash_transactions')
+        .select('amount')
+        .eq('source_module', 'pos')
+        .eq('flow_type', 'inflow')
+        .eq('status', 'completed')
+
+      const totalPos = (posTxs || []).reduce((acc: number, t: { amount: number }) => acc + (Number(t.amount) || 0), 0)
+      setPosSalesTotal(totalPos)
     } catch (err: unknown) {
       console.error('Failed to load financial data', err)
     } finally {
@@ -110,10 +124,13 @@ export default function FinancialsView() {
     const paidOrders = salesOrders.filter((o) => o.payment_status === 'Paid')
     const unpaidOrders = salesOrders.filter((o) => o.payment_status !== 'Paid')
 
-    const grossRevenue = paidOrders.reduce(
-      (sum, o) => sum + (Number(o.total_amount) || 0),
-      0
-    )
+    // Count POS orders already stored in sales_orders
+    const posInSales = paidOrders.filter((o) => o.order_number?.startsWith('INV-'))
+    const posInSalesTotal = posInSales.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0)
+    const extraPosTotal = Math.max(0, posSalesTotal - posInSalesTotal)
+
+    const grossRevenue =
+      paidOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0) + extraPosTotal
 
     const accountsReceivable = unpaidOrders.reduce(
       (sum, o) => sum + (Number(o.total_amount) || 0),
@@ -131,8 +148,9 @@ export default function FinancialsView() {
       accountsReceivable,
       paidOrdersCount: paidOrders.length,
       unpaidOrdersCount: unpaidOrders.length,
+      posSalesTotal,
     }
-  }, [salesOrders, expenses])
+  }, [salesOrders, expenses, posSalesTotal])
 
   // Filtered Income (Sales Orders)
   const filteredIncome = useMemo(() => {
@@ -316,12 +334,12 @@ export default function FinancialsView() {
                 onClick={() => setActiveTab('pnl')}
                 className={`inline-flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-semibold transition ${
                   activeTab === 'pnl'
-                    ? 'border-blue-600 text-blue-700'
+                    ? 'border-indigo-600 text-indigo-700'
                     : 'border-transparent text-zinc-500 hover:text-zinc-800'
                 }`}
               >
-                <DollarSign className="h-4 w-4 text-blue-600" />
-                <span>P&L Financial Breakdown</span>
+                <Sparkles className="h-4 w-4 text-indigo-600" />
+                <span>P&L, AI Advisor & Visual Reports</span>
               </button>
             </div>
 
@@ -576,10 +594,21 @@ export default function FinancialsView() {
             </div>
           )}
 
-          {/* TAB 3: P&L FINANCIAL BREAKDOWN */}
+          {/* TAB 3: P&L, AI ADVISOR & VISUAL REPORTS */}
           {activeTab === 'pnl' && (
-            <div className="p-6 space-y-6">
-              <div className="max-w-2xl mx-auto rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm space-y-6">
+            <div className="p-6 space-y-8">
+              {/* AI Business Health Evaluator & Interactive Charts */}
+              <FinancialsChartsAndAdvisor
+                grossRevenue={metrics.grossRevenue}
+                totalExpenses={metrics.totalExpenses}
+                accountsReceivable={metrics.accountsReceivable}
+                salesOrders={salesOrders}
+                expenses={expenses}
+                posSalesTotal={metrics.posSalesTotal}
+              />
+
+              {/* Statement Summary Card */}
+              <div className="max-w-3xl mx-auto rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm space-y-6">
                 <div>
                   <h2 className="text-base font-bold text-zinc-900">
                     Profit & Loss Statement Summary

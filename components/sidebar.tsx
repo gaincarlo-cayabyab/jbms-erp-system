@@ -20,6 +20,7 @@ import {
   ArrowLeftRight,
   History,
   Wallet,
+  HelpCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -121,6 +122,14 @@ const navItems: NavItem[] = [
     badge: 'Audit',
     badgeClass: 'bg-slate-100 text-slate-700 border border-slate-300',
     allowedRoles: ['Admin'],
+  },
+  {
+    label: 'Help & Knowledge Base',
+    href: '/help',
+    icon: HelpCircle,
+    badge: 'Guide',
+    badgeClass: 'bg-sky-50 text-sky-700 border border-sky-200',
+    allowedRoles: ['Admin', 'Manager', 'Cashier', 'Inventory', 'Staff'],
   },
   // ── POS Terminal (Cashier & Manager only — not Admin) ─────────
   {

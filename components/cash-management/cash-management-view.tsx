@@ -17,6 +17,8 @@ import {
   getCashReconciliations,
   approveSafeDrop,
   archiveCashContainer,
+  updateCashContainer,
+  deleteCashContainer,
 } from '@/app/actions/cash'
 import { useBranch } from '@/lib/branch-context'
 import { soundEffects } from '@/lib/sound-effects'
@@ -26,6 +28,7 @@ import RecordTransactionModal from './record-transaction-modal'
 import AccountTransferModal from './account-transfer-modal'
 import ShiftReconciliationModal from './shift-reconciliation-modal'
 import CreateContainerModal from './create-container-modal'
+import EditContainerModal from './edit-container-modal'
 import SafeDropModal from './safe-drop-modal'
 import ReverseTransactionModal from './reverse-transaction-modal'
 import { useConfirm } from '@/components/ui/confirm-dialog'
@@ -61,6 +64,8 @@ import {
   Archive,
   AlertOctagon,
   Sparkles,
+  Pencil,
+  Trash2,
 } from 'lucide-react'
 
 export default function CashManagementView() {
@@ -98,6 +103,8 @@ export default function CashManagementView() {
   const [transferModalOpen, setTransferModalOpen] = useState(false)
   const [reconciliationModalOpen, setReconciliationModalOpen] = useState(false)
   const [createContainerOpen, setCreateContainerOpen] = useState(false)
+  const [editingAccount, setEditingAccount] = useState<CashAccount | null>(null)
+  const [editContainerOpen, setEditContainerOpen] = useState(false)
   const [safeDropModalOpen, setSafeDropModalOpen] = useState(false)
   const [safeDropDrawerId, setSafeDropDrawerId] = useState<string | undefined>()
   const [reversingTx, setReversingTx] = useState<CashTransaction | null>(null)
@@ -168,7 +175,7 @@ export default function CashManagementView() {
       title: `Archive "${account.account_name}"?`,
       message: `Are you sure you want to archive this cash container? Current balance: ₱${Number(account.current_balance).toLocaleString('en-PH', { minimumFractionDigits: 2 })}.`,
       confirmText: 'Archive Container',
-      variant: 'danger',
+      variant: 'warning',
     })
     if (!ok) return
 
@@ -180,6 +187,32 @@ export default function CashManagementView() {
     } catch (err: unknown) {
       soundEffects.error()
       const msg = err instanceof Error ? err.message : 'Failed to archive container.'
+      toast.error(msg)
+    }
+  }
+
+  // Handle Delete Container (Permanent)
+  const handleDeleteContainer = async (account: CashAccount) => {
+    const ok = await confirm({
+      title: `Permanently Delete "${account.account_name}"?`,
+      message: `Are you sure you want to permanently delete "${account.account_name}"? This action cannot be undone.`,
+      confirmText: 'Delete Permanently',
+      variant: 'danger',
+    })
+    if (!ok) return
+
+    try {
+      const res = await deleteCashContainer(account.id)
+      soundEffects.success()
+      if (res.archived) {
+        toast.info(`Container has past activity, so it was archived and hidden from view.`)
+      } else {
+        toast.success(`Container "${account.account_name}" permanently deleted.`)
+      }
+      loadData(true)
+    } catch (err: unknown) {
+      soundEffects.error()
+      const msg = err instanceof Error ? err.message : 'Failed to delete container.'
       toast.error(msg)
     }
   }
@@ -289,11 +322,11 @@ export default function CashManagementView() {
                 Cash Management & Liquidity
               </h1>
               <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
-                Treasury Engine · Blueprint 2.0
+                Live Treasury Monitor
               </span>
             </div>
             <p className="mt-1 text-sm text-zinc-500">
-              Multi-tier vaults, dual-key Safe Drops, real-time ceiling alerts, and immutable audit logs.
+              Manage your cash containers, track daily inflows and outflows, and control the safe drop workflow.
             </p>
           </div>
 
@@ -561,10 +594,10 @@ export default function CashManagementView() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
                   <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-900">
-                    Vault & Container Hierarchy (Blueprint Section 2)
+                    Cash Containers & Vault Hierarchy
                   </h2>
                   <p className="text-xs text-zinc-500">
-                    Level 1 POS Tills → Level 2 Manager Safe → Level 3 Main Vault → Commercial Banks.
+                    Cash flows upward: POS Drawer (Level 1) → Manager Safe (Level 2) → Main Vault (Level 3) → Bank (Level 4).
                   </p>
                 </div>
                 <button
@@ -679,11 +712,31 @@ export default function CashManagementView() {
                           </button>
 
                           <button
+                            onClick={() => {
+                              soundEffects.keyClick()
+                              setEditingAccount(account)
+                              setEditContainerOpen(true)
+                            }}
+                            className="rounded-lg p-1 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 transition"
+                            title="Edit Container Details & Balance"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+
+                          <button
                             onClick={() => handleArchiveContainer(account)}
-                            className="rounded-lg p-1 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition"
-                            title="Archive Container"
+                            className="rounded-lg p-1 text-zinc-400 hover:text-amber-600 hover:bg-amber-50 transition"
+                            title="Archive Container (Hide)"
                           >
                             <Archive className="h-3.5 w-3.5" />
+                          </button>
+
+                          <button
+                            onClick={() => handleDeleteContainer(account)}
+                            className="rounded-lg p-1 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                            title="Permanently Delete Container"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       </div>
@@ -1129,12 +1182,27 @@ export default function CashManagementView() {
         onSuccess={() => loadData(true)}
       />
 
-      {/* Create Container Modal (Blueprint 5.3) */}
+      {/* Create Container Modal */}
       <CreateContainerModal
         isOpen={createContainerOpen}
         onClose={() => setCreateContainerOpen(false)}
         onSuccess={() => loadData(true)}
         defaultBranch={selectedBranch}
+      />
+
+      {/* Edit Container Modal */}
+      <EditContainerModal
+        isOpen={editContainerOpen}
+        account={editingAccount}
+        onClose={() => {
+          setEditContainerOpen(false)
+          setEditingAccount(null)
+        }}
+        onSuccess={() => {
+          loadData(true)
+          setEditContainerOpen(false)
+          setEditingAccount(null)
+        }}
       />
 
       {/* Safe Drop Modal (Blueprint 3.1 & 6.1) */}

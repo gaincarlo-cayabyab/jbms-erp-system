@@ -22,6 +22,8 @@ import {
   ChevronRight,
   Sparkles,
   Receipt,
+  BarChart3,
+  HelpCircle,
 } from 'lucide-react'
 import StatCard from '@/components/stat-card'
 import { cn } from '@/lib/utils'
@@ -136,13 +138,26 @@ export default function ExecutiveDashboard() {
 
   // ── Metrics Calculation ────────────────────────────────────────────────────
 
-  // 1. Sales & Revenue
+  // 1. Sales & Revenue & Net Profit
   const totalRevenue = salesOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0)
   const paidOrders = salesOrders.filter((o) => o.payment_status === 'Paid')
   const pendingSales = salesOrders.filter((o) => o.payment_status !== 'Paid')
   const accountsReceivable = pendingSales.reduce(
     (sum, o) => sum + (Number(o.total_amount) || 0),
     0
+  )
+  const totalExpenses = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
+  const netProfit = totalRevenue - totalExpenses
+  const profitMargin = totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 100) : 0
+  const healthScore = Math.max(
+    25,
+    Math.min(
+      99,
+      50 +
+        (profitMargin >= 30 ? 30 : profitMargin > 0 ? 15 : totalRevenue === 0 && totalExpenses === 0 ? 10 : -20) +
+        (totalRevenue > 10000 ? 15 : totalRevenue > 0 ? 5 : 0) -
+        (accountsReceivable > 25000 ? 15 : 0)
+    )
   )
 
   // 2. Production
@@ -384,6 +399,60 @@ export default function ExecutiveDashboard() {
             <p className="text-xs font-medium text-zinc-600">
               {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── AI Executive Business Health Advisor ─────────────────────────── */}
+      <div className="rounded-2xl border border-indigo-200 bg-linear-to-r from-indigo-50/90 via-white to-blue-50/90 p-4 sm:p-5 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-600/20">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-bold text-zinc-900">AI Business Health Rating</span>
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold border ${
+                    healthScore >= 75
+                      ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                      : healthScore >= 50
+                      ? 'bg-amber-100 text-amber-800 border-amber-300'
+                      : 'bg-rose-100 text-rose-800 border-rose-300'
+                  }`}
+                >
+                  {healthScore >= 75
+                    ? '🟢 Excellent Health'
+                    : healthScore >= 50
+                    ? '🟡 Stable / Break-Even'
+                    : '🔴 Needs Attention'}{' '}
+                  · Score: {healthScore}/100
+                </span>
+              </div>
+              <p className="text-xs text-zinc-600 mt-0.5">
+                {netProfit >= 0
+                  ? `Net Operating Profit: +${fmt(netProfit)} (${profitMargin}% margin) · Revenue: ${fmt(totalRevenue)} · Overhead: ${fmt(totalExpenses)}`
+                  : `Operating Deficit: ${fmt(netProfit)} · Overhead: ${fmt(totalExpenses)} exceeds Revenue: ${fmt(totalRevenue)}`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <Link
+              href="/financials"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-white px-3.5 py-2 text-xs font-bold text-indigo-700 shadow-2xs hover:bg-indigo-50 transition active:scale-95"
+            >
+              <BarChart3 className="h-3.5 w-3.5 text-indigo-600" />
+              <span>P&L & Visual Reports →</span>
+            </Link>
+            <Link
+              href="/help"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 shadow-2xs hover:bg-zinc-50 transition active:scale-95"
+            >
+              <HelpCircle className="h-3.5 w-3.5 text-zinc-500" />
+              <span>Help Guide</span>
+            </Link>
           </div>
         </div>
       </div>

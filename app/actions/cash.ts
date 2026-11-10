@@ -494,20 +494,26 @@ export async function archiveCashContainer(accountId: string) {
 }
 
 /**
- * Updates container rules (e.g. T_max threshold, default float)
+ * Updates container details (name, account number, balance, thresholds, default float)
  */
 export async function updateCashContainer(
   accountId: string,
   payload: {
     accountName?: string
+    accountNumber?: string
+    currentBalance?: number
     cashCeiling?: number
     defaultFloat?: number
   }
 ) {
   const supabase = await createClient()
 
-  const updateFields: Record<string, any> = {}
+  const updateFields: Record<string, any> = {
+    updated_at: new Date().toISOString(),
+  }
   if (payload.accountName !== undefined) updateFields.account_name = payload.accountName.trim()
+  if (payload.accountNumber !== undefined) updateFields.account_number = payload.accountNumber?.trim() || null
+  if (payload.currentBalance !== undefined) updateFields.current_balance = Number(payload.currentBalance) || 0
   if (payload.cashCeiling !== undefined) updateFields.cash_ceiling = Number(payload.cashCeiling)
   if (payload.defaultFloat !== undefined) updateFields.default_float = Number(payload.defaultFloat)
 
@@ -760,3 +766,32 @@ export async function reverseCashTransaction(params: {
 
   return revTx
 }
+
+/**
+ * Permanently delete a cash container
+ */
+export async function deleteCashContainer(id: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('cash_accounts')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    // If foreign key constraint blocks deletion due to past transactions, archive it cleanly
+    if (error.code === '23503') {
+      const { error: archErr } = await supabase
+        .from('cash_accounts')
+        .update({ is_archived: true, is_active: false })
+        .eq('id', id)
+      if (archErr) throw new Error(archErr.message)
+      return { archived: true }
+    }
+    throw new Error(`Failed to delete container: ${error.message}`)
+  }
+
+  try { revalidatePath('/cash-management') } catch {}
+  return { deleted: true }
+}
+
