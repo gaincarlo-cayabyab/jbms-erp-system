@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/auth-context'
 import { useBranch, BRANCH_LIST } from '@/lib/branch-context'
@@ -27,6 +28,7 @@ import {
   Loader2,
   Trash2,
   ShieldAlert,
+  Package,
 } from 'lucide-react'
 
 interface CatalogProduct {
@@ -212,7 +214,10 @@ export default function StockTransfersView() {
     const inTransit = transfers.filter((t) => t.status === 'in_transit').length
     const variance = transfers.filter((t) => t.status === 'variance_flagged').length
     const completed = transfers.filter((t) => t.status === 'received').length
-    return { total, inTransit, variance, completed }
+    const requested = transfers.filter((t) => t.status === 'requested').length
+    const draft = transfers.filter((t) => t.status === 'draft').length
+    const cancelled = transfers.filter((t) => t.status === 'cancelled').length
+    return { total, inTransit, variance, completed, requested, draft, cancelled }
   }, [transfers])
 
   // Handle Add Item Row in Create Modal
@@ -398,117 +403,211 @@ export default function StockTransfersView() {
 
   return (
     <div className="space-y-6">
-      {/* ── Header ────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* ── Page Header ────────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-blue-100 text-blue-700">
-              <ArrowLeftRight className="h-5 w-5" />
-            </span>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
               Inter-Branch Stock Transfers (STO)
             </h1>
+            <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
+              Module 6 · Logistics & STO
+            </span>
+            <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
+              📍 Dagupan Main ↔ Manila Hub
+            </span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Manage multi-branch stock movements between Dagupan Main Store &amp; Manila Operations Hub.
+          <p className="mt-1 text-sm text-zinc-500">
+            Multi-branch merchandise movement manifests, custody tracking, and physical receiving reconciliation.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Action Bar */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/inventory"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-bold text-blue-700 shadow-2xs hover:bg-blue-100 transition active:scale-95"
+            title="View Multi-Store Inventory"
+          >
+            <Boxes className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Inventory Catalog</span>
+          </Link>
+
           <button
             type="button"
             onClick={fetchTransfers}
             disabled={isLoading}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 active:scale-95 transition shadow-2xs"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 shadow-2xs hover:bg-zinc-50 hover:text-zinc-900 transition disabled:opacity-50"
             title="Refresh Stock Transfers"
           >
             <RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} />
-            <span>Refresh</span>
+            <span className="hidden sm:inline">Refresh</span>
           </button>
 
           <button
             type="button"
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 active:scale-95 transition shadow-md shadow-indigo-200"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-emerald-700 transition active:scale-95"
           >
             <Plus className="h-4 w-4" />
-            <span>New Stock Transfer</span>
+            <span>+ New Transfer Request</span>
           </button>
         </div>
       </div>
 
-      {/* ── Metric Cards ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
-            <span>Total STO Orders</span>
-            <FileText className="h-4 w-4 text-slate-400" />
+      {/* ── Metric Cards Row (Matching Multi-Store Inventory & Dashboard) ── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Card 1: Total Orders */}
+        <div className="flex flex-col justify-between rounded-xl border border-zinc-200 bg-white p-5 shadow-xs transition hover:shadow-md">
+          <div className="flex items-start justify-between">
+            <div className="min-w-0 flex-1 pr-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 truncate">
+                TOTAL STO ORDERS
+              </p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl truncate">
+                {metrics.total}
+              </p>
+            </div>
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-xs bg-indigo-600">
+              <FileText className="h-5 w-5" />
+            </div>
           </div>
-          <p className="text-2xl font-black text-slate-900 mt-2">{metrics.total}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Cross-branch manifests</p>
+          <div className="mt-3 border-t border-zinc-100 pt-3">
+            <p className="text-xs text-zinc-500 truncate">Cross-branch transfer manifests</p>
+          </div>
         </div>
 
-        <div className="p-4 rounded-2xl border border-blue-200 bg-blue-50/50 shadow-2xs">
-          <div className="flex items-center justify-between text-blue-700 text-xs font-bold">
-            <span>In-Transit Active</span>
-            <Truck className="h-4 w-4 text-blue-600" />
+        {/* Card 2: In-Transit */}
+        <div className="flex flex-col justify-between rounded-xl border border-zinc-200 bg-white p-5 shadow-xs transition hover:shadow-md">
+          <div className="flex items-start justify-between">
+            <div className="min-w-0 flex-1 pr-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 truncate">
+                IN-TRANSIT ACTIVE
+              </p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl truncate">
+                {metrics.inTransit}
+              </p>
+            </div>
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-xs bg-blue-600">
+              <Truck className="h-5 w-5" />
+            </div>
           </div>
-          <p className="text-2xl font-black text-blue-900 mt-2">{metrics.inTransit}</p>
-          <p className="text-[11px] text-blue-600 font-medium mt-0.5">Dispatched &amp; en-route</p>
+          <div className="mt-3 border-t border-zinc-100 pt-3">
+            <p className="text-xs text-zinc-500 truncate">Dispatched &amp; en-route custody</p>
+          </div>
         </div>
 
-        <div className="p-4 rounded-2xl border border-rose-200 bg-rose-50/50 shadow-2xs">
-          <div className="flex items-center justify-between text-rose-700 text-xs font-bold">
-            <span>Variance Discrepancies</span>
-            <AlertTriangle className="h-4 w-4 text-rose-600" />
+        {/* Card 3: Variances */}
+        <div className="flex flex-col justify-between rounded-xl border border-zinc-200 bg-white p-5 shadow-xs transition hover:shadow-md">
+          <div className="flex items-start justify-between">
+            <div className="min-w-0 flex-1 pr-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 truncate">
+                VARIANCE FLAGGED
+              </p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl truncate">
+                {metrics.variance}
+              </p>
+            </div>
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-xs bg-rose-600">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
           </div>
-          <p className="text-2xl font-black text-rose-900 mt-2">{metrics.variance}</p>
-          <p className="text-[11px] text-rose-600 font-medium mt-0.5">Requires manager review</p>
+          <div className="mt-3 border-t border-zinc-100 pt-3">
+            <p className="text-xs text-zinc-500 truncate">Count discrepancies for audit review</p>
+          </div>
         </div>
 
-        <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 shadow-2xs">
-          <div className="flex items-center justify-between text-emerald-700 text-xs font-bold">
-            <span>Received &amp; Stocked</span>
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+        {/* Card 4: Received & Stocked */}
+        <div className="flex flex-col justify-between rounded-xl border border-zinc-200 bg-white p-5 shadow-xs transition hover:shadow-md">
+          <div className="flex items-start justify-between">
+            <div className="min-w-0 flex-1 pr-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 truncate">
+                RECEIVED &amp; STOCKED
+              </p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl truncate">
+                {metrics.completed}
+              </p>
+            </div>
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-xs bg-emerald-600">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
           </div>
-          <p className="text-2xl font-black text-emerald-900 mt-2">{metrics.completed}</p>
-          <p className="text-[11px] text-emerald-600 font-medium mt-0.5">Reconciled transfers</p>
+          <div className="mt-3 border-t border-zinc-100 pt-3">
+            <p className="text-xs text-zinc-500 truncate">Reconciled &amp; verified transfers</p>
+          </div>
         </div>
       </div>
 
+      {/* ── Status Category Tabs (Matching Multi-Store Inventory & Help Design) ── */}
+      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        {[
+          { id: 'all', label: 'ALL TRANSFERS', count: metrics.total },
+          { id: 'in_transit', label: 'IN-TRANSIT', count: metrics.inTransit },
+          { id: 'variance_flagged', label: 'VARIANCE FLAGGED', count: metrics.variance },
+          { id: 'requested', label: 'REQUESTED / PENDING', count: metrics.requested },
+          { id: 'received', label: 'RECEIVED & VERIFIED', count: metrics.completed },
+          { id: 'draft', label: 'DRAFT', count: metrics.draft },
+          { id: 'cancelled', label: 'CANCELLED', count: metrics.cancelled },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setStatusFilter(tab.id)}
+            className={cn(
+              'rounded-lg px-3 py-1.5 text-xs font-bold transition shadow-2xs flex items-center gap-1.5',
+              statusFilter === tab.id
+                ? 'bg-blue-600 text-white'
+                : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+            )}
+          >
+            <span>{tab.label}</span>
+            <span className="opacity-75">({tab.count})</span>
+          </button>
+        ))}
+      </div>
+
       {/* ── Filters & Search Bar ──────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 bg-white border border-slate-200 rounded-2xl shadow-2xs">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search transfer #, product name, SKU, or notes…"
-            className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:bg-white transition"
+            className="w-full pl-10 pr-10 py-2.5 text-xs bg-white border border-zinc-200 rounded-xl outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 transition shadow-2xs placeholder:text-zinc-400"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
-          <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+          <Filter className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 outline-none cursor-pointer hover:border-slate-300 transition"
+            className="text-xs font-semibold text-zinc-700 bg-white border border-zinc-200 rounded-xl px-3 py-2 outline-none cursor-pointer hover:border-zinc-300 transition shadow-2xs"
           >
-            <option value="all">All Statuses</option>
-            <option value="in_transit">In-Transit</option>
-            <option value="variance_flagged">Variance Flagged</option>
-            <option value="draft">Draft</option>
-            <option value="requested">Requested</option>
-            <option value="received">Received</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="all">All Statuses ({metrics.total})</option>
+            <option value="in_transit">In-Transit ({metrics.inTransit})</option>
+            <option value="variance_flagged">Variance Flagged ({metrics.variance})</option>
+            <option value="requested">Requested ({metrics.requested})</option>
+            <option value="received">Received ({metrics.completed})</option>
+            <option value="draft">Draft ({metrics.draft})</option>
+            <option value="cancelled">Cancelled ({metrics.cancelled})</option>
           </select>
         </div>
       </div>
 
       {/* ── Transfer Manifests Table ──────────────────────────────────── */}
-      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
+      <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden shadow-xs">
         {isLoading ? (
           <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400">
             <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />

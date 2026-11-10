@@ -18,6 +18,10 @@ import {
   FileCode,
   AlertCircle,
   Tag,
+  ArrowLeftRight,
+  FileText,
+  CheckCircle2,
+  Layers,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -58,6 +62,7 @@ export default function AuditLogsView() {
   const [searchQuery, setSearchQuery] = useState('')
   const [branchFilter, setBranchFilter] = useState('all')
   const [actionFilter, setActionFilter] = useState('all')
+  const [activeCategoryTab, setActiveCategoryTab] = useState<'ALL' | 'STO' | 'STOCK' | 'PRICE' | 'SECURITY'>('ALL')
   const [selectedLog, setSelectedLog] = useState<AuditLogItem | null>(null)
 
   const fetchAuditLogs = useCallback(async () => {
@@ -110,9 +115,26 @@ export default function AuditLogsView() {
     }
   }, [activeBranchId])
 
+  // Category counts
+  const tabCounts = useMemo(() => {
+    const sto = logs.filter((l) => l.action_type.includes('STO')).length
+    const stock = logs.filter((l) => l.action_type.includes('STOCK')).length
+    const price = logs.filter((l) => l.action_type.includes('PRICE') || l.action_type.includes('OVERRIDE')).length
+    const security = logs.filter(
+      (l) => l.action_type.includes('SECURITY') || l.action_type.includes('VIEW_AS') || l.action_type.includes('AUTH')
+    ).length
+    return { all: logs.length, sto, stock, price, security }
+  }, [logs])
+
   // Filtered logs
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
+      // Category tab filter
+      if (activeCategoryTab === 'STO' && !log.action_type.includes('STO')) return false
+      if (activeCategoryTab === 'STOCK' && !log.action_type.includes('STOCK')) return false
+      if (activeCategoryTab === 'PRICE' && !log.action_type.includes('PRICE') && !log.action_type.includes('OVERRIDE')) return false
+      if (activeCategoryTab === 'SECURITY' && !log.action_type.includes('SECURITY') && !log.action_type.includes('VIEW_AS') && !log.action_type.includes('AUTH')) return false
+
       if (branchFilter !== 'all' && log.branch_id !== branchFilter) {
         return false
       }
@@ -129,7 +151,7 @@ export default function AuditLogsView() {
       }
       return true
     })
-  }, [logs, branchFilter, actionFilter, searchQuery])
+  }, [logs, branchFilter, actionFilter, searchQuery, activeCategoryTab])
 
   // Distinct action types for dropdown filter
   const actionTypes = useMemo(() => {
@@ -137,90 +159,218 @@ export default function AuditLogsView() {
     return Array.from(set)
   }, [logs])
 
+  // Export audit events to CSV
+  const exportAuditCSV = () => {
+    if (filteredLogs.length === 0) {
+      toast.error('No audit records to export.')
+      return
+    }
+    const headers = ['Timestamp', 'User', 'Role', 'Branch', 'Action Type', 'Entity', 'Entity ID', 'IP Address']
+    const rows = filteredLogs.map((l) => [
+      `"${new Date(l.timestamp).toLocaleString()}"`,
+      `"${l.user_name || 'System'}"`,
+      `"${l.role || ''}"`,
+      `"${l.branch_id === 'dagupan_main' ? 'Dagupan Main' : l.branch_id === 'manila_branch' ? 'Manila Branch' : 'Consolidated'}"`,
+      `"${l.action_type}"`,
+      `"${l.entity_name}"`,
+      `"${l.entity_id}"`,
+      `"${l.ip_address || ''}"`,
+    ])
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n')
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', `japa_audit_ledger_${new Date().toISOString().slice(0, 10)}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    toast.success('Audit ledger exported to CSV.')
+  }
+
   return (
     <div className="space-y-6">
-      {/* ── Header ────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* ── Page Header ────────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-slate-900 text-white shadow-sm">
-              <History className="h-5 w-5" />
-            </span>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
               System Audit &amp; Compliance Ledger
             </h1>
+            <span className="rounded-full bg-slate-900 px-2.5 py-0.5 text-xs font-semibold text-white">
+              Module 9 · Audit Ledger
+            </span>
+            <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
+              Immutable Chronological Trail · Level 1
+            </span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          <p className="mt-1 text-sm text-zinc-500">
             Immutable chronological record of all multi-branch operations, STO dispatches, overrides, and security events.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Action Bar */}
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={fetchAuditLogs}
             disabled={isLoading}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 active:scale-95 transition shadow-2xs"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 shadow-2xs hover:bg-zinc-50 hover:text-zinc-900 transition disabled:opacity-50"
             title="Refresh Audit Logs"
           >
             <RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} />
             <span>Refresh Ledger</span>
           </button>
+
+          <button
+            type="button"
+            onClick={exportAuditCSV}
+            disabled={filteredLogs.length === 0}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3.5 py-2 text-xs font-bold text-zinc-700 shadow-2xs hover:bg-zinc-50 hover:text-zinc-900 transition active:scale-95 disabled:opacity-40"
+          >
+            <FileText className="h-4 w-4 text-zinc-500" />
+            <span>Export CSV</span>
+          </button>
         </div>
       </div>
 
-      {/* ── Metric Cards ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-2xs">
-          <span className="text-xs font-bold text-slate-500 block">Total Audit Records</span>
-          <p className="text-2xl font-black text-slate-900 mt-2">{logs.length}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Retained chronological events</p>
+      {/* ── Metric Cards Row (Matching Multi-Store Inventory & Dashboard) ── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Card 1: Total Records */}
+        <div className="flex flex-col justify-between rounded-xl border border-zinc-200 bg-white p-5 shadow-xs transition hover:shadow-md">
+          <div className="flex items-start justify-between">
+            <div className="min-w-0 flex-1 pr-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 truncate">
+                TOTAL AUDIT EVENTS
+              </p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl truncate">
+                {logs.length}
+              </p>
+            </div>
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-xs bg-indigo-600">
+              <History className="h-5 w-5" />
+            </div>
+          </div>
+          <div className="mt-3 border-t border-zinc-100 pt-3">
+            <p className="text-xs text-zinc-500 truncate">Retained chronological events</p>
+          </div>
         </div>
 
-        <div className="p-4 rounded-2xl border border-blue-200 bg-blue-50/50 shadow-2xs">
-          <span className="text-xs font-bold text-blue-700 block">STO Dispatches</span>
-          <p className="text-2xl font-black text-blue-900 mt-2">
-            {logs.filter((l) => l.action_type.includes('STO')).length}
-          </p>
-          <p className="text-[11px] text-blue-600 font-medium mt-0.5">Transfer movements</p>
+        {/* Card 2: STO Dispatches */}
+        <div className="flex flex-col justify-between rounded-xl border border-zinc-200 bg-white p-5 shadow-xs transition hover:shadow-md">
+          <div className="flex items-start justify-between">
+            <div className="min-w-0 flex-1 pr-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 truncate">
+                STO &amp; LOGISTICS
+              </p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl truncate">
+                {tabCounts.sto}
+              </p>
+            </div>
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-xs bg-blue-600">
+              <ArrowLeftRight className="h-5 w-5" />
+            </div>
+          </div>
+          <div className="mt-3 border-t border-zinc-100 pt-3">
+            <p className="text-xs text-zinc-500 truncate">Inter-branch inventory dispatches</p>
+          </div>
         </div>
 
-        <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 shadow-2xs">
-          <span className="text-xs font-bold text-emerald-700 block">Dagupan Events</span>
-          <p className="text-2xl font-black text-emerald-900 mt-2">
-            {logs.filter((l) => l.branch_id === 'dagupan_main').length}
-          </p>
-          <p className="text-[11px] text-emerald-600 font-medium mt-0.5">Main store operations</p>
+        {/* Card 3: Security & Checkpoints */}
+        <div className="flex flex-col justify-between rounded-xl border border-zinc-200 bg-white p-5 shadow-xs transition hover:shadow-md">
+          <div className="flex items-start justify-between">
+            <div className="min-w-0 flex-1 pr-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 truncate">
+                SECURITY &amp; SESSIONS
+              </p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl truncate">
+                {tabCounts.security}
+              </p>
+            </div>
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-xs bg-amber-500">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+          </div>
+          <div className="mt-3 border-t border-zinc-100 pt-3">
+            <p className="text-xs text-zinc-500 truncate">Auth checks, logins &amp; view-as</p>
+          </div>
         </div>
 
-        <div className="p-4 rounded-2xl border border-indigo-200 bg-indigo-50/50 shadow-2xs">
-          <span className="text-xs font-bold text-indigo-700 block">Manila Events</span>
-          <p className="text-2xl font-black text-indigo-900 mt-2">
-            {logs.filter((l) => l.branch_id === 'manila_branch').length}
-          </p>
-          <p className="text-[11px] text-indigo-600 font-medium mt-0.5">Operations hub actions</p>
+        {/* Card 4: Overrides & Adjustments */}
+        <div className="flex flex-col justify-between rounded-xl border border-zinc-200 bg-white p-5 shadow-xs transition hover:shadow-md">
+          <div className="flex items-start justify-between">
+            <div className="min-w-0 flex-1 pr-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500 truncate">
+                OVERRIDES &amp; ADJUSTS
+              </p>
+              <p className="mt-2 text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl truncate">
+                {tabCounts.stock + tabCounts.price}
+              </p>
+            </div>
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-xs bg-rose-600">
+              <Tag className="h-5 w-5" />
+            </div>
+          </div>
+          <div className="mt-3 border-t border-zinc-100 pt-3">
+            <p className="text-xs text-zinc-500 truncate">Price overrides &amp; shelf adjustments</p>
+          </div>
         </div>
       </div>
 
-      {/* ── Filters ───────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 bg-white border border-slate-200 rounded-2xl shadow-2xs">
+      {/* ── Event Category Tabs (Matching Inventory & Help Design) ── */}
+      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        {[
+          { id: 'ALL', label: 'ALL EVENTS', count: tabCounts.all },
+          { id: 'STO', label: 'STO TRANSFERS', count: tabCounts.sto },
+          { id: 'STOCK', label: 'STOCK ADJUSTMENTS', count: tabCounts.stock },
+          { id: 'PRICE', label: 'PRICE OVERRIDES', count: tabCounts.price },
+          { id: 'SECURITY', label: 'SECURITY & SESSIONS', count: tabCounts.security },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveCategoryTab(tab.id as typeof activeCategoryTab)}
+            className={cn(
+              'rounded-lg px-3 py-1.5 text-xs font-bold transition shadow-2xs flex items-center gap-1.5',
+              activeCategoryTab === tab.id
+                ? 'bg-blue-600 text-white'
+                : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+            )}
+          >
+            <span>{tab.label}</span>
+            <span className="opacity-75">({tab.count})</span>
+          </button>
+        ))}
+      </div>
+
+      {/* ── Filters & Search Bar ──────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by user, action type, entity name, or record ID…"
-            className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 focus:bg-white transition"
+            className="w-full pl-10 pr-10 py-2.5 text-xs bg-white border border-zinc-200 rounded-xl outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 transition shadow-2xs placeholder:text-zinc-400"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
+          <Filter className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
           {/* Branch Filter */}
           <select
             value={branchFilter}
             onChange={(e) => setBranchFilter(e.target.value)}
-            className="text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 outline-none cursor-pointer hover:border-slate-300 transition"
+            className="text-xs font-semibold text-zinc-700 bg-white border border-zinc-200 rounded-xl px-3 py-2 outline-none cursor-pointer hover:border-zinc-300 transition shadow-2xs"
           >
             <option value="all">All Branches</option>
             <option value="dagupan_main">DAG — Dagupan Main</option>
@@ -231,7 +381,7 @@ export default function AuditLogsView() {
           <select
             value={actionFilter}
             onChange={(e) => setActionFilter(e.target.value)}
-            className="text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 outline-none cursor-pointer hover:border-slate-300 transition"
+            className="text-xs font-semibold text-zinc-700 bg-white border border-zinc-200 rounded-xl px-3 py-2 outline-none cursor-pointer hover:border-zinc-300 transition shadow-2xs max-w-[160px] truncate"
           >
             <option value="all">All Actions</option>
             {actionTypes.map((a) => (
@@ -244,7 +394,7 @@ export default function AuditLogsView() {
       </div>
 
       {/* ── Audit Logs Table ─────────────────────────────────────────── */}
-      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
+      <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden shadow-xs">
         {isLoading ? (
           <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400">
             <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />

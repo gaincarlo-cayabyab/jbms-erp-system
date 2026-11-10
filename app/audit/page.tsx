@@ -11,7 +11,9 @@ export const metadata = {
 function AuditFallback() {
   return (
     <DashboardShell>
-      <SkeletonModuleView statCount={4} tableRows={8} tableCols={6} />
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+        <SkeletonModuleView statCount={4} tableRows={8} tableCols={6} />
+      </div>
     </DashboardShell>
   )
 }
@@ -20,7 +22,7 @@ export default function AuditPage() {
   return (
     <Suspense fallback={<AuditFallback />}>
       <DashboardShell>
-        <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6">
           <AuditLogsView />
         </div>
       </DashboardShell>
