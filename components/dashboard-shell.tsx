@@ -38,6 +38,7 @@ const BREADCRUMB_MAP: Record<string, string> = {
   '/financials': 'Financials & Expenses',
   '/payroll': 'Attendance & Payroll',
   '/audit': 'System Security & Audit Logs',
+  '/help': 'Help & Knowledge Base',
 }
 
 export default function DashboardShell({ children }: { children: React.ReactNode }) {
