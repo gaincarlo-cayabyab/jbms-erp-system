@@ -46,6 +46,31 @@ export interface Transaction {
   changeDue: number
   paymentMethod: PaymentMethod
   createdAt: Date
+
+  // Enhanced Order Type & Fulfillment fields
+  orderType?: 'sale' | 'quotation'
+  fulfillmentType?: 'walk_in' | 'pickup' | 'delivery'
+  fulfillmentStatus?: string
+  paymentTerms?: string
+  amountPaid?: number
+  balanceDue?: number
+  pickupDate?: string | null
+  deliveryDetails?: {
+    recipientName?: string
+    recipientPhone?: string
+    shippingAddress?: string
+    courierName?: string
+    trackingNumber?: string
+    shippingFee?: number
+    dueDate?: string | null
+  }
+  customerInfo?: {
+    id?: string
+    name?: string
+    phone?: string
+    email?: string
+    address?: string
+  }
 }
 
 export const DEFAULT_POS_PRODUCTS: POSProduct[] = [

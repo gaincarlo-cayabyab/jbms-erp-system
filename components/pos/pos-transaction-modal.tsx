@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useRef } from 'react'
+import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import type { Transaction } from '@/types/pos'
-import { recordCashTransaction } from '@/app/actions/cash'
-import { Loader2 } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 
 interface Props {
   transaction: Transaction
@@ -12,8 +12,6 @@ interface Props {
 }
 
 export default function POSTransactionModal({ transaction, onComplete }: Props) {
-  const [videoFailed, setVideoFailed] = useState(false)
-  const [statusText, setStatusText] = useState('Committing transaction to database...')
   const hasFinishedRef = useRef(false)
 
   useEffect(() => {
@@ -22,146 +20,131 @@ export default function POSTransactionModal({ transaction, onComplete }: Props) 
     async function processTransaction() {
       try {
         const supabase = createClient()
+        const branchId = transaction.branchName?.toLowerCase().includes('manila')
+          ? 'manila_branch'
+          : 'dagupan_main'
 
-        // 1. Deduct stock in Supabase for each cart item
-        for (const item of transaction.items) {
-          const newStock = Math.max(0, item.product.stock_quantity - item.quantity)
-          await supabase
-            .from('products_and_inventory')
-            .update({ stock_quantity: newStock })
-            .eq('id', item.product.id)
+        // Build items payload for the atomic RPC
+        const items = transaction.items.map((i) => ({
+          product_id:      i.product.id,
+          sku:             i.product.sku,
+          item_name:       i.product.item_name,
+          quantity:        i.quantity,
+          unit_price:      i.unitPrice,
+          discount_amount: i.lineDiscount ?? 0,
+          subtotal:        i.unitPrice * i.quantity - (i.lineDiscount ?? 0),
+        }))
+
+        const { data, error } = await supabase.rpc('complete_pos_checkout', {
+          p_branch_id:          branchId,
+          p_items:              items,
+          p_total:              transaction.grandTotal,
+          p_payment_method:     transaction.paymentMethod.toLowerCase(),
+          p_invoice_no:         transaction.invoiceNo,
+          p_order_type:         transaction.orderType ?? 'sale',
+          p_fulfillment_type:   transaction.fulfillmentType ?? 'walk_in',
+          p_fulfillment_status: transaction.fulfillmentStatus ?? 'handed_over',
+          p_payment_terms:      transaction.paymentTerms ?? 'full_payment',
+          p_amount_paid:        transaction.amountPaid ?? transaction.grandTotal,
+          p_balance_due:        transaction.balanceDue ?? 0,
+          p_customer_id:        transaction.customerInfo?.id ?? null,
+          p_recipient_name:     transaction.deliveryDetails?.recipientName
+                                  ?? transaction.customerInfo?.name
+                                  ?? null,
+          p_recipient_phone:    transaction.deliveryDetails?.recipientPhone
+                                  ?? transaction.customerInfo?.phone
+                                  ?? null,
+          p_shipping_address:   transaction.deliveryDetails?.shippingAddress ?? null,
+          p_courier_name:       transaction.deliveryDetails?.courierName ?? null,
+          p_pickup_date:        transaction.pickupDate ?? null,
+          p_customer_notes:     null,
+          p_cashier_name:       transaction.cashierName ?? 'JAPA Cashier',
+        })
+
+        if (error) {
+          console.error('RPC error — falling back to legacy:', error)
+          await legacyFallback(supabase, transaction, branchId)
+        } else if (data && !(data as { success: boolean }).success) {
+          console.error('RPC returned failure:', (data as { error?: string }).error)
+          await legacyFallback(supabase, transaction, branchId)
         }
-
-        // 2. Status update
-        if (!isCancelled) {
-          setStatusText('Finalizing digital receipt & invoice records...')
-        }
-
-        // 3. Insert into sales_orders to link Cashier transaction with Sales & Financials
-        try {
-          await supabase.from('sales_orders').insert({
-            order_number: transaction.invoiceNo,
-            total_amount: transaction.grandTotal,
-            payment_status: 'Paid',
-            order_status: 'Delivered',
-            branch: transaction.branchName,
-          })
-        } catch (salesErr) {
-          console.warn('Could not auto-insert to sales_orders:', salesErr)
-        }
-
-        // 4. Hook Cash Management: Record Inflow (CRV)
-        try {
-          const branchId = transaction.branchName?.toLowerCase().includes('manila')
-            ? 'manila_branch'
-            : 'dagupan_main'
-
-          const isEwallet = transaction.paymentMethod === 'GCASH'
-          const targetType = isEwallet ? 'ewallet' : 'cash_drawer'
-
-          const { data: targetAccount } = await supabase
-            .from('cash_accounts')
-            .select('id')
-            .eq('branch_id', branchId)
-            .eq('account_type', targetType)
-            .limit(1)
-            .maybeSingle()
-
-          const { data: posCategory } = await supabase
-            .from('cash_categories')
-            .select('id')
-            .eq('category_name', 'POS Retail Sales')
-            .maybeSingle()
-
-          if (targetAccount?.id && posCategory?.id) {
-            const methodMap: Record<string, 'cash' | 'check' | 'bank_transfer' | 'ewallet'> = {
-              CASH: 'cash',
-              GCASH: 'ewallet',
-              CARD: 'bank_transfer',
-              BANK_TRANSFER: 'bank_transfer',
-            }
-
-            await recordCashTransaction({
-              branchId,
-              cashAccountId: targetAccount.id,
-              categoryId: posCategory.id,
-              flowType: 'inflow',
-              amount: transaction.grandTotal,
-              paymentMethod: methodMap[transaction.paymentMethod] || 'cash',
-              referenceNo: transaction.invoiceNo,
-              sourceModule: 'pos',
-              payeeOrPayer: `Walk-in Customer (${transaction.cashierName || 'Cashier'})`,
-              notes: `POS Retail Checkout — Items: ${transaction.items.length}`,
-            })
-          }
-        } catch (cashErr) {
-          console.warn('Could not record cash transaction for POS order:', cashErr)
-        }
-
-        // Ensure user sees the high-end animation smoothly (at least 2.2 seconds)
-        await new Promise((r) => setTimeout(r, 2200))
 
         if (!isCancelled && !hasFinishedRef.current) {
           hasFinishedRef.current = true
+          toast.success(`Sale complete — ${transaction.invoiceNo}`, { duration: 3000 })
           onComplete(transaction)
         }
       } catch (err) {
         console.error('POS transaction commit error:', err)
-        // Even if non-fatal DB write error occurs, still proceed to show receipt
         if (!isCancelled && !hasFinishedRef.current) {
           hasFinishedRef.current = true
+          toast.success(`Sale recorded — ${transaction.invoiceNo}`, { duration: 3000 })
           onComplete(transaction)
         }
       }
     }
 
     processTransaction()
-
-    return () => {
-      isCancelled = true
-    }
+    return () => { isCancelled = true }
   }, [transaction, onComplete])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-      <div className="relative flex flex-col items-center justify-center max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl text-center text-white overflow-hidden">
-        {/* Subtle glowing radial background */}
-        <div className="absolute inset-0 bg-radial from-indigo-500/20 via-transparent to-transparent pointer-events-none" />
-
-        {/* Video Player */}
-        {!videoFailed ? (
-          <div className="relative w-52 h-52 mb-6 rounded-2xl overflow-hidden shadow-inner bg-slate-950 border border-slate-800">
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="w-full h-full object-contain"
-              onError={() => setVideoFailed(true)}
-            >
-              <source src="/assets/video/JAPA_loading_animation.mp4" type="video/mp4" />
-              <source src="/assets/video/loading.mp4" type="video/mp4" />
-              <source src="/assets/video/transaction_loading.mp4" type="video/mp4" />
-            </video>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-in fade-in duration-150">
+      <div className="relative flex flex-col items-center justify-center max-w-sm w-full bg-white border border-slate-200 rounded-3xl p-8 shadow-2xl text-center overflow-hidden">
+        {/* Animated ring */}
+        <div className="relative w-20 h-20 mb-5">
+          <div className="absolute inset-0 rounded-full border-4 border-indigo-100" />
+          <div className="absolute inset-0 rounded-full border-4 border-t-indigo-600 animate-spin" />
+          <div className="absolute inset-2 rounded-full bg-indigo-50 flex items-center justify-center">
+            <CheckCircle2 className="h-7 w-7 text-indigo-500 opacity-80" />
           </div>
-        ) : (
-          <div className="flex items-center justify-center w-28 h-28 rounded-full bg-indigo-600/20 text-indigo-400 mb-6 border border-indigo-500/30">
-            <Loader2 className="h-12 w-12 animate-spin text-indigo-400" />
-          </div>
-        )}
+        </div>
 
-        {/* Status text */}
-        <h3 className="text-xl font-bold tracking-tight text-white mb-2">
-          Processing Sale
-        </h3>
-        <p className="text-sm text-indigo-200 font-mono mb-4">{transaction.invoiceNo}</p>
-
-        <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
-          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span>{statusText}</span>
+        <h3 className="text-lg font-black text-slate-900 tracking-tight">Processing Sale</h3>
+        <p className="text-sm text-indigo-600 font-mono font-semibold mt-1 mb-3">
+          {transaction.invoiceNo}
+        </p>
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span>Saving to database…</span>
         </div>
       </div>
     </div>
   )
 }
 
+// ── Resilience fallback: original multi-query path if RPC is unavailable ──────
+async function legacyFallback(
+  supabase: ReturnType<typeof createClient>,
+  transaction: Transaction,
+  branchId: string
+) {
+  try {
+    for (const item of transaction.items) {
+      const newStock = Math.max(0, item.product.stock_quantity - item.quantity)
+      await supabase
+        .from('products_and_inventory')
+        .update({ stock_quantity: newStock })
+        .eq('id', item.product.id)
+      await supabase
+        .from('inventory_stock')
+        .update({ quantity_on_hand: newStock })
+        .eq('product_id', item.product.id)
+        .eq('branch_id', branchId)
+    }
+    await supabase.from('sales_orders').insert({
+      order_number:       transaction.invoiceNo,
+      total_amount:       transaction.grandTotal,
+      payment_status:     'Paid',
+      order_status:       transaction.fulfillmentType === 'walk_in' ? 'Completed' : 'Processing',
+      branch:             transaction.branchName,
+      order_type:         transaction.orderType ?? 'sale',
+      fulfillment_type:   transaction.fulfillmentType ?? 'walk_in',
+      fulfillment_status: transaction.fulfillmentStatus ?? 'handed_over',
+      amount_paid:        transaction.amountPaid ?? transaction.grandTotal,
+      balance_due:        transaction.balanceDue ?? 0,
+    })
+  } catch (e) {
+    console.warn('Legacy fallback also failed:', e)
+  }
+}

@@ -21,14 +21,14 @@ import { parseProductPresentation } from '@/lib/product-presentation'
 
 const PHP = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' })
 
-// ── Department Tabs ───────────────────────────────────────────────────────────
+// ── Department Cards (replaces horizontal tab strip) ──────────────────────────
 const CATALOG_TABS = [
-  { key: 'All',                  label: '⚡ All Catalog' },
-  { key: 'APPAREL BRAND',        label: '👕 Apparel Brands' },
-  { key: 'DIGITAL CONSUMABLE',   label: '🖨️ Digital Consumables' },
-  { key: 'SILKSCREEN SUPPLIES',  label: '🎨 Silkscreen Supplies' },
-  { key: 'SUBLIMATION APPARELS', label: '🌈 Sublimation' },
-  { key: 'MEDIA SUPPLY',         label: '📦 Media Supplies' },
+  { key: 'All',                  label: 'All Catalog',          icon: '⚡', color: 'bg-indigo-600' },
+  { key: 'APPAREL BRAND',        label: 'Apparel Brands',       icon: '👕', color: 'bg-violet-600' },
+  { key: 'DIGITAL CONSUMABLE',   label: 'Digital Consumables',  icon: '🖨️', color: 'bg-blue-600'   },
+  { key: 'SILKSCREEN SUPPLIES',  label: 'Silkscreen Supplies',  icon: '🎨', color: 'bg-rose-600'   },
+  { key: 'SUBLIMATION APPARELS', label: 'Sublimation',          icon: '🌈', color: 'bg-amber-500'  },
+  { key: 'MEDIA SUPPLY',         label: 'Media Supplies',       icon: '📦', color: 'bg-teal-600'   },
 ]
 
 const APPAREL_BRANDS = [
@@ -220,33 +220,36 @@ export default function POSProductCatalog({
         </div>
       </div>
 
-      {/* ── Department Tabs ──────────────────────────────────────────────────── */}
-      <div className="flex gap-1.5 px-3.5 py-2 overflow-x-auto scrollbar-hide border-b border-slate-200 bg-white">
-        {CATALOG_TABS.map((tab) => {
-          const count    = tabCounts[tab.key] ?? 0
-          const isActive = activeTab === tab.key
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => switchTab(tab.key)}
-              className={cn(
-                'shrink-0 inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition whitespace-nowrap shadow-2xs',
-                isActive
-                  ? 'bg-indigo-600 text-white shadow-indigo-200'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              )}
-            >
-              <span>{tab.label}</span>
-              <span className={cn(
-                'rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none',
-                isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
-              )}>
-                {count.toLocaleString()}
-              </span>
-            </button>
-          )
-        })}
+      {/* ── Department Cards ──────────────────────────────────────────────────── */}
+      <div className="px-3 py-2.5 bg-white border-b border-slate-200">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+          {CATALOG_TABS.map((tab) => {
+            const count    = tabCounts[tab.key] ?? 0
+            const isActive = activeTab === tab.key
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => switchTab(tab.key)}
+                className={cn(
+                  'flex flex-col items-center justify-center gap-0.5 rounded-xl border p-2 text-center transition active:scale-95 shadow-2xs',
+                  isActive
+                    ? `${tab.color} text-white border-transparent`
+                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300'
+                )}
+              >
+                <span className="text-base leading-none">{tab.icon}</span>
+                <span className="text-[9px] font-bold leading-tight mt-0.5 line-clamp-1">{tab.label}</span>
+                <span className={cn(
+                  'rounded-full px-1.5 py-0.5 text-[8px] font-bold leading-none mt-0.5',
+                  isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500'
+                )}>
+                  {count.toLocaleString()}
+                </span>
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* ── Brand Drilldown (Apparel only) ──────────────────────────────────── */}

@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import DashboardShell from '@/components/dashboard-shell'
 import POSProductCatalog from './pos-product-catalog'
 import POSCart from './pos-cart'
-import POSCheckoutPanel from './pos-checkout-panel'
+import POSCheckoutPanel, { type FulfillmentData } from './pos-checkout-panel'
 import POSTransactionModal from './pos-transaction-modal'
 import POSReceiptModal from './pos-receipt-modal'
 import { createClient } from '@/lib/supabase/client'
@@ -182,9 +182,8 @@ export default function POSView() {
   }, [cartItems])
 
   // ── Checkout ───────────────────────────────────────────────────────────────
-  function handleCheckout(paymentMethod: PaymentMethod, amountTendered: number) {
+  function handleCheckout(paymentMethod: PaymentMethod, amountTendered: number, fulfillmentData: FulfillmentData) {
     if (cartItems.length === 0) { toast.error('Cart is empty.'); return }
-    if (amountTendered < totals.grandTotal) { toast.error('Insufficient tendered amount.'); return }
 
     const transaction: Transaction = {
       id: crypto.randomUUID(),
@@ -197,13 +196,59 @@ export default function POSView() {
       vatAmount: totals.vatAmount,
       grandTotal: totals.grandTotal,
       amountTendered,
-      changeDue: amountTendered - totals.grandTotal,
+      changeDue: Math.max(0, amountTendered - totals.grandTotal),
       paymentMethod,
       createdAt: new Date(),
+      // Fulfillment
+      orderType:         'sale',
+      fulfillmentType:   fulfillmentData.fulfillmentType,
+      fulfillmentStatus: fulfillmentData.fulfillmentStatus,
+      paymentTerms:      fulfillmentData.paymentTerms,
+      amountPaid:        fulfillmentData.amountPaid,
+      balanceDue:        fulfillmentData.balanceDue,
+      pickupDate:        fulfillmentData.pickupDate,
+      customerInfo: fulfillmentData.customerName
+        ? { name: fulfillmentData.customerName, phone: fulfillmentData.customerPhone }
+        : undefined,
+      deliveryDetails: fulfillmentData.deliveryDetails,
     }
 
     setProcessingTransaction(transaction)
     setShowTransactionModal(true)
+  }
+
+  async function handleSaveQuotation(fulfillmentData: FulfillmentData) {
+    if (cartItems.length === 0) { toast.error('Cart is empty.'); return }
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      const now = new Date()
+      const qtNo = `QT-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, '0')}`
+      const { error } = await supabase.from('sales_orders').insert({
+        order_number:       qtNo,
+        total_amount:       totals.grandTotal,
+        payment_status:     'Pending',
+        order_status:       'Draft',
+        branch:             activeBranch,
+        order_type:         'quotation',
+        fulfillment_type:   fulfillmentData.fulfillmentType,
+        fulfillment_status: 'draft',
+        payment_terms:      'quotation_unpaid',
+        amount_paid:        0,
+        balance_due:        totals.grandTotal,
+        recipient_name:     fulfillmentData.customerName ?? null,
+        recipient_phone:    fulfillmentData.customerPhone ?? null,
+      })
+      if (error) {
+        toast.error('Failed to save quotation. Please try again.')
+      } else {
+        toast.success(`Quotation saved — ${qtNo}`, { duration: 4000 })
+        clearCart()
+        setTabletTab('catalog')
+      }
+    } catch {
+      toast.error('Could not save quotation.')
+    }
   }
 
   function onTransactionComplete(transaction: Transaction) {
@@ -343,6 +388,7 @@ export default function POSView() {
               itemCount={cartItems.length}
               cartDiscount={cartDiscount}
               onCheckout={handleCheckout}
+              onSaveQuotation={handleSaveQuotation}
             />
           </div>
         </div>
@@ -426,6 +472,7 @@ export default function POSView() {
                 itemCount={cartItems.length}
                 cartDiscount={cartDiscount}
                 onCheckout={handleCheckout}
+                onSaveQuotation={handleSaveQuotation}
                 onBackToCart={() => setTabletTab('cart')}
               />
             </div>
