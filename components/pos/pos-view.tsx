@@ -11,7 +11,8 @@ import POSReceiptModal from './pos-receipt-modal'
 import { createClient } from '@/lib/supabase/client'
 import type { POSProduct, CartItem, CartDiscount, PaymentMethod, Transaction } from '@/types/pos'
 import { DEFAULT_POS_PRODUCTS } from '@/types/pos'
-import { Package, ShoppingCart, CreditCard, ArrowRight, Plus } from 'lucide-react'
+import { Package, ShoppingCart, CreditCard, ArrowRight, Plus, Wallet } from 'lucide-react'
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
 // ─── Currency & VAT Rate ──────────────────────────────────────────────────────
@@ -46,22 +47,51 @@ export default function POSView() {
     setIsLoading(true)
     try {
       const supabase = createClient()
-      const { data, error } = await supabase
-        .from('products_and_inventory')
-        .select('*')
-        .order('item_name', { ascending: true })
+      const branchId = activeBranch === 'JAPA Dagupan (Main Branch)' ? 'dagupan_main' : 'manila_branch'
 
-      if (error || !data || data.length === 0) {
+      // Fetch all products in 3 parallel batches
+      const [b1, b2, b3] = await Promise.all([
+        supabase.from('products_and_inventory').select('*').order('sku', { ascending: true }).range(0, 999),
+        supabase.from('products_and_inventory').select('*').order('sku', { ascending: true }).range(1000, 1999),
+        supabase.from('products_and_inventory').select('*').order('sku', { ascending: true }).range(2000, 2999),
+      ])
+
+      let allProds = [...(b1.data || []), ...(b2.data || []), ...(b3.data || [])] as POSProduct[]
+
+      // Fetch branch-specific inventory quantities
+      const [sb1, sb2, sb3] = await Promise.all([
+        supabase.from('inventory_stock').select('product_id, quantity_on_hand, reorder_level').eq('branch_id', branchId).range(0, 999),
+        supabase.from('inventory_stock').select('product_id, quantity_on_hand, reorder_level').eq('branch_id', branchId).range(1000, 1999),
+        supabase.from('inventory_stock').select('product_id, quantity_on_hand, reorder_level').eq('branch_id', branchId).range(2000, 2999),
+      ])
+
+      const branchStocks = [...(sb1.data || []), ...(sb2.data || []), ...(sb3.data || [])]
+      if (branchStocks.length > 0) {
+        const stockMap = new Map(branchStocks.map((s) => [s.product_id, s]))
+        allProds = allProds.map((p) => {
+          const bs = stockMap.get(p.id)
+          if (bs) {
+            return {
+              ...p,
+              stock_quantity: bs.quantity_on_hand,
+              reorder_level: bs.reorder_level ?? p.reorder_level,
+            }
+          }
+          return p
+        })
+      }
+
+      if (allProds.length === 0) {
         setProducts(DEFAULT_POS_PRODUCTS)
       } else {
-        setProducts(data as POSProduct[])
+        setProducts(allProds)
       }
     } catch {
       setProducts(DEFAULT_POS_PRODUCTS)
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [activeBranch])
 
   useEffect(() => {
     loadProducts()
@@ -221,6 +251,15 @@ export default function POSView() {
                 </button>
               ))}
             </div>
+
+            <Link
+              href="/cash-management"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition shadow-2xs"
+              title="Open Cash Management & Treasury"
+            >
+              <Wallet className="h-3.5 w-3.5" />
+              <span>Cash & Safe Drop</span>
+            </Link>
           </div>
 
           {/* Quick Tablet Portrait View Selector (visible below lg: 1024px) */}

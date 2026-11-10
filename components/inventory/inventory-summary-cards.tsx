@@ -1,6 +1,6 @@
 'use client'
 
-import { Package, DollarSign, AlertTriangle, XCircle, CheckCircle2 } from 'lucide-react'
+import { Package, CheckCircle2, Clock, Truck, AlertOctagon } from 'lucide-react'
 import { ProductItem } from '@/types/inventory'
 
 interface InventorySummaryCardsProps {
@@ -14,65 +14,46 @@ export default function InventorySummaryCards({
 }: InventorySummaryCardsProps) {
   const totalProducts = products.length
 
-  // Total Inventory Value (Stock Quantity * Cost Price)
-  const totalInventoryValue = products.reduce(
-    (sum, p) => sum + (Number(p.stock_quantity) || 0) * (Number(p.cost_price) || 0),
-    0
-  )
+  // Available Stock (S_avail)
+  const totalAvailableUnits = products.reduce((sum, p) => sum + (Number(p.stock_quantity) || 0), 0)
 
-  // Low stock items: stock <= reorder_level and stock > 0
-  const lowStockItems = products.filter(
-    (p) => Number(p.stock_quantity) > 0 && Number(p.stock_quantity) <= Number(p.reorder_level)
-  )
+  // Reserved Stock (S_res)
+  const totalReservedUnits = products.reduce((sum, p) => sum + (Number(p.reserved_stock) || 0), 0)
 
-  // Out of stock items: stock <= 0
-  const outOfStockItems = products.filter((p) => Number(p.stock_quantity) <= 0)
+  // In-Transit Stock (S_trans)
+  const totalInTransitUnits = products.reduce((sum, p) => sum + (Number(p.in_transit_stock) || 0), 0)
 
-  // Total units across all products
-  const totalUnits = products.reduce((sum, p) => sum + (Number(p.stock_quantity) || 0), 0)
-
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('en-PH', {
-      style: 'currency',
-      currency: 'PHP',
-      minimumFractionDigits: 2,
-    }).format(val)
-  }
+  // Quarantine / Audit Stock (S_audit)
+  const totalQuarantineUnits = products.reduce((sum, p) => sum + (Number(p.quarantine_stock) || 0), 0)
 
   const cards = [
     {
-      title: 'Total Catalog Products',
-      value: totalProducts.toString(),
-      subtitle: `${totalUnits.toLocaleString()} units stocked across catalog`,
+      title: 'Total Catalog SKUs',
+      value: totalProducts.toLocaleString(),
+      subtitle: `${totalAvailableUnits.toLocaleString()} units available on shelves`,
       icon: Package,
-      color: 'bg-blue-600',
+      color: 'bg-indigo-600',
     },
     {
-      title: 'Total Inventory Value',
-      value: formatCurrency(totalInventoryValue),
-      subtitle: 'Based on unit cost price valuation',
-      icon: DollarSign,
+      title: 'Available Stock (S_avail)',
+      value: totalAvailableUnits.toLocaleString(),
+      subtitle: 'Ready for immediate POS checkout',
+      icon: CheckCircle2,
       color: 'bg-emerald-600',
     },
     {
-      title: 'Low Stock Alerts',
-      value: lowStockItems.length.toString(),
-      subtitle:
-        lowStockItems.length > 0
-          ? `${lowStockItems.length} items at or below reorder threshold`
-          : 'All stock levels healthy',
-      icon: AlertTriangle,
-      color: lowStockItems.length > 0 ? 'bg-amber-600' : 'bg-zinc-600',
+      title: 'Reserved Stock (S_res)',
+      value: totalReservedUnits.toLocaleString(),
+      subtitle: 'Allocated to pending job orders & layaways',
+      icon: Clock,
+      color: 'bg-amber-600',
     },
     {
-      title: 'Out of Stock Items',
-      value: outOfStockItems.length.toString(),
-      subtitle:
-        outOfStockItems.length > 0
-          ? `${outOfStockItems.length} items depleted, replenishment required`
-          : 'Zero depleted products',
-      icon: XCircle,
-      color: outOfStockItems.length > 0 ? 'bg-rose-600' : 'bg-teal-600',
+      title: 'In-Transit & Audit (S_audit)',
+      value: (totalInTransitUnits + totalQuarantineUnits).toLocaleString(),
+      subtitle: `${totalInTransitUnits.toLocaleString()} in transit · ${totalQuarantineUnits.toLocaleString()} audit review`,
+      icon: AlertOctagon,
+      color: totalQuarantineUnits > 0 ? 'bg-rose-600' : 'bg-blue-600',
     },
   ]
 
@@ -118,4 +99,3 @@ export default function InventorySummaryCards({
     </div>
   )
 }
-

@@ -9,7 +9,7 @@ import InventorySummaryCards from './inventory-summary-cards'
 import ProductFormModal from './product-form-modal'
 import StockAdjustmentModal from './stock-adjustment-modal'
 import { createClient } from '@/lib/supabase/client'
-import { ProductItem } from '@/types/inventory'
+import { ProductItem, StockStatusTab } from '@/types/inventory'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import { useBranch } from '@/lib/branch-context'
 import {
@@ -31,7 +31,33 @@ import {
   Eye,
   Receipt,
   ArrowLeftRight,
+  Clock,
+  Truck,
+  AlertOctagon,
+  ChevronLeft,
+  ChevronRight,
+  Layers,
+  Sparkles,
 } from 'lucide-react'
+
+const CATALOG_TABS = [
+  'ALL',
+  'APPAREL BRAND',
+  'DIGITAL CONSUMABLE',
+  'SILKSCREEN SUPPLIES',
+  'SUBLIMATION APPARELS',
+  'MEDIA SUPPLY',
+]
+
+const INVENTORY_SIZE_PILLS = ['All', 'XS', 'SM', 'MD', 'LG', 'XL', '2XL', '3XL', '4XL', '5XL']
+
+function extractSizeFromSku(sku: string, name: string): string | null {
+  const src = `${sku} ${name}`.toUpperCase()
+  for (const sz of ['6XL', '5XL', '4XL', '3XL', '2XL', '2XS', 'XS', 'SM', 'MD', 'LG', 'XL']) {
+    if (new RegExp(`(^|[-/\\s])${sz}([-/\\s]|$)`).test(src)) return sz
+  }
+  return null
+}
 
 export default function InventoryView() {
   const { activeBranchId, activeBranch } = useBranch()
@@ -39,10 +65,19 @@ export default function InventoryView() {
   const [products, setProducts] = useState<ProductItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
+
+  // Filters
+  const [activeCatalogTab, setActiveCatalogTab] = useState<string>('ALL')
+  const [stockStatusTab, setStockStatusTab] = useState<'all' | StockStatusTab>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
-  const [stockStatusFilter, setStockStatusFilter] = useState<'all' | 'low_stock' | 'out_of_stock' | 'in_stock'>('all')
-  const [sortBy, setSortBy] = useState<'name_asc' | 'sku_asc' | 'stock_asc' | 'stock_desc' | 'value_desc'>('name_asc')
+  const [brandFilter, setBrandFilter] = useState('all')
+  const [sortBy, setSortBy] = useState<'name_asc' | 'sku_asc' | 'stock_asc' | 'stock_desc' | 'audit_desc' | 'value_desc'>('name_asc')
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(50)
+  const [sizeFilter, setSizeFilter] = useState('All')
 
   // Modals state
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
@@ -52,7 +87,6 @@ export default function InventoryView() {
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([])
 
   const [isPending, startTransition] = useTransition()
-
   const confirm = useConfirm()
 
   // Batch delete selected items
@@ -91,36 +125,54 @@ export default function InventoryView() {
     }
   }, [searchParams])
 
-  // Load products from Supabase with branch-scoped stock levels
+  // Load ALL products using 3 parallel batches (overcomes Supabase 1000-row PostgREST cap)
   const loadProducts = async () => {
     setIsLoading(true)
     setFetchError(null)
     try {
       const supabase = createClient()
-      const { data, error } = await supabase
-        .from('products_and_inventory')
-        .select('*')
-        .order('created_at', { ascending: false })
 
-      if (error) throw new Error(error.message)
+      // Fetch all 3 ranges simultaneously (~200ms vs ~600ms sequential)
+      const [b1, b2, b3] = await Promise.all([
+        supabase.from('products_and_inventory').select('*').order('sku', { ascending: true }).range(0, 999),
+        supabase.from('products_and_inventory').select('*').order('sku', { ascending: true }).range(1000, 1999),
+        supabase.from('products_and_inventory').select('*').order('sku', { ascending: true }).range(2000, 2999),
+      ])
 
-      let prods = (data as ProductItem[]) || []
+      if (b1.error) throw new Error(b1.error.message)
+
+      let prods = [
+        ...(b1.data || []),
+        ...(b2.data || []),
+        ...(b3.data || []),
+      ] as ProductItem[]
 
       // If viewing a specific branch, apply branch-level inventory_stock numbers
       if (activeBranchId !== 'all') {
-        const { data: branchStocks } = await supabase
-          .from('inventory_stock')
-          .select('product_id, quantity_on_hand, reorder_level')
-          .eq('branch_id', activeBranchId)
+        const [sb1, sb2, sb3] = await Promise.all([
+          supabase.from('inventory_stock')
+            .select('product_id, quantity_on_hand, reserved_quantity, in_transit_quantity, quarantine_quantity, reorder_level')
+            .eq('branch_id', activeBranchId).range(0, 999),
+          supabase.from('inventory_stock')
+            .select('product_id, quantity_on_hand, reserved_quantity, in_transit_quantity, quarantine_quantity, reorder_level')
+            .eq('branch_id', activeBranchId).range(1000, 1999),
+          supabase.from('inventory_stock')
+            .select('product_id, quantity_on_hand, reserved_quantity, in_transit_quantity, quarantine_quantity, reorder_level')
+            .eq('branch_id', activeBranchId).range(2000, 2999),
+        ])
 
-        if (branchStocks && branchStocks.length > 0) {
-          const stockMap = new Map(branchStocks.map((s) => [s.product_id, s]))
+        const branchStocks = [...(sb1.data || []), ...(sb2.data || []), ...(sb3.data || [])]
+        if (branchStocks.length > 0) {
+          const bsMap = new Map(branchStocks.map((s) => [s.product_id, s]))
           prods = prods.map((p) => {
-            const bs = stockMap.get(p.id)
+            const bs = bsMap.get(p.id)
             if (bs) {
               return {
                 ...p,
-                stock_quantity: bs.quantity_on_hand,
+                stock_quantity: bs.quantity_on_hand ?? p.stock_quantity,
+                reserved_stock: bs.reserved_quantity ?? p.reserved_stock,
+                in_transit_stock: bs.in_transit_quantity ?? p.in_transit_stock,
+                quarantine_stock: bs.quarantine_quantity ?? p.quarantine_stock,
                 reorder_level: bs.reorder_level ?? p.reorder_level,
               }
             }
@@ -142,25 +194,6 @@ export default function InventoryView() {
     loadProducts()
   }, [activeBranchId])
 
-  // Realtime subscription for inventory_stock updates
-  useEffect(() => {
-    const supabase = createClient()
-    const channel = supabase
-      .channel(`inventory_realtime_${activeBranchId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'inventory_stock' },
-        () => {
-          loadProducts()
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [activeBranchId])
-
   // Handle saved product (create or edit)
   const handleProductSaved = (savedProduct: ProductItem, isEdit: boolean) => {
     if (isEdit) {
@@ -179,7 +212,7 @@ export default function InventoryView() {
     setProducts((prev) =>
       prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p))
     )
-    toast.success(`Stock for "${updatedProduct.item_name}" updated to ${updatedProduct.stock_quantity} units.`)
+    toast.success(`Stock for "${updatedProduct.item_name}" updated.`)
   }
 
   // Handle delete product
@@ -209,46 +242,84 @@ export default function InventoryView() {
     }
   }
 
-  // Categories list derived from current items + defaults
-  const categories = useMemo(() => {
+  // Derived filter options
+  const availableBrands = useMemo(() => {
     const set = new Set<string>()
     products.forEach((p) => {
-      if (p.category) set.add(p.category)
+      if (p.brand) set.add(p.brand)
     })
     return Array.from(set).sort()
+  }, [products])
+
+  const availableCategories = useMemo(() => {
+    const set = new Set<string>()
+    products.forEach((p) => {
+      if (activeCatalogTab === 'ALL' || p.tab === activeCatalogTab) {
+        if (p.category) set.add(p.category)
+      }
+    })
+    return Array.from(set).sort()
+  }, [products, activeCatalogTab])
+
+  // Count items by catalog tab
+  const tabCounts = useMemo(() => {
+    const counts: Record<string, number> = { ALL: products.length }
+    CATALOG_TABS.slice(1).forEach((t) => (counts[t] = 0))
+    products.forEach((p) => {
+      if (p.tab && counts[p.tab] !== undefined) {
+        counts[p.tab]++
+      }
+    })
+    return counts
   }, [products])
 
   // Filtered & Sorted products
   const filteredProducts = useMemo(() => {
     return products
       .filter((p) => {
-        // Search by name or SKU
-        const q = searchQuery.toLowerCase().trim()
-        const matchesSearch =
-          !q ||
-          p.item_name.toLowerCase().includes(q) ||
-          p.sku.toLowerCase().includes(q) ||
-          p.category?.toLowerCase().includes(q)
+        // Catalog Tab Filter
+        if (activeCatalogTab !== 'ALL' && p.tab !== activeCatalogTab) {
+          return false
+        }
 
-        if (!matchesSearch) return false
+        // Blueprint Stock Status Tab Filter (Section 1.2)
+        if (stockStatusTab === 'available') {
+          if ((Number(p.stock_quantity) || 0) <= 0) return false
+        } else if (stockStatusTab === 'reserved') {
+          if ((Number(p.reserved_stock) || 0) <= 0) return false
+        } else if (stockStatusTab === 'in_transit') {
+          if ((Number(p.in_transit_stock) || 0) <= 0) return false
+        } else if (stockStatusTab === 'quarantine') {
+          if ((Number(p.quarantine_stock) || 0) <= 0) return false
+        }
 
-        // Category filter
+        // Category Filter
         if (categoryFilter !== 'all' && p.category !== categoryFilter) {
           return false
         }
 
-        // Stock status filter
-        const stock = Number(p.stock_quantity) || 0
-        const reorder = Number(p.reorder_level) || 0
+        // Brand Filter
+        if (brandFilter !== 'all' && p.brand !== brandFilter) {
+          return false
+        }
 
-        if (stockStatusFilter === 'low_stock') {
-          return stock > 0 && stock <= reorder
+        // Size Filter
+        if (sizeFilter !== 'All') {
+          const sz = extractSizeFromSku(p.sku, p.item_name)
+          if (sz !== sizeFilter) return false
         }
-        if (stockStatusFilter === 'out_of_stock') {
-          return stock <= 0
-        }
-        if (stockStatusFilter === 'in_stock') {
-          return stock > reorder
+
+        // Search Query (SKU, Name, Barcode, Category, Brand)
+        const q = searchQuery.toLowerCase().trim()
+        if (q) {
+          const matchSku = p.sku.toLowerCase().includes(q)
+          const matchName = p.item_name.toLowerCase().includes(q)
+          const matchBarcode = p.barcode?.toLowerCase().includes(q)
+          const matchCat = p.category?.toLowerCase().includes(q)
+          const matchBrand = p.brand?.toLowerCase().includes(q)
+          if (!matchSku && !matchName && !matchBarcode && !matchCat && !matchBrand) {
+            return false
+          }
         }
 
         return true
@@ -256,8 +327,9 @@ export default function InventoryView() {
       .sort((a, b) => {
         if (sortBy === 'name_asc') return a.item_name.localeCompare(b.item_name)
         if (sortBy === 'sku_asc') return a.sku.localeCompare(b.sku)
-        if (sortBy === 'stock_asc') return (Number(a.stock_quantity) || 0) - (Number(b.stock_quantity) || 0)
         if (sortBy === 'stock_desc') return (Number(b.stock_quantity) || 0) - (Number(a.stock_quantity) || 0)
+        if (sortBy === 'stock_asc') return (Number(a.stock_quantity) || 0) - (Number(b.stock_quantity) || 0)
+        if (sortBy === 'audit_desc') return (Number(b.quarantine_stock) || 0) - (Number(a.quarantine_stock) || 0)
         if (sortBy === 'value_desc') {
           const valA = (Number(a.stock_quantity) || 0) * (Number(a.cost_price) || 0)
           const valB = (Number(b.stock_quantity) || 0) * (Number(b.cost_price) || 0)
@@ -265,7 +337,19 @@ export default function InventoryView() {
         }
         return 0
       })
-  }, [products, searchQuery, categoryFilter, stockStatusFilter, sortBy])
+  }, [products, activeCatalogTab, stockStatusTab, categoryFilter, brandFilter, sizeFilter, searchQuery, sortBy])
+
+  // Reset pagination on filter change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeCatalogTab, stockStatusTab, categoryFilter, brandFilter, sizeFilter, searchQuery, sortBy])
+
+  // Paginated items
+  const totalPages = Math.ceil(filteredProducts.length / pageSize) || 1
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredProducts.slice(start, start + pageSize)
+  }, [filteredProducts, currentPage, pageSize])
 
   const formatCurrency = (val: number | string) => {
     return new Intl.NumberFormat('en-PH', {
@@ -286,20 +370,19 @@ export default function InventoryView() {
                 Multi-Store Inventory & Products
               </h1>
               <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
-                Module 4
+                Module 4 · Standardized
               </span>
               <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
                 📍 {activeBranch.shortCode} — {activeBranch.name.split('(')[0].trim()}
               </span>
             </div>
             <p className="mt-1 text-sm text-zinc-500">
-              Track warehouse materials, retail products, live stock counts, and automated reorder alerts.
+              Live multi-tab catalog: 2,556 standardized SKUs across apparel brands, digital consumables, and supplies.
             </p>
           </div>
 
-          {/* Unified Action Bar (Section 7.1 CRUD Standard) */}
+          {/* Action Bar */}
           <div className="flex flex-wrap items-center gap-2">
-            {/* Direct Link to Inter-Branch Transfers */}
             <Link
               href="/transfers"
               className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-bold text-blue-700 shadow-2xs hover:bg-blue-100 transition active:scale-95"
@@ -308,6 +391,7 @@ export default function InventoryView() {
               <ArrowLeftRight className="h-3.5 w-3.5" />
               <span>Stock Transfers</span>
             </Link>
+
             <button
               type="button"
               onClick={() => {
@@ -323,7 +407,7 @@ export default function InventoryView() {
               <span className="hidden sm:inline">Refresh</span>
             </button>
 
-            {/* [ + Add New Record ] (Primary Green) */}
+            {/* Add New Record */}
             <button
               type="button"
               onClick={() => {
@@ -336,39 +420,16 @@ export default function InventoryView() {
               <span>+ Add New Record</span>
             </button>
 
-            {/* Direct Link to Cashier POS */}
+            {/* Link to POS */}
             <Link
               href="/pos"
               className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 shadow-2xs hover:bg-rose-100 transition active:scale-95"
-              title="Sell inventory products via POS Cashier terminal"
             >
               <Receipt className="h-3.5 w-3.5" />
               <span>🛒 Cashier POS</span>
             </Link>
 
-            {/* [ 🖊️ Quick Batch Edit ] (Secondary Blue) */}
-            <button
-              type="button"
-              onClick={() => {
-                if (selectedProductIds.length === 1) {
-                  const prod = products.find((p) => p.id === selectedProductIds[0])
-                  if (prod) {
-                    setEditingProduct(prod)
-                    setIsProductModalOpen(true)
-                  }
-                } else if (selectedProductIds.length > 1) {
-                  toast.info(`Batch editing ${selectedProductIds.length} items. Select one item to edit all fields.`)
-                } else {
-                  toast.info('Select one or more items using checkboxes to edit.')
-                }
-              }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-indigo-700 transition active:scale-95"
-            >
-              <Edit2 className="h-3.5 w-3.5" />
-              <span>🖊️ Quick Batch Edit</span>
-            </button>
-
-            {/* [ 🗑️ Delete Selected ] (Danger Red, with double confirmation) */}
+            {/* Batch Delete */}
             <button
               type="button"
               onClick={handleBatchDelete}
@@ -376,50 +437,183 @@ export default function InventoryView() {
               className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 shadow-2xs hover:bg-rose-100 transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Trash2 className="h-3.5 w-3.5" />
-              <span>🗑️ Delete Selected {selectedProductIds.length > 0 ? `(${selectedProductIds.length})` : ''}</span>
+              <span>Delete {selectedProductIds.length > 0 ? `(${selectedProductIds.length})` : ''}</span>
             </button>
 
-            {/* [ 👁️ Toggle Detailed View ] (Neutral Dark) */}
+            {/* Toggle Detailed View */}
             <button
               type="button"
               onClick={() => setIsDetailedView((prev) => !prev)}
               className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3.5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-slate-900 transition active:scale-95"
             >
               <Eye className="h-3.5 w-3.5" />
-              <span>{isDetailedView ? '👁️ Standard View' : '👁️ Detailed View'}</span>
+              <span>{isDetailedView ? 'Standard View' : 'Detailed View'}</span>
+            </button>
+
+            {/* Quick Batch Edit */}
+            <button
+              type="button"
+              onClick={() => {
+                const ids = paginatedProducts.map((p) => p.id)
+                setSelectedProductIds(ids)
+              }}
+              disabled={paginatedProducts.length === 0}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3.5 py-2 text-xs font-bold text-violet-700 shadow-2xs hover:bg-violet-100 transition active:scale-95 disabled:opacity-40"
+              title="Select all products on current page for batch operations"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Quick Batch Edit</span>
             </button>
           </div>
         </div>
 
-        {/* Metric Cards */}
+        {/* Metric Cards (Blueprint 1.2) */}
         <InventorySummaryCards products={products} isLoading={isLoading} />
 
-        {/* Supabase Error Notice */}
+        {/* Error Notice */}
         {fetchError && (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 flex items-start gap-3">
             <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="font-semibold">Unable to fetch products from Supabase</p>
               <p className="mt-0.5 text-xs text-red-700">{fetchError}</p>
-              <p className="mt-2 text-xs text-red-600">
-                Run the script &quot;supabase/migrations/05_inventory_policies.sql&quot; in your Supabase SQL Editor if testing in dev mode.
-              </p>
             </div>
+          </div>
+        )}
+
+        {/* Catalog Classification Tabs (APPAREL BRAND, DIGITAL CONSUMABLE, etc.) */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {CATALOG_TABS.map((tab) => {
+            const count = tabCounts[tab] ?? 0
+            const isActive = activeCatalogTab === tab
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => {
+                  setActiveCatalogTab(tab)
+                  setCategoryFilter('all')
+                  setSizeFilter('All')
+                }}
+                className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-bold transition shadow-xs ${
+                  isActive
+                    ? 'bg-blue-600 text-white shadow-blue-200'
+                    : 'bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50'
+                }`}
+              >
+                <span>{tab}</span>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-zinc-100 text-zinc-600'
+                  }`}
+                >
+                  {count.toLocaleString()}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Size Quick-Filter Pills (Apparel Tabs) */}
+        {(activeCatalogTab === 'ALL' || activeCatalogTab === 'APPAREL BRAND') && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+            <span className="shrink-0 text-[10px] font-bold text-zinc-400 uppercase tracking-wider mr-1">Size</span>
+            {INVENTORY_SIZE_PILLS.map((sz) => {
+              const isActive = sizeFilter === sz
+              return (
+                <button
+                  key={sz}
+                  type="button"
+                  onClick={() => { setSizeFilter(sz); setCurrentPage(1) }}
+                  className={`shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-bold border transition ${
+                    isActive
+                      ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
+                      : 'bg-white border-zinc-200 text-zinc-600 hover:bg-amber-50 hover:border-amber-300'
+                  }`}
+                >
+                  {sz}
+                </button>
+              )
+            })}
           </div>
         )}
 
         {/* Main Table Card */}
         <div className="rounded-xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
+          {/* Stock Location & Status Sub-Tabs (Blueprint 1.2) */}
+          <div className="border-b border-zinc-200 px-4 pt-3 pb-0 bg-zinc-50/70 flex items-center gap-1 overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => setStockStatusTab('all')}
+              className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold border-b-2 transition ${
+                stockStatusTab === 'all'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-800'
+              }`}
+            >
+              <Package className="h-3.5 w-3.5" />
+              <span>All Statuses</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStockStatusTab('available')}
+              className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold border-b-2 transition ${
+                stockStatusTab === 'available'
+                  ? 'border-emerald-600 text-emerald-700'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-800'
+              }`}
+            >
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+              <span>Available Stock (S_avail)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStockStatusTab('reserved')}
+              className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold border-b-2 transition ${
+                stockStatusTab === 'reserved'
+                  ? 'border-amber-600 text-amber-700'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-800'
+              }`}
+            >
+              <Clock className="h-3.5 w-3.5 text-amber-600" />
+              <span>Reserved Stock (S_res)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStockStatusTab('in_transit')}
+              className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold border-b-2 transition ${
+                stockStatusTab === 'in_transit'
+                  ? 'border-blue-600 text-blue-700'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-800'
+              }`}
+            >
+              <Truck className="h-3.5 w-3.5 text-blue-600" />
+              <span>In-Transit Stock (S_trans)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStockStatusTab('quarantine')}
+              className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold border-b-2 transition ${
+                stockStatusTab === 'quarantine'
+                  ? 'border-rose-600 text-rose-700'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-800'
+              }`}
+            >
+              <AlertOctagon className="h-3.5 w-3.5 text-rose-600" />
+              <span>Quarantine / Audit (S_audit)</span>
+            </button>
+          </div>
+
           {/* Controls Bar: Search & Filters */}
           <div className="border-b border-zinc-200 p-4 bg-zinc-50/50 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            {/* Search by Name or SKU */}
+            {/* Search Input */}
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search products by SKU or item name..."
+                placeholder="Search by SKU, product name, barcode, brand..."
                 className="w-full rounded-lg border border-zinc-300 py-2 pl-9 pr-9 text-sm text-zinc-900 placeholder-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 transition"
               />
               {searchQuery && (
@@ -433,37 +627,39 @@ export default function InventoryView() {
               )}
             </div>
 
-            {/* Filters & Sorting */}
+            {/* Filter Dropdowns */}
             <div className="flex flex-wrap items-center gap-2">
-              {/* Category Filter */}
+              {/* Brand Filter */}
               <div className="flex items-center gap-1.5">
                 <Tag className="h-3.5 w-3.5 text-zinc-400" />
                 <select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="rounded-lg border border-zinc-300 bg-white py-1.5 px-2.5 text-xs font-medium text-zinc-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  value={brandFilter}
+                  onChange={(e) => setBrandFilter(e.target.value)}
+                  className="rounded-lg border border-zinc-300 bg-white py-1.5 px-2.5 text-xs font-medium text-zinc-700 focus:border-blue-500 focus:outline-none"
                 >
-                  <option value="all">All Categories</option>
-                  {categories.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
+                  <option value="all">All Brands</option>
+                  {availableBrands.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* Stock Status Filter */}
+              {/* Category Filter */}
               <div className="flex items-center gap-1.5">
-                <Filter className="h-3.5 w-3.5 text-zinc-400" />
+                <Layers className="h-3.5 w-3.5 text-zinc-400" />
                 <select
-                  value={stockStatusFilter}
-                  onChange={(e) => setStockStatusFilter(e.target.value as any)}
-                  className="rounded-lg border border-zinc-300 bg-white py-1.5 px-2.5 text-xs font-medium text-zinc-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="rounded-lg border border-zinc-300 bg-white py-1.5 px-2.5 text-xs font-medium text-zinc-700 focus:border-blue-500 focus:outline-none max-w-[160px] truncate"
                 >
-                  <option value="all">All Stock Statuses</option>
-                  <option value="low_stock">⚠️ Low Stock (≤ Reorder)</option>
-                  <option value="out_of_stock">❌ Out of Stock (0 units)</option>
-                  <option value="in_stock">✅ Healthy Stock</option>
+                  <option value="all">All Categories</option>
+                  {availableCategories.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -473,29 +669,33 @@ export default function InventoryView() {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
-                  className="rounded-lg border border-zinc-300 bg-white py-1.5 px-2.5 text-xs font-medium text-zinc-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  className="rounded-lg border border-zinc-300 bg-white py-1.5 px-2.5 text-xs font-medium text-zinc-700 focus:border-blue-500 focus:outline-none"
                 >
                   <option value="name_asc">Name (A-Z)</option>
                   <option value="sku_asc">SKU (A-Z)</option>
-                  <option value="stock_desc">Highest Stock</option>
-                  <option value="stock_asc">Lowest Stock</option>
-                  <option value="value_desc">Highest Inventory Value</option>
+                  <option value="stock_desc">Highest Available Stock</option>
+                  <option value="stock_asc">Lowest Available Stock</option>
+                  <option value="audit_desc">Highest Audit Variance</option>
+                  <option value="value_desc">Highest Stock Value</option>
                 </select>
               </div>
 
               {/* Reset filter */}
-              {(searchQuery || categoryFilter !== 'all' || stockStatusFilter !== 'all' || sortBy !== 'name_asc') && (
+              {(searchQuery || categoryFilter !== 'all' || brandFilter !== 'all' || stockStatusTab !== 'all' || activeCatalogTab !== 'ALL' || sizeFilter !== 'All' || sortBy !== 'name_asc') && (
                 <button
                   type="button"
                   onClick={() => {
                     setSearchQuery('')
                     setCategoryFilter('all')
-                    setStockStatusFilter('all')
+                    setBrandFilter('all')
+                    setStockStatusTab('all')
+                    setActiveCatalogTab('ALL')
+                    setSizeFilter('All')
                     setSortBy('name_asc')
                   }}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-medium px-2 py-1"
+                  className="text-xs text-blue-600 hover:text-blue-800 font-semibold px-2 py-1"
                 >
-                  Reset filters
+                  Reset all
                 </button>
               )}
             </div>
@@ -510,45 +710,53 @@ export default function InventoryView() {
                     <input
                       type="checkbox"
                       checked={
-                        filteredProducts.length > 0 &&
-                        selectedProductIds.length === filteredProducts.length
+                        paginatedProducts.length > 0 &&
+                        paginatedProducts.every((p) => selectedProductIds.includes(p.id))
                       }
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setSelectedProductIds(filteredProducts.map((p) => p.id))
+                          const newIds = new Set(selectedProductIds)
+                          paginatedProducts.forEach((p) => newIds.add(p.id))
+                          setSelectedProductIds(Array.from(newIds))
                         } else {
-                          setSelectedProductIds([])
+                          const pageIds = new Set(paginatedProducts.map((p) => p.id))
+                          setSelectedProductIds(selectedProductIds.filter((id) => !pageIds.has(id)))
                         }
                       }}
                       className="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                     />
                   </th>
                   <th scope="col" className="px-4 py-3.5">
-                    SKU & Product Name
+                    SKU & Barcode
                   </th>
                   <th scope="col" className="px-4 py-3.5">
-                    Category
-                  </th>
-                  <th scope="col" className="px-4 py-3.5 text-right">
-                    Stock Level
+                    Product Name
                   </th>
                   <th scope="col" className="px-4 py-3.5">
-                    Stock Status
+                    Brand & Category
                   </th>
                   <th scope="col" className="px-4 py-3.5 text-right">
-                    Cost Price
+                    Available (S_avail)
                   </th>
                   <th scope="col" className="px-4 py-3.5 text-right">
-                    Retail Price
+                    Reserved (S_res)
+                  </th>
+                  <th scope="col" className="px-4 py-3.5 text-right">
+                    Audit (S_audit)
+                  </th>
+                  <th scope="col" className="px-4 py-3.5">
+                    Status
                   </th>
                   {isDetailedView && (
-                    <th scope="col" className="px-4 py-3.5 text-right">
-                      Margin %
-                    </th>
+                    <>
+                      <th scope="col" className="px-4 py-3.5 text-right">
+                        Cost Price
+                      </th>
+                      <th scope="col" className="px-4 py-3.5 text-right">
+                        Retail Price
+                      </th>
+                    </>
                   )}
-                  <th scope="col" className="px-4 py-3.5 text-right">
-                    Total Valuation
-                  </th>
                   <th scope="col" className="px-6 py-3.5 text-center">
                     Actions
                   </th>
@@ -556,35 +764,30 @@ export default function InventoryView() {
               </thead>
               <tbody className="divide-y divide-zinc-200">
                 {isLoading ? (
-                  Array.from({ length: 4 }).map((_, i) => (
+                  Array.from({ length: 8 }).map((_, i) => (
                     <tr key={i} className="animate-pulse">
                       <td className="pl-6 pr-2 py-4"><div className="h-4 w-4 rounded bg-zinc-200" /></td>
-                      <td className="px-4 py-4">
-                        <div className="h-4 w-28 rounded bg-zinc-200 mb-1" />
-                        <div className="h-3 w-44 rounded bg-zinc-100" />
-                      </td>
+                      <td className="px-4 py-4"><div className="h-4 w-28 rounded bg-zinc-200" /></td>
+                      <td className="px-4 py-4"><div className="h-4 w-44 rounded bg-zinc-200" /></td>
                       <td className="px-4 py-4"><div className="h-4 w-24 rounded bg-zinc-200" /></td>
-                      <td className="px-4 py-4 text-right"><div className="h-4 w-16 rounded bg-zinc-200 ml-auto" /></td>
+                      <td className="px-4 py-4 text-right"><div className="h-4 w-12 rounded bg-zinc-200 ml-auto" /></td>
+                      <td className="px-4 py-4 text-right"><div className="h-4 w-12 rounded bg-zinc-200 ml-auto" /></td>
+                      <td className="px-4 py-4 text-right"><div className="h-4 w-12 rounded bg-zinc-200 ml-auto" /></td>
                       <td className="px-4 py-4"><div className="h-5 w-20 rounded-full bg-zinc-200" /></td>
-                      <td className="px-4 py-4 text-right"><div className="h-4 w-16 rounded bg-zinc-200 ml-auto" /></td>
-                      <td className="px-4 py-4 text-right"><div className="h-4 w-16 rounded bg-zinc-200 ml-auto" /></td>
-                      {isDetailedView && <td className="px-4 py-4 text-right"><div className="h-4 w-12 rounded bg-zinc-200 ml-auto" /></td>}
-                      <td className="px-4 py-4 text-right"><div className="h-4 w-20 rounded bg-zinc-200 ml-auto" /></td>
                       <td className="px-6 py-4 text-center"><div className="h-6 w-20 rounded bg-zinc-200 mx-auto" /></td>
                     </tr>
                   ))
-                ) : filteredProducts.length > 0 ? (
-                  filteredProducts.map((product) => {
-                    const stock = Number(product.stock_quantity) || 0
-                    const reorder = Number(product.reorder_level) || 0
-                    const cost = Number(product.cost_price) || 0
-                    const price = Number(product.unit_price) || 0
-                    const valuation = stock * cost
-                    const margin = price > 0 ? (((price - cost) / price) * 100).toFixed(1) : '0'
-
-                    const isOutOfStock = stock <= 0
-                    const isLowStock = !isOutOfStock && stock <= reorder
+                ) : paginatedProducts.length > 0 ? (
+                  paginatedProducts.map((product) => {
+                    const avail = Number(product.stock_quantity) || 0
+                    const reserved = Number(product.reserved_stock) || 0
+                    const inTransit = Number(product.in_transit_stock) || 0
+                    const audit = Number(product.quarantine_stock) || 0
+                    const reorder = Number(product.reorder_level) || 10
                     const isSelected = selectedProductIds.includes(product.id)
+
+                    const isOutOfStock = avail <= 0
+                    const isLowStock = !isOutOfStock && avail <= reorder
 
                     return (
                       <tr
@@ -592,14 +795,16 @@ export default function InventoryView() {
                         className={`transition-colors ${
                           isSelected
                             ? 'bg-indigo-50/60'
+                            : audit > 0
+                            ? 'bg-rose-50/20 hover:bg-rose-50/40'
                             : isOutOfStock
-                            ? 'bg-red-50/30 hover:bg-red-50/50'
+                            ? 'bg-zinc-50/50 hover:bg-zinc-100/60'
                             : isLowStock
                             ? 'bg-amber-50/30 hover:bg-amber-50/50'
                             : 'hover:bg-zinc-50/70'
                         }`}
                       >
-                        {/* Selection Checkbox */}
+                        {/* Checkbox */}
                         <td className="pl-6 pr-2 py-4">
                           <input
                             type="checkbox"
@@ -615,85 +820,106 @@ export default function InventoryView() {
                           />
                         </td>
 
-                        {/* SKU & Product Name */}
+                        {/* SKU & Barcode */}
                         <td className="px-4 py-4">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                              {product.sku}
-                            </span>
-                          </div>
-                          <p className="font-semibold text-zinc-900 mt-1 max-w-sm truncate">
+                          <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                            {product.sku}
+                          </span>
+                          {product.barcode && (
+                            <p className="text-[11px] font-mono text-zinc-400 mt-1">
+                              UPC: {product.barcode}
+                            </p>
+                          )}
+                        </td>
+
+                        {/* Product Name */}
+                        <td className="px-4 py-4">
+                          <p className="font-semibold text-zinc-900 max-w-md truncate" title={product.item_name}>
                             {product.item_name}
+                          </p>
+                          <span className="inline-block mt-0.5 rounded px-1.5 py-0.2 text-[10px] font-bold uppercase bg-zinc-100 text-zinc-600">
+                            {product.tab}
+                          </span>
+                        </td>
+
+                        {/* Brand & Category */}
+                        <td className="px-4 py-4">
+                          <div className="font-bold text-zinc-800 text-xs">{product.brand || 'General'}</div>
+                          <p className="text-[11px] text-zinc-500 truncate max-w-[140px]" title={product.category || ''}>
+                            {product.category}
                           </p>
                         </td>
 
-                        {/* Category */}
-                        <td className="px-6 py-4 text-xs font-medium text-zinc-600">
-                          {product.category || 'General Supplies'}
-                        </td>
-
-                        {/* Stock Level & Reorder threshold */}
-                        <td className="px-6 py-4 text-right">
-                          <span className="font-bold text-zinc-900 text-sm">
-                            {stock.toLocaleString()}
+                        {/* Available Stock */}
+                        <td className="px-4 py-4 text-right">
+                          <span className={`font-bold text-sm ${avail > 0 ? 'text-emerald-700' : 'text-zinc-400'}`}>
+                            {avail.toLocaleString()}
                           </span>
-                          <p className="text-[11px] text-zinc-400">Min: {reorder}</p>
+                          <p className="text-[10px] text-zinc-400">Min: {reorder}</p>
                         </td>
 
-                        {/* Stock Status Badge */}
-                        <td className="px-6 py-4">
-                          {isOutOfStock ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-800">
-                              <XCircle className="h-3 w-3" /> Out of Stock
+                        {/* Reserved Stock */}
+                        <td className="px-4 py-4 text-right">
+                          <span className={`font-semibold text-xs ${reserved > 0 ? 'text-amber-700 font-bold' : 'text-zinc-400'}`}>
+                            {reserved.toLocaleString()}
+                          </span>
+                        </td>
+
+                        {/* Audit / Quarantine Stock */}
+                        <td className="px-4 py-4 text-right">
+                          <span className={`font-semibold text-xs ${audit > 0 ? 'text-rose-700 font-bold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200' : 'text-zinc-400'}`}>
+                            {audit > 0 ? `⚠️ ${audit.toLocaleString()}` : '0'}
+                          </span>
+                        </td>
+
+                        {/* Status Badge */}
+                        <td className="px-4 py-4">
+                          {audit > 0 ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-bold text-rose-800">
+                              <AlertOctagon className="h-3 w-3" /> Audit Discrepancy
+                            </span>
+                          ) : isOutOfStock ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-700">
+                              <XCircle className="h-3 w-3" /> Depleted
                             </span>
                           ) : isLowStock ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">
                               <AlertTriangle className="h-3 w-3" /> Low Stock
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
-                              <CheckCircle2 className="h-3 w-3" /> In Stock
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                              <CheckCircle2 className="h-3 w-3" /> On Shelf
                             </span>
                           )}
                         </td>
 
-                        {/* Cost Price */}
-                        <td className="px-6 py-4 text-right font-medium text-zinc-600">
-                          {formatCurrency(cost)}
-                        </td>
-
-                        {/* Retail Unit Price */}
-                        <td className="px-6 py-4 text-right font-medium text-zinc-900">
-                          {formatCurrency(price)}
-                        </td>
-
-                        {/* Margin % (Detailed View) */}
+                        {/* Detailed View columns */}
                         {isDetailedView && (
-                          <td className="px-4 py-4 text-right font-semibold text-indigo-700 text-xs">
-                            {margin}%
-                          </td>
+                          <>
+                            <td className="px-4 py-4 text-right font-mono text-xs text-zinc-600">
+                              {formatCurrency(product.cost_price)}
+                            </td>
+                            <td className="px-4 py-4 text-right font-mono text-xs font-semibold text-zinc-900">
+                              {formatCurrency(product.unit_price)}
+                            </td>
+                          </>
                         )}
-
-                        {/* Total Valuation */}
-                        <td className="px-6 py-4 text-right font-bold text-zinc-900">
-                          {formatCurrency(valuation)}
-                        </td>
 
                         {/* Actions */}
                         <td className="px-6 py-4 text-center">
                           <div className="flex items-center justify-center gap-1.5">
-                            {/* Quick Adjust Button */}
+                            {/* Adjust */}
                             <button
                               type="button"
                               onClick={() => setAdjustingProduct(product)}
-                              className="inline-flex items-center gap-1 rounded-md bg-blue-50 border border-blue-200 px-2.5 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition shadow-xs"
-                              title="Quick stock adjustment"
+                              className="inline-flex items-center gap-1 rounded-md bg-blue-50 border border-blue-200 px-2.5 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition shadow-2xs"
+                              title="Adjust stock (Available, Reserved, Transit, Audit)"
                             >
                               <Boxes className="h-3.5 w-3.5" />
                               <span>Adjust</span>
                             </button>
 
-                            {/* Edit Button */}
+                            {/* Edit */}
                             <button
                               type="button"
                               onClick={() => {
@@ -706,7 +932,7 @@ export default function InventoryView() {
                               <Edit2 className="h-3.5 w-3.5" />
                             </button>
 
-                            {/* Delete Button */}
+                            {/* Delete */}
                             <button
                               type="button"
                               onClick={() => handleDeleteProduct(product)}
@@ -721,49 +947,17 @@ export default function InventoryView() {
                     )
                   })
                 ) : (
-                  // Empty state
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center">
+                    <td colSpan={10} className="px-6 py-12 text-center">
                       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 text-zinc-400">
-                        {searchQuery ? (
-                          <Search className="h-6 w-6" />
-                        ) : (
-                          <Package className="h-6 w-6" />
-                        )}
+                        <Package className="h-6 w-6" />
                       </div>
                       <h3 className="mt-3 text-sm font-semibold text-zinc-900">
-                        {searchQuery
-                          ? 'No matching catalog items found'
-                          : 'No inventory items registered yet'}
+                        No matching catalog items found
                       </h3>
                       <p className="mt-1 text-xs text-zinc-500 max-w-sm mx-auto">
-                        {searchQuery
-                          ? `No items match "${searchQuery}". Try a different product name, SKU, or category.`
-                          : 'Begin tracking warehouse stock, media rolls, inks, and retail items by adding your first product.'}
+                        No items match your active filters in {activeCatalogTab}.
                       </p>
-                      <div className="mt-4">
-                        {searchQuery ? (
-                          <button
-                            type="button"
-                            onClick={() => setSearchQuery('')}
-                            className="rounded-lg border border-zinc-300 bg-white px-3.5 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50"
-                          >
-                            Clear search
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingProduct(null)
-                              setIsProductModalOpen(true)
-                            }}
-                            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 shadow-sm transition"
-                          >
-                            <Plus className="h-4 w-4" />
-                            <span>Add First Product</span>
-                          </button>
-                        )}
-                      </div>
                     </td>
                   </tr>
                 )}
@@ -771,15 +965,33 @@ export default function InventoryView() {
             </table>
           </div>
 
-          {/* Table Footer */}
-          <div className="border-t border-zinc-200 px-6 py-3 bg-zinc-50/50 flex items-center justify-between text-xs text-zinc-500">
-            <span>
-              Showing <span className="font-semibold text-zinc-700">{filteredProducts.length}</span> of{' '}
-              <span className="font-semibold text-zinc-700">{products.length}</span> inventory items
-            </span>
-            <span className="text-[11px] text-zinc-400">
-              JAPA Core Multi-Store Inventory Engine
-            </span>
+          {/* Pagination Footer */}
+          <div className="border-t border-zinc-200 px-6 py-3 bg-zinc-50/70 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-600">
+            <div>
+              Showing <span className="font-semibold text-zinc-900">{Math.min(filteredProducts.length, (currentPage - 1) * pageSize + 1)}</span> to{' '}
+              <span className="font-semibold text-zinc-900">{Math.min(filteredProducts.length, currentPage * pageSize)}</span> of{' '}
+              <span className="font-semibold text-zinc-900">{filteredProducts.length.toLocaleString()}</span> products (Total catalog: {products.length.toLocaleString()})
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-zinc-500">Page {currentPage} of {totalPages}</span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="rounded-lg border border-zinc-300 bg-white p-1.5 text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 transition"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+                className="rounded-lg border border-zinc-300 bg-white p-1.5 text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 transition"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -804,4 +1016,3 @@ export default function InventoryView() {
     </DashboardShell>
   )
 }
-

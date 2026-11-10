@@ -419,3 +419,344 @@ export async function getCashReconciliations(branchId?: string, limit: number = 
   return data || []
 }
 
+
+
+/**
+ * Creates a new Liquid Cash Container (Admin Workspace - Blueprint 5.3)
+ */
+export async function createCashContainer(payload: {
+  branchId: string
+  accountName: string
+  accountType: import('@/types/cash').CashAccountType
+  accountNumber?: string
+  initialBalance?: number
+  cashCeiling?: number
+  defaultFloat?: number
+}) {
+  const supabase = await createClient()
+
+  let branchId = payload.branchId
+  if (branchId === 'DAGUPAN_MAIN') branchId = 'dagupan_main'
+  if (branchId === 'MANILA_BRANCH') branchId = 'manila_branch'
+  if (!branchId || branchId === 'all') branchId = 'dagupan_main'
+
+  const { data, error } = await supabase
+    .from('cash_accounts')
+    .insert([
+      {
+        branch_id: branchId,
+        account_name: payload.accountName.trim(),
+        account_type: payload.accountType,
+        account_number: payload.accountNumber?.trim() || null,
+        current_balance: Math.max(0, Number(payload.initialBalance) || 0),
+        cash_ceiling: Math.max(0, Number(payload.cashCeiling) || 15000),
+        default_float: Math.max(0, Number(payload.defaultFloat) || 5000),
+        is_active: true,
+        is_archived: false,
+      },
+    ])
+    .select()
+    .single()
+
+  if (error) {
+    throw new Error(`Failed to create cash container: ${error.message}`)
+  }
+
+  try {
+    revalidatePath('/cash-management')
+  } catch {}
+
+  return data
+}
+
+/**
+ * Archives an existing cash container (Admin Workspace - Blueprint 5.3)
+ */
+export async function archiveCashContainer(accountId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('cash_accounts')
+    .update({ is_archived: true, is_active: false })
+    .eq('id', accountId)
+    .select()
+    .single()
+
+  if (error) {
+    throw new Error(`Failed to archive cash container: ${error.message}`)
+  }
+
+  try {
+    revalidatePath('/cash-management')
+  } catch {}
+
+  return data
+}
+
+/**
+ * Updates container rules (e.g. T_max threshold, default float)
+ */
+export async function updateCashContainer(
+  accountId: string,
+  payload: {
+    accountName?: string
+    cashCeiling?: number
+    defaultFloat?: number
+  }
+) {
+  const supabase = await createClient()
+
+  const updateFields: Record<string, any> = {}
+  if (payload.accountName !== undefined) updateFields.account_name = payload.accountName.trim()
+  if (payload.cashCeiling !== undefined) updateFields.cash_ceiling = Number(payload.cashCeiling)
+  if (payload.defaultFloat !== undefined) updateFields.default_float = Number(payload.defaultFloat)
+
+  const { data, error } = await supabase
+    .from('cash_accounts')
+    .update(updateFields)
+    .eq('id', accountId)
+    .select()
+    .single()
+
+  if (error) {
+    throw new Error(`Failed to update cash container: ${error.message}`)
+  }
+
+  try {
+    revalidatePath('/cash-management')
+  } catch {}
+
+  return data
+}
+
+/**
+ * Dual-Key Safe Drop Request (Cashier to Manager Safe - Blueprint 6.1)
+ */
+export async function requestSafeDrop(params: {
+  branchId: string
+  posDrawerId: string
+  amount: number
+  userId?: string
+  notes?: string
+}) {
+  const supabase = await createClient()
+
+  let branchId = params.branchId
+  if (branchId === 'DAGUPAN_MAIN') branchId = 'dagupan_main'
+  if (branchId === 'MANILA_BRANCH') branchId = 'manila_branch'
+  if (!branchId || branchId === 'all') branchId = 'dagupan_main'
+
+  // Fetch or locate Manager Safe Box for this branch
+  const { data: safeBoxes } = await supabase
+    .from('cash_accounts')
+    .select('id')
+    .eq('branch_id', branchId)
+    .eq('account_type', 'manager_safe')
+    .limit(1)
+
+  const managerSafeId = safeBoxes && safeBoxes.length > 0 ? safeBoxes[0].id : null
+
+  // Category for Safe Drop
+  const { data: catData } = await supabase
+    .from('cash_categories')
+    .select('id')
+    .eq('category_name', 'Drawer Safe Drop Outflow')
+    .limit(1)
+
+  const categoryId = catData && catData.length > 0 ? catData[0].id : null
+
+  const txPrefix = 'SDROP'
+  const timestamp = Date.now().toString().slice(-8)
+  const transactionNo = `${txPrefix}-${timestamp}`
+
+  const { data, error } = await supabase
+    .from('cash_transactions')
+    .insert([
+      {
+        transaction_no: transactionNo,
+        branch_id: branchId,
+        cash_account_id: params.posDrawerId,
+        category_id: categoryId,
+        flow_type: 'outflow',
+        amount: Math.abs(Number(params.amount)),
+        payment_method: 'cash',
+        source_module: 'pos',
+        is_safe_drop: true,
+        status: 'pending', // Pending Manager confirmation
+        notes: params.notes || `Cashier Safe Drop pending manager acceptance (Target Safe: ${managerSafeId || 'Manager Safe'})`,
+        created_by: sanitizeUuid(params.userId),
+      },
+    ])
+    .select()
+    .single()
+
+  if (error) {
+    throw new Error(`Failed to initiate safe drop: ${error.message}`)
+  }
+
+  try {
+    revalidatePath('/cash-management')
+  } catch {}
+
+  return data
+}
+
+/**
+ * Manager Approves & Accepts Safe Drop (Blueprint 6.1)
+ */
+export async function approveSafeDrop(params: {
+  transactionNo: string
+  approvedBy?: string
+}) {
+  const supabase = await createClient()
+
+  // 1. Fetch pending safe drop transaction
+  const { data: tx, error: txErr } = await supabase
+    .from('cash_transactions')
+    .select('*')
+    .eq('transaction_no', params.transactionNo)
+    .single()
+
+  if (txErr || !tx) {
+    throw new Error('Safe drop transaction not found.')
+  }
+
+  if (tx.status !== 'pending') {
+    throw new Error(`Transaction is already ${tx.status}.`)
+  }
+
+  // 2. Locate manager safe box
+  const { data: safeBoxes } = await supabase
+    .from('cash_accounts')
+    .select('id, account_name')
+    .eq('branch_id', tx.branch_id)
+    .eq('account_type', 'manager_safe')
+    .limit(1)
+
+  const safeBox = safeBoxes && safeBoxes.length > 0 ? safeBoxes[0] : null
+  if (!safeBox) {
+    throw new Error('Manager Safe Box not found for this branch.')
+  }
+
+  // 3. Mark Outflow completed
+  const approvedUserId = sanitizeUuid(params.approvedBy)
+  await supabase
+    .from('cash_transactions')
+    .update({
+      status: 'completed',
+      approved_by: approvedUserId,
+      approved_at: new Date().toISOString(),
+    })
+    .eq('id', tx.id)
+
+  // 4. Record corresponding Inflow to Manager Safe Box
+  const { data: catData } = await supabase
+    .from('cash_categories')
+    .select('id')
+    .eq('category_name', 'POS Drawer Safe Drop')
+    .limit(1)
+
+  const inflowCategoryId = catData && catData.length > 0 ? catData[0].id : tx.category_id
+
+  await recordCashTransaction({
+    branchId: tx.branch_id,
+    cashAccountId: safeBox.id,
+    categoryId: inflowCategoryId,
+    flowType: 'inflow',
+    amount: tx.amount,
+    paymentMethod: 'cash',
+    referenceNo: tx.transaction_no,
+    sourceModule: 'transfer',
+    payeeOrPayer: 'POS Cashier Safe Drop',
+    notes: `Accepted safe drop from drawer. Authorizing Manager: ${approvedUserId || 'Manager'}`,
+    userId: approvedUserId || undefined,
+  })
+
+  try {
+    revalidatePath('/cash-management')
+  } catch {}
+
+  return { success: true }
+}
+
+/**
+ * Immutable Audit Reversal (Blueprint 4.1 & 6.2)
+ * Voids a transaction by marking original as 'reversed' and creating opposite balancing entry
+ */
+export async function reverseCashTransaction(params: {
+  transactionId: string
+  reason: string
+  approvedBy?: string
+}) {
+  const supabase = await createClient()
+
+  if (!params.reason.trim()) {
+    throw new Error('A mandatory audit reason is required to reverse a cash transaction.')
+  }
+
+  // 1. Fetch original transaction
+  const { data: origTx, error: origErr } = await supabase
+    .from('cash_transactions')
+    .select('*')
+    .eq('id', params.transactionId)
+    .single()
+
+  if (origErr || !origTx) {
+    throw new Error('Transaction to reverse was not found.')
+  }
+
+  if (origTx.status === 'reversed') {
+    throw new Error('This transaction has already been reversed.')
+  }
+
+  const userId = sanitizeUuid(params.approvedBy)
+
+  // 2. Mark original transaction as reversed
+  await supabase
+    .from('cash_transactions')
+    .update({
+      status: 'reversed',
+      reversal_reason: params.reason.trim(),
+      approved_by: userId,
+      approved_at: new Date().toISOString(),
+    })
+    .eq('id', origTx.id)
+
+  // 3. Create compensating balancing transaction (opposite flow)
+  const compensatingFlow = origTx.flow_type === 'inflow' ? 'outflow' : 'inflow'
+  const revTxNo = `REV-${origTx.transaction_no}-${Math.floor(100 + Math.random() * 900)}`
+
+  const { data: revTx, error: revErr } = await supabase
+    .from('cash_transactions')
+    .insert([
+      {
+        transaction_no: revTxNo,
+        branch_id: origTx.branch_id,
+        cash_account_id: origTx.cash_account_id,
+        category_id: origTx.category_id,
+        flow_type: compensatingFlow,
+        amount: origTx.amount,
+        payment_method: origTx.payment_method,
+        reference_no: origTx.transaction_no,
+        source_module: 'manual',
+        status: 'completed',
+        reversal_of: origTx.id,
+        reversal_reason: params.reason.trim(),
+        payee_or_payer: `Reversal: ${origTx.payee_or_payer || 'Original Entry'}`,
+        notes: `Compensating reversal for ${origTx.transaction_no}. Reason: ${params.reason.trim()}`,
+        created_by: userId,
+      },
+    ])
+    .select()
+    .single()
+
+  if (revErr) {
+    throw new Error(`Failed to create balancing reversal entry: ${revErr.message}`)
+  }
+
+  try {
+    revalidatePath('/cash-management')
+  } catch {}
+
+  return revTx
+}

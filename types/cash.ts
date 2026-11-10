@@ -1,10 +1,12 @@
 export type CashAccountType =
   | 'cash_drawer'
+  | 'manager_safe'
   | 'vault'
   | 'bank_checking'
   | 'bank_savings'
   | 'petty_cash'
   | 'ewallet'
+  | 'in_transit'
 
 export type CashFlowType = 'inflow' | 'outflow'
 
@@ -27,6 +29,9 @@ export interface CashAccount {
   account_number: string | null
   currency: string
   current_balance: number
+  cash_ceiling?: number
+  default_float?: number
+  is_archived?: boolean
   is_active: boolean
   created_at: string
   updated_at: string
@@ -51,7 +56,12 @@ export interface CashTransaction {
   payment_method: CashPaymentMethod
   reference_no: string | null
   source_module: CashSourceModule
-  status: 'pending' | 'completed' | 'cancelled'
+  status: 'pending' | 'completed' | 'cancelled' | 'reversed'
+  is_safe_drop?: boolean
+  approved_by?: string | null
+  approved_at?: string | null
+  reversal_of?: string | null
+  reversal_reason?: string | null
   payee_or_payer: string | null
   notes: string | null
   created_by: string | null
@@ -82,7 +92,10 @@ export interface CashReconciliation {
   actual_amount: number
   variance: number
   variance_reason: string | null
+  denominations?: Record<string, number> | null
+  status?: 'submitted' | 'approved' | 'discrepancy_flagged'
   reconciled_by: string | null
+  approved_by?: string | null
   created_at: string
   cash_accounts?: {
     id: string
@@ -110,4 +123,3 @@ export interface CashSummaryStats {
   dailyOutflows: number
   netCashFlow: number
 }
-

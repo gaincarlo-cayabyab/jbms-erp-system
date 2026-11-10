@@ -4,7 +4,10 @@ export interface POSProduct {
   id: string
   sku: string
   item_name: string
+  barcode?: string | null
   category: string | null
+  tab?: string | null
+  brand?: string | null
   unit_price: number
   cost_price: number
   stock_quantity: number

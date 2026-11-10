@@ -10,6 +10,10 @@ import {
   AlertCircle,
   Loader2,
   FileEdit,
+  CheckCircle2,
+  Clock,
+  Truck,
+  AlertOctagon,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useBranch } from '@/lib/branch-context'
@@ -21,12 +25,15 @@ interface StockAdjustmentModalProps {
   onSuccess: (updatedProduct: ProductItem) => void
 }
 
+type StockTarget = 'available' | 'reserved' | 'in_transit' | 'quarantine'
+
 export default function StockAdjustmentModal({
   product,
   onClose,
   onSuccess,
 }: StockAdjustmentModalProps) {
   const { activeBranchId } = useBranch()
+  const [stockTarget, setStockTarget] = useState<StockTarget>('available')
   const [adjustmentType, setAdjustmentType] = useState<'add' | 'subtract' | 'set'>('add')
   const [amount, setAmount] = useState<string>('10')
   const [reason, setReason] = useState<string>('Restocked from Supplier')
@@ -35,7 +42,21 @@ export default function StockAdjustmentModal({
 
   if (!product) return null
 
-  const currentStock = Number(product.stock_quantity) || 0
+  // Get current stock based on target
+  const getCurrentTargetStock = (): number => {
+    switch (stockTarget) {
+      case 'available':
+        return Number(product.stock_quantity) || 0
+      case 'reserved':
+        return Number(product.reserved_stock) || 0
+      case 'in_transit':
+        return Number(product.in_transit_stock) || 0
+      case 'quarantine':
+        return Number(product.quarantine_stock) || 0
+    }
+  }
+
+  const currentStock = getCurrentTargetStock()
   const changeValue = Math.max(0, parseInt(amount) || 0)
 
   let calculatedNewStock = currentStock
@@ -61,39 +82,49 @@ export default function StockAdjustmentModal({
     try {
       const supabase = createClient()
 
+      // Build update fields
+      const updateFields: Record<string, number> = {}
+      const stockUpdateFields: Record<string, number> = {}
+
+      if (stockTarget === 'available') {
+        updateFields.stock_quantity = calculatedNewStock
+        stockUpdateFields.quantity_on_hand = calculatedNewStock
+      } else if (stockTarget === 'reserved') {
+        updateFields.reserved_stock = calculatedNewStock
+        stockUpdateFields.reserved_quantity = calculatedNewStock
+      } else if (stockTarget === 'in_transit') {
+        updateFields.in_transit_stock = calculatedNewStock
+        stockUpdateFields.in_transit_quantity = calculatedNewStock
+      } else if (stockTarget === 'quarantine') {
+        updateFields.quarantine_stock = calculatedNewStock
+        stockUpdateFields.quarantine_quantity = calculatedNewStock
+      }
+
       const { data, error } = await supabase
         .from('products_and_inventory')
-        .update({ stock_quantity: calculatedNewStock })
+        .update(updateFields)
         .eq('id', product.id)
         .select()
         .single()
 
       if (error) {
-        if (error.code === '42501') {
-          throw new Error(
-            'Row-Level Security blocked updating stock. Run "supabase/migrations/05_inventory_policies.sql" in your Supabase SQL editor.'
-          )
-        }
         throw new Error(error.message || 'Failed to adjust stock level.')
       }
 
-      // Also sync branch-specific inventory_stock table so the adjustment persists in branch views
+      // Sync branch-specific inventory_stock table
       const targetBranches =
         !activeBranchId || activeBranchId === 'all'
           ? ['dagupan_main', 'manila_branch']
           : [activeBranchId]
 
       for (const bId of targetBranches) {
-        await supabase.from('inventory_stock').upsert(
-          {
-            branch_id: bId,
-            product_id: product.id,
-            quantity_on_hand: calculatedNewStock,
-            reorder_level: product.reorder_level || 10,
+        await supabase
+          .from('inventory_stock')
+          .update({
+            ...stockUpdateFields,
             last_updated: new Date().toISOString(),
-          },
-          { onConflict: 'branch_id,product_id' }
-        )
+          })
+          .match({ branch_id: bId, product_id: product.id })
       }
 
       onSuccess(data as ProductItem)
@@ -107,7 +138,7 @@ export default function StockAdjustmentModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
       <div
         className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl border border-zinc-200 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
@@ -118,7 +149,7 @@ export default function StockAdjustmentModal({
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-bold text-zinc-900">Adjust Stock Quantity</h2>
               <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">
-                Quick Adjust
+                Blueprint 1.2
               </span>
             </div>
             <p className="text-xs text-zinc-500 font-mono mt-0.5">{product.sku}</p>
@@ -146,15 +177,68 @@ export default function StockAdjustmentModal({
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3.5">
             <p className="text-xs font-bold text-zinc-900">{product.item_name}</p>
             <div className="mt-2 flex items-center justify-between text-xs">
-              <span className="text-zinc-500">Current Stock:</span>
+              <span className="text-zinc-500">Current {stockTarget.toUpperCase()} Stock:</span>
               <span className="font-bold text-zinc-900">{currentStock} units</span>
+            </div>
+          </div>
+
+          {/* Stock Target Tab Selector (Blueprint 1.2) */}
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
+              Stock Category to Adjust
+            </label>
+            <div className="grid grid-cols-2 gap-1.5 rounded-lg border border-zinc-200 p-1 bg-zinc-50">
+              <button
+                type="button"
+                onClick={() => setStockTarget('available')}
+                className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-semibold transition ${
+                  stockTarget === 'available'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-zinc-600 hover:text-zinc-900'
+                }`}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" /> Available (S_avail)
+              </button>
+              <button
+                type="button"
+                onClick={() => setStockTarget('reserved')}
+                className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-semibold transition ${
+                  stockTarget === 'reserved'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'text-zinc-600 hover:text-zinc-900'
+                }`}
+              >
+                <Clock className="h-3.5 w-3.5" /> Reserved (S_res)
+              </button>
+              <button
+                type="button"
+                onClick={() => setStockTarget('in_transit')}
+                className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-semibold transition ${
+                  stockTarget === 'in_transit'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-zinc-600 hover:text-zinc-900'
+                }`}
+              >
+                <Truck className="h-3.5 w-3.5" /> In-Transit (S_trans)
+              </button>
+              <button
+                type="button"
+                onClick={() => setStockTarget('quarantine')}
+                className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-semibold transition ${
+                  stockTarget === 'quarantine'
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'text-zinc-600 hover:text-zinc-900'
+                }`}
+              >
+                <AlertOctagon className="h-3.5 w-3.5" /> Audit (S_audit)
+              </button>
             </div>
           </div>
 
           {/* Action Type Toggle */}
           <div>
             <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
-              Adjustment Type
+              Adjustment Operation
             </label>
             <div className="grid grid-cols-3 gap-1.5 rounded-lg border border-zinc-200 p-1 bg-zinc-50">
               <button
@@ -162,7 +246,7 @@ export default function StockAdjustmentModal({
                 onClick={() => setAdjustmentType('add')}
                 className={`flex items-center justify-center gap-1 rounded-md py-1.5 text-xs font-semibold transition ${
                   adjustmentType === 'add'
-                    ? 'bg-emerald-600 text-white shadow-xs'
+                    ? 'bg-indigo-600 text-white shadow-xs'
                     : 'text-zinc-600 hover:text-zinc-900'
                 }`}
               >
@@ -184,7 +268,7 @@ export default function StockAdjustmentModal({
                 onClick={() => setAdjustmentType('set')}
                 className={`flex items-center justify-center gap-1 rounded-md py-1.5 text-xs font-semibold transition ${
                   adjustmentType === 'set'
-                    ? 'bg-blue-600 text-white shadow-xs'
+                    ? 'bg-zinc-800 text-white shadow-xs'
                     : 'text-zinc-600 hover:text-zinc-900'
                 }`}
               >
@@ -211,7 +295,7 @@ export default function StockAdjustmentModal({
             </div>
           </div>
 
-          {/* Reason selector / input */}
+          {/* Reason selector */}
           <div>
             <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
               Reason for Adjustment
@@ -222,22 +306,23 @@ export default function StockAdjustmentModal({
               className="w-full rounded-lg border border-zinc-300 py-2 px-3 text-xs text-zinc-900 bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 transition"
             >
               <option value="Restocked from Supplier">Restocked from Supplier / PO</option>
-              <option value="Production Consumption">Consumed in Production / Job Order</option>
-              <option value="Damaged / Spoilage">Damaged / Defective Stock</option>
-              <option value="Physical Inventory Audit">Physical Inventory Audit / Count</option>
-              <option value="Customer Return">Customer Return</option>
+              <option value="Physical Inventory Audit">Physical Inventory Audit Discrepancy</option>
+              <option value="Damaged / Vendor Return">Damaged / Defective Stock to Quarantine</option>
+              <option value="Customer Reservation Allocated">Customer Reservation Allocated</option>
+              <option value="Inter-Branch Transfer In Transit">Inter-Branch STO Dispatch</option>
+              <option value="Production Consumption">Consumed in Production</option>
             </select>
           </div>
 
           {/* Preview result */}
-          <div className="flex items-center justify-between rounded-xl bg-blue-50 p-3.5 border border-blue-100">
-            <div className="text-xs text-blue-900">
-              <span className="font-semibold">Calculated New Stock:</span>
-              <p className="text-[11px] text-blue-700">
+          <div className="flex items-center justify-between rounded-xl bg-indigo-50 p-3.5 border border-indigo-100">
+            <div className="text-xs text-indigo-900">
+              <span className="font-semibold">Calculated New {stockTarget.toUpperCase()} Stock:</span>
+              <p className="text-[11px] text-indigo-700">
                 {currentStock} → {calculatedNewStock} units
               </p>
             </div>
-            <div className="text-xl font-bold text-blue-700">
+            <div className="text-xl font-bold text-indigo-700">
               {calculatedNewStock} units
             </div>
           </div>
@@ -272,4 +357,3 @@ export default function StockAdjustmentModal({
     </div>
   )
 }
-
