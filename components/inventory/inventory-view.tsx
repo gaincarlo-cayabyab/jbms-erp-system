@@ -865,9 +865,6 @@ export default function InventoryView() {
                                   UPC: {product.barcode}
                                 </span>
                               )}
-                              <span className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase bg-slate-100 text-slate-600">
-                                {product.tab}
-                              </span>
                             </div>
                           </div>
                         </td>
