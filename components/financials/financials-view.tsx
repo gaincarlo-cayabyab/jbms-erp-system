@@ -122,6 +122,7 @@ export default function FinancialsView() {
   // Financial Metrics Calculations
   const metrics = useMemo(() => {
     const paidOrders = salesOrders.filter((o) => o.payment_status === 'Paid')
+    const partialOrders = salesOrders.filter((o) => o.payment_status === 'Partial')
     const unpaidOrders = salesOrders.filter((o) => o.payment_status !== 'Paid')
 
     // Count POS orders already stored in sales_orders
@@ -130,12 +131,16 @@ export default function FinancialsView() {
     const extraPosTotal = Math.max(0, posSalesTotal - posInSalesTotal)
 
     const grossRevenue =
-      paidOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0) + extraPosTotal
+      paidOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0) +
+      partialOrders.reduce((sum, o) => sum + (Number(o.amount_paid) || 0), 0) +
+      extraPosTotal
 
-    const accountsReceivable = unpaidOrders.reduce(
-      (sum, o) => sum + (Number(o.total_amount) || 0),
-      0
-    )
+    const accountsReceivable = unpaidOrders.reduce((sum, o) => {
+      if (o.payment_status === 'Partial' && o.balance_due !== undefined) {
+        return sum + (Number(o.balance_due) || 0)
+      }
+      return sum + (Number(o.total_amount) || 0)
+    }, 0)
 
     const totalExpenses = expenses.reduce(
       (sum, e) => sum + (Number(e.amount) || 0),
@@ -146,7 +151,7 @@ export default function FinancialsView() {
       grossRevenue,
       totalExpenses,
       accountsReceivable,
-      paidOrdersCount: paidOrders.length,
+      paidOrdersCount: paidOrders.length + partialOrders.length,
       unpaidOrdersCount: unpaidOrders.length,
       posSalesTotal,
     }
@@ -156,10 +161,11 @@ export default function FinancialsView() {
   const filteredIncome = useMemo(() => {
     return salesOrders.filter((order) => {
       const q = searchQuery.toLowerCase().trim()
+      const customerName = (order.customers?.name || order.recipient_name || '').toLowerCase()
       const matchesSearch =
         !q ||
         order.order_number.toLowerCase().includes(q) ||
-        order.customers?.name?.toLowerCase().includes(q)
+        customerName.includes(q)
 
       if (!matchesSearch) return false
 
@@ -460,8 +466,15 @@ export default function FinancialsView() {
                           </td>
                           <td className="px-6 py-4">
                             <p className="font-semibold text-zinc-900 truncate">
-                              {order.customers?.name || 'Walk-in Customer'}
+                              {order.customers?.name || order.recipient_name || 'Walk-in Customer'}
                             </p>
+                            {order.fulfillment_type && (
+                              <p className="text-[10px] text-zinc-400">
+                                {order.fulfillment_type === 'walk_in' ? '🛍️ Walk-in (Cash & Carry)' :
+                                 order.fulfillment_type === 'pickup' ? '📦 Store Pickup' :
+                                 '🚚 Delivery'}
+                              </p>
+                            )}
                           </td>
                           <td className="px-6 py-4 text-xs text-zinc-600">
                             {order.branch || 'Main Branch'}

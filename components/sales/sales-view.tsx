@@ -63,10 +63,10 @@ export default function SalesView() {
     try {
       const supabase = createClient()
 
-      // Fetch sales_orders with joined customer
+      // Fetch sales_orders with joined customer and line items
       const { data: ordersData, error: ordersError } = await supabase
         .from('sales_orders')
-        .select('*, customers(*)')
+        .select('*, customers(*), items:sales_order_items(*)')
         .order('created_at', { ascending: false })
 
       if (ordersError) throw new Error(ordersError.message)
@@ -175,16 +175,16 @@ export default function SalesView() {
       // Tab filter
       if (activeTab === 'quotes') {
         const isQuote =
-          order.order_status === 'Draft' ||
-          order.order_status === 'Pending' ||
-          order.order_number.startsWith('QT')
+          order.order_type === 'quotation' ||
+          order.order_number.startsWith('QT') ||
+          order.order_status === 'Draft'
         if (!isQuote) return false
       }
       if (activeTab === 'orders') {
         const isOrder =
-          order.order_status !== 'Draft' &&
-          order.order_status !== 'Pending' &&
-          !order.order_number.startsWith('QT')
+          order.order_type !== 'quotation' &&
+          !order.order_number.startsWith('QT') &&
+          order.order_status !== 'Draft'
         if (!isOrder) return false
       }
       if (activeTab === 'pos') {
@@ -194,7 +194,7 @@ export default function SalesView() {
 
       // Text search
       const q = searchQuery.toLowerCase().trim()
-      const customerName = order.customers?.name?.toLowerCase() || ''
+      const customerName = (order.customers?.name || order.recipient_name || '').toLowerCase()
       const orderNum = order.order_number.toLowerCase()
       const branchName = order.branch?.toLowerCase() || ''
 
@@ -379,9 +379,9 @@ export default function SalesView() {
                 {
                   orders.filter(
                     (o) =>
-                      o.order_status === 'Draft' ||
-                      o.order_status === 'Pending' ||
-                      o.order_number.startsWith('QT')
+                      o.order_type === 'quotation' ||
+                      o.order_number.startsWith('QT') ||
+                      o.order_status === 'Draft'
                   ).length
                 }
                 )
@@ -399,9 +399,9 @@ export default function SalesView() {
                 {
                   orders.filter(
                     (o) =>
-                      o.order_status !== 'Draft' &&
-                      o.order_status !== 'Pending' &&
-                      !o.order_number.startsWith('QT')
+                      o.order_type !== 'quotation' &&
+                      !o.order_number.startsWith('QT') &&
+                      o.order_status !== 'Draft'
                   ).length
                 }
                 )
@@ -585,24 +585,33 @@ export default function SalesView() {
                         {/* Customer */}
                         <td className="px-6 py-4">
                           <div className="font-medium text-zinc-900 truncate max-w-xs">
-                            {order.customers?.name || 'Walk-in Customer'}
+                            {order.customers?.name || order.recipient_name || 'Walk-in Customer'}
                           </div>
-                          {order.customers?.contact_number && (
+                          {(order.customers?.contact_number || order.recipient_phone) && (
                             <p className="text-xs text-zinc-500">
-                              {order.customers.contact_number}
+                              {order.customers?.contact_number || order.recipient_phone}
                             </p>
                           )}
                         </td>
 
-                        {/* Order Status */}
+                        {/* Order Status & Fulfillment */}
                         <td className="px-6 py-4">
-                          <span
-                            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${getOrderStatusBadge(
-                              order.order_status
-                            )}`}
-                          >
-                            {order.order_status}
-                          </span>
+                          <div className="flex flex-col gap-1 items-start">
+                            <span
+                              className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${getOrderStatusBadge(
+                                order.order_status
+                              )}`}
+                            >
+                              {order.order_status}
+                            </span>
+                            {order.fulfillment_type && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500">
+                                {order.fulfillment_type === 'walk_in' ? '🛍️ Cash & Carry' :
+                                 order.fulfillment_type === 'pickup' ? '📦 Store Pickup' :
+                                 '🚚 Delivery'}
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Payment Status */}

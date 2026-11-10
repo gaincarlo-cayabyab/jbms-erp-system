@@ -81,19 +81,21 @@ export default function OrderDetailModal({
         {/* Content */}
         <div className="p-6 space-y-6">
           {/* Metadata Cards */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="rounded-xl border border-zinc-100 bg-zinc-50 p-3.5">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
                 Customer Information
               </span>
               <p className="mt-1 font-semibold text-zinc-900">
-                {order.customers?.name || 'Walk-in Customer'}
+                {order.customers?.name || order.recipient_name || 'Walk-in Customer'}
               </p>
-              {order.customers?.contact_number && (
-                <p className="text-xs text-zinc-500 mt-0.5">{order.customers.contact_number}</p>
+              {(order.customers?.contact_number || order.recipient_phone) && (
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  📞 {order.customers?.contact_number || order.recipient_phone}
+                </p>
               )}
               {order.customers?.email && (
-                <p className="text-xs text-zinc-500">{order.customers.email}</p>
+                <p className="text-xs text-zinc-500">✉️ {order.customers.email}</p>
               )}
             </div>
 
@@ -101,10 +103,9 @@ export default function OrderDetailModal({
               <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
                 Payment & Fulfillment
               </span>
-              <div className="mt-1 flex items-center gap-1.5">
-                <span className="text-xs text-zinc-600">Payment:</span>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
                 <span
-                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                     order.payment_status === 'Paid'
                       ? 'bg-emerald-100 text-emerald-800'
                       : order.payment_status === 'Partial'
@@ -114,10 +115,88 @@ export default function OrderDetailModal({
                 >
                   {order.payment_status}
                 </span>
+                {order.fulfillment_type && (
+                  <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+                    {order.fulfillment_type === 'walk_in' ? '🛍️ Cash & Carry' :
+                     order.fulfillment_type === 'pickup' ? '📦 Store Pickup' :
+                     '🚚 Delivery'}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-zinc-500 mt-1">Branch: {order.branch || 'Main Branch'}</p>
             </div>
           </div>
+
+          {/* Fulfillment details: Pickup or Delivery */}
+          {order.fulfillment_type === 'pickup' && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3.5 text-xs space-y-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
+                Store Pickup Details
+              </span>
+              <div className="grid grid-cols-2 gap-2 pt-1 text-slate-700">
+                <div>
+                  <span className="text-slate-500">Agreed Pickup: </span>
+                  <span className="font-semibold text-slate-900">
+                    {order.pickup_date ? formatDate(order.pickup_date) : 'Pending scheduling'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Payment Terms: </span>
+                  <span className="font-semibold text-slate-900">{order.payment_terms || 'Full payment'}</span>
+                </div>
+                {order.balance_due !== undefined && Number(order.balance_due) > 0 && (
+                  <div className="col-span-2 flex justify-between pt-1 border-t border-amber-200 font-medium">
+                    <span className="text-amber-800">Deposit Paid: {formatCurrency(order.amount_paid || 0)}</span>
+                    <span className="text-rose-700 font-bold">Balance Due: {formatCurrency(order.balance_due)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {order.fulfillment_type === 'delivery' && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3.5 text-xs space-y-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-blue-800">
+                Delivery & Shipment Tracking
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-slate-700">
+                <div>
+                  <span className="text-slate-500">Recipient: </span>
+                  <span className="font-semibold text-slate-900">{order.recipient_name || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Phone: </span>
+                  <span className="font-semibold text-slate-900">{order.recipient_phone || 'N/A'}</span>
+                </div>
+                <div className="sm:col-span-2">
+                  <span className="text-slate-500">Address: </span>
+                  <span className="font-semibold text-slate-900">{order.shipping_address || 'Not specified'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">Courier: </span>
+                  <span className="font-semibold text-slate-900">{order.courier_name || 'In-House'}</span>
+                </div>
+                {order.tracking_number && (
+                  <div>
+                    <span className="text-slate-500">Tracking #: </span>
+                    <span className="font-mono font-bold text-indigo-700">{order.tracking_number}</span>
+                  </div>
+                )}
+                {order.due_date && (
+                  <div>
+                    <span className="text-slate-500">Delivery Due: </span>
+                    <span className="font-semibold text-slate-900">{formatDate(order.due_date)}</span>
+                  </div>
+                )}
+                {order.shipping_fee !== undefined && Number(order.shipping_fee) > 0 && (
+                  <div>
+                    <span className="text-slate-500">Shipping Fee: </span>
+                    <span className="font-semibold text-slate-900">{formatCurrency(order.shipping_fee)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Line items if available */}
           {order.items && order.items.length > 0 && (

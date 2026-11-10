@@ -173,3 +173,4 @@ $$;
 
 -- Grant execution to anon and authenticated roles
 GRANT EXECUTE ON FUNCTION public.complete_pos_checkout TO anon, authenticated;
+

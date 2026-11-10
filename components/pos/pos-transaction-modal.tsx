@@ -113,7 +113,7 @@ export default function POSTransactionModal({ transaction, onComplete }: Props) 
   )
 }
 
-// ── Resilience fallback: original multi-query path if RPC is unavailable ──────
+// ── Resilience fallback: multi-query path if RPC is unavailable ──────────────
 async function legacyFallback(
   supabase: ReturnType<typeof createClient>,
   transaction: Transaction,
@@ -128,23 +128,42 @@ async function legacyFallback(
         .eq('id', item.product.id)
       await supabase
         .from('inventory_stock')
-        .update({ quantity_on_hand: newStock })
+        .update({ quantity_on_hand: newStock, last_updated: new Date().toISOString() })
         .eq('product_id', item.product.id)
         .eq('branch_id', branchId)
     }
-    await supabase.from('sales_orders').insert({
+
+    const { data: insertedOrder } = await supabase.from('sales_orders').insert({
       order_number:       transaction.invoiceNo,
       total_amount:       transaction.grandTotal,
-      payment_status:     'Paid',
-      order_status:       transaction.fulfillmentType === 'walk_in' ? 'Completed' : 'Processing',
+      payment_status:     transaction.balanceDue && transaction.balanceDue > 0 ? 'Partial' : 'Paid',
+      order_status:       'Confirmed',
       branch:             transaction.branchName,
       order_type:         transaction.orderType ?? 'sale',
       fulfillment_type:   transaction.fulfillmentType ?? 'walk_in',
       fulfillment_status: transaction.fulfillmentStatus ?? 'handed_over',
       amount_paid:        transaction.amountPaid ?? transaction.grandTotal,
       balance_due:        transaction.balanceDue ?? 0,
-    })
+      recipient_name:     transaction.deliveryDetails?.recipientName ?? transaction.customerInfo?.name ?? null,
+      recipient_phone:    transaction.deliveryDetails?.recipientPhone ?? transaction.customerInfo?.phone ?? null,
+      shipping_address:   transaction.deliveryDetails?.shippingAddress ?? null,
+      courier_name:       transaction.deliveryDetails?.courierName ?? null,
+      pickup_date:        transaction.pickupDate ?? null,
+    }).select('id').single()
+
+    if (insertedOrder?.id) {
+      const itemsPayload = transaction.items.map((it) => ({
+        sales_order_id: insertedOrder.id,
+        sku: it.product.sku,
+        item_name: it.product.item_name,
+        quantity: it.quantity,
+        unit_price: it.unitPrice,
+        discount_amount: it.lineDiscount ?? 0,
+        subtotal: it.unitPrice * it.quantity - (it.lineDiscount ?? 0),
+      }))
+      await supabase.from('sales_order_items').insert(itemsPayload)
+    }
   } catch (e) {
-    console.warn('Legacy fallback also failed:', e)
+    console.warn('Legacy fallback also encountered error:', e)
   }
 }
