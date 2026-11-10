@@ -1,4 +1,4 @@
-export type StockStatusTab = 'available' | 'reserved' | 'in_transit' | 'quarantine'
+export type StockStatusTab = 'available' | 'low_stock' | 'out_of_stock' | 'reserved' | 'in_transit' | 'quarantine'
 
 export interface ProductItem {
   id: string

@@ -1,6 +1,6 @@
 'use client'
 
-import { Package, CheckCircle2, Clock, Truck, AlertOctagon } from 'lucide-react'
+import { Package, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react'
 import { ProductItem } from '@/types/inventory'
 
 interface InventorySummaryCardsProps {
@@ -14,46 +14,47 @@ export default function InventorySummaryCards({
 }: InventorySummaryCardsProps) {
   const totalProducts = products.length
 
-  // Available Stock (S_avail)
+  // Available Stock
   const totalAvailableUnits = products.reduce((sum, p) => sum + (Number(p.stock_quantity) || 0), 0)
 
-  // Reserved Stock (S_res)
-  const totalReservedUnits = products.reduce((sum, p) => sum + (Number(p.reserved_stock) || 0), 0)
+  // Low Stock Items (avail > 0 and avail <= reorder_level)
+  const lowStockCount = products.filter((p) => {
+    const avail = Number(p.stock_quantity) || 0
+    const reorder = Number(p.reorder_level) || 10
+    return avail > 0 && avail <= reorder
+  }).length
 
-  // In-Transit Stock (S_trans)
-  const totalInTransitUnits = products.reduce((sum, p) => sum + (Number(p.in_transit_stock) || 0), 0)
-
-  // Quarantine / Audit Stock (S_audit)
-  const totalQuarantineUnits = products.reduce((sum, p) => sum + (Number(p.quarantine_stock) || 0), 0)
+  // Out of Stock Items (avail <= 0)
+  const outOfStockCount = products.filter((p) => (Number(p.stock_quantity) || 0) <= 0).length
 
   const cards = [
     {
       title: 'Total Catalog SKUs',
       value: totalProducts.toLocaleString(),
-      subtitle: `${totalAvailableUnits.toLocaleString()} units available on shelves`,
+      subtitle: `${totalProducts.toLocaleString()} items across 6 departments`,
       icon: Package,
       color: 'bg-indigo-600',
     },
     {
-      title: 'Available Stock (S_avail)',
+      title: 'Total Units on Hand',
       value: totalAvailableUnits.toLocaleString(),
-      subtitle: 'Ready for immediate POS checkout',
+      subtitle: totalAvailableUnits === 0 ? 'Ready for physical inventory count' : 'Available on shelves for immediate sale',
       icon: CheckCircle2,
       color: 'bg-emerald-600',
     },
     {
-      title: 'Reserved Stock (S_res)',
-      value: totalReservedUnits.toLocaleString(),
-      subtitle: 'Allocated to pending job orders & layaways',
-      icon: Clock,
-      color: 'bg-amber-600',
+      title: 'Low Stock Alerts',
+      value: lowStockCount.toLocaleString(),
+      subtitle: `${lowStockCount} items at or below reorder threshold`,
+      icon: AlertTriangle,
+      color: 'bg-amber-500',
     },
     {
-      title: 'In-Transit & Audit (S_audit)',
-      value: (totalInTransitUnits + totalQuarantineUnits).toLocaleString(),
-      subtitle: `${totalInTransitUnits.toLocaleString()} in transit · ${totalQuarantineUnits.toLocaleString()} audit review`,
-      icon: AlertOctagon,
-      color: totalQuarantineUnits > 0 ? 'bg-rose-600' : 'bg-blue-600',
+      title: 'Out of Stock Items',
+      value: outOfStockCount.toLocaleString(),
+      subtitle: `${outOfStockCount} items awaiting physical stock-in`,
+      icon: XCircle,
+      color: 'bg-rose-600',
     },
   ]
 
@@ -64,7 +65,7 @@ export default function InventorySummaryCards({
         return (
           <div
             key={card.title}
-            className="flex flex-col justify-between rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:shadow-md"
+            className="flex flex-col justify-between rounded-xl border border-zinc-200 bg-white p-5 shadow-xs transition hover:shadow-md"
           >
             <div className="flex items-start justify-between">
               <div className="min-w-0 flex-1 pr-2">
@@ -80,7 +81,7 @@ export default function InventorySummaryCards({
                 )}
               </div>
               <div
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-sm ${card.color}`}
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-xs ${card.color}`}
               >
                 <Icon className="h-5 w-5" />
               </div>

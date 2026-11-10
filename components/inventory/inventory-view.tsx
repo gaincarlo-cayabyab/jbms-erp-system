@@ -282,9 +282,15 @@ export default function InventoryView() {
           return false
         }
 
-        // Blueprint Stock Status Tab Filter (Section 1.2)
+        // Plain Business Stock Status Filter
+        const avail = Number(p.stock_quantity) || 0
+        const reorder = Number(p.reorder_level) || 10
         if (stockStatusTab === 'available') {
-          if ((Number(p.stock_quantity) || 0) <= 0) return false
+          if (avail <= 0) return false
+        } else if (stockStatusTab === 'low_stock') {
+          if (avail <= 0 || avail > reorder) return false
+        } else if (stockStatusTab === 'out_of_stock') {
+          if (avail > 0) return false
         } else if (stockStatusTab === 'reserved') {
           if ((Number(p.reserved_stock) || 0) <= 0) return false
         } else if (stockStatusTab === 'in_transit') {
@@ -540,7 +546,7 @@ export default function InventoryView() {
 
         {/* Main Table Card */}
         <div className="rounded-xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
-          {/* Stock Location & Status Sub-Tabs (Blueprint 1.2) */}
+          {/* Stock Location & Status Sub-Tabs */}
           <div className="border-b border-zinc-200 px-4 pt-3 pb-0 bg-zinc-50/70 flex items-center gap-1 overflow-x-auto">
             <button
               type="button"
@@ -552,7 +558,7 @@ export default function InventoryView() {
               }`}
             >
               <Package className="h-3.5 w-3.5" />
-              <span>All Statuses</span>
+              <span>All Items</span>
             </button>
             <button
               type="button"
@@ -564,31 +570,43 @@ export default function InventoryView() {
               }`}
             >
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-              <span>Available Stock (S_avail)</span>
+              <span>In Stock</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStockStatusTab('low_stock')}
+              className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold border-b-2 transition ${
+                stockStatusTab === 'low_stock'
+                  ? 'border-amber-600 text-amber-700'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-800'
+              }`}
+            >
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+              <span>Low Stock</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStockStatusTab('out_of_stock')}
+              className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold border-b-2 transition ${
+                stockStatusTab === 'out_of_stock'
+                  ? 'border-zinc-800 text-zinc-900'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-800'
+              }`}
+            >
+              <XCircle className="h-3.5 w-3.5 text-zinc-500" />
+              <span>Out of Stock</span>
             </button>
             <button
               type="button"
               onClick={() => setStockStatusTab('reserved')}
               className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold border-b-2 transition ${
                 stockStatusTab === 'reserved'
-                  ? 'border-amber-600 text-amber-700'
+                  ? 'border-indigo-600 text-indigo-700'
                   : 'border-transparent text-zinc-500 hover:text-zinc-800'
               }`}
             >
-              <Clock className="h-3.5 w-3.5 text-amber-600" />
-              <span>Reserved Stock (S_res)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setStockStatusTab('in_transit')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold border-b-2 transition ${
-                stockStatusTab === 'in_transit'
-                  ? 'border-blue-600 text-blue-700'
-                  : 'border-transparent text-zinc-500 hover:text-zinc-800'
-              }`}
-            >
-              <Truck className="h-3.5 w-3.5 text-blue-600" />
-              <span>In-Transit Stock (S_trans)</span>
+              <Clock className="h-3.5 w-3.5 text-indigo-600" />
+              <span>Reserved / Layaway</span>
             </button>
             <button
               type="button"
@@ -600,7 +618,7 @@ export default function InventoryView() {
               }`}
             >
               <AlertOctagon className="h-3.5 w-3.5 text-rose-600" />
-              <span>Quarantine / Audit (S_audit)</span>
+              <span>Damaged / Review</span>
             </button>
           </div>
 
@@ -727,22 +745,16 @@ export default function InventoryView() {
                     />
                   </th>
                   <th scope="col" className="px-4 py-3.5">
-                    SKU & Barcode
-                  </th>
-                  <th scope="col" className="px-4 py-3.5">
-                    Product Name
+                    Product & SKU Details
                   </th>
                   <th scope="col" className="px-4 py-3.5">
                     Brand & Category
                   </th>
                   <th scope="col" className="px-4 py-3.5 text-right">
-                    Available (S_avail)
+                    On-Shelf Stock
                   </th>
-                  <th scope="col" className="px-4 py-3.5 text-right">
-                    Reserved (S_res)
-                  </th>
-                  <th scope="col" className="px-4 py-3.5 text-right">
-                    Audit (S_audit)
+                  <th scope="col" className="px-4 py-3.5 text-center">
+                    Allocations
                   </th>
                   <th scope="col" className="px-4 py-3.5">
                     Status
@@ -767,12 +779,10 @@ export default function InventoryView() {
                   Array.from({ length: 8 }).map((_, i) => (
                     <tr key={i} className="animate-pulse">
                       <td className="pl-6 pr-2 py-4"><div className="h-4 w-4 rounded bg-zinc-200" /></td>
-                      <td className="px-4 py-4"><div className="h-4 w-28 rounded bg-zinc-200" /></td>
-                      <td className="px-4 py-4"><div className="h-4 w-44 rounded bg-zinc-200" /></td>
+                      <td className="px-4 py-4"><div className="h-4 w-52 rounded bg-zinc-200" /><div className="h-3 w-28 rounded bg-zinc-100 mt-1" /></td>
                       <td className="px-4 py-4"><div className="h-4 w-24 rounded bg-zinc-200" /></td>
                       <td className="px-4 py-4 text-right"><div className="h-4 w-12 rounded bg-zinc-200 ml-auto" /></td>
-                      <td className="px-4 py-4 text-right"><div className="h-4 w-12 rounded bg-zinc-200 ml-auto" /></td>
-                      <td className="px-4 py-4 text-right"><div className="h-4 w-12 rounded bg-zinc-200 ml-auto" /></td>
+                      <td className="px-4 py-4 text-center"><div className="h-4 w-16 rounded bg-zinc-200 mx-auto" /></td>
                       <td className="px-4 py-4"><div className="h-5 w-20 rounded-full bg-zinc-200" /></td>
                       <td className="px-6 py-4 text-center"><div className="h-6 w-20 rounded bg-zinc-200 mx-auto" /></td>
                     </tr>
@@ -820,75 +830,88 @@ export default function InventoryView() {
                           />
                         </td>
 
-                        {/* SKU & Barcode */}
-                        <td className="px-4 py-4">
-                          <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                            {product.sku}
-                          </span>
-                          {product.barcode && (
-                            <p className="text-[11px] font-mono text-zinc-400 mt-1">
-                              UPC: {product.barcode}
+                        {/* Product & SKU Details (Consolidated - No Doubling) */}
+                        <td className="px-4 py-3.5">
+                          <div className="flex flex-col gap-0.5">
+                            <p className="font-semibold text-zinc-900 text-sm max-w-md leading-snug" title={product.item_name}>
+                              {product.item_name}
                             </p>
-                          )}
-                        </td>
-
-                        {/* Product Name */}
-                        <td className="px-4 py-4">
-                          <p className="font-semibold text-zinc-900 max-w-md truncate" title={product.item_name}>
-                            {product.item_name}
-                          </p>
-                          <span className="inline-block mt-0.5 rounded px-1.5 py-0.2 text-[10px] font-bold uppercase bg-zinc-100 text-zinc-600">
-                            {product.tab}
-                          </span>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                              <span className="font-mono text-[11px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                                SKU: {product.sku}
+                              </span>
+                              {product.barcode && (
+                                <span className="text-[11px] font-mono text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded">
+                                  UPC: {product.barcode}
+                                </span>
+                              )}
+                              <span className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase bg-slate-100 text-slate-600">
+                                {product.tab}
+                              </span>
+                            </div>
+                          </div>
                         </td>
 
                         {/* Brand & Category */}
-                        <td className="px-4 py-4">
-                          <div className="font-bold text-zinc-800 text-xs">{product.brand || 'General'}</div>
-                          <p className="text-[11px] text-zinc-500 truncate max-w-[140px]" title={product.category || ''}>
-                            {product.category}
+                        <td className="px-4 py-3.5">
+                          <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-800">
+                            {product.brand || 'General'}
+                          </span>
+                          <p className="text-[11px] text-zinc-500 truncate max-w-[140px] mt-0.5" title={product.category || ''}>
+                            {product.category || 'General'}
                           </p>
                         </td>
 
-                        {/* Available Stock */}
-                        <td className="px-4 py-4 text-right">
+                        {/* On-Shelf Stock */}
+                        <td className="px-4 py-3.5 text-right">
                           <span className={`font-bold text-sm ${avail > 0 ? 'text-emerald-700' : 'text-zinc-400'}`}>
                             {avail.toLocaleString()}
                           </span>
                           <p className="text-[10px] text-zinc-400">Min: {reorder}</p>
                         </td>
 
-                        {/* Reserved Stock */}
-                        <td className="px-4 py-4 text-right">
-                          <span className={`font-semibold text-xs ${reserved > 0 ? 'text-amber-700 font-bold' : 'text-zinc-400'}`}>
-                            {reserved.toLocaleString()}
-                          </span>
-                        </td>
-
-                        {/* Audit / Quarantine Stock */}
-                        <td className="px-4 py-4 text-right">
-                          <span className={`font-semibold text-xs ${audit > 0 ? 'text-rose-700 font-bold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200' : 'text-zinc-400'}`}>
-                            {audit > 0 ? `⚠️ ${audit.toLocaleString()}` : '0'}
-                          </span>
+                        {/* Allocations (Reserved / Transit / Review) */}
+                        <td className="px-4 py-3.5 text-center">
+                          {reserved > 0 || inTransit > 0 || audit > 0 ? (
+                            <div className="flex flex-col gap-1 items-center">
+                              {reserved > 0 && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
+                                  📦 {reserved.toLocaleString()} Reserved
+                                </span>
+                              )}
+                              {inTransit > 0 && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded">
+                                  🚚 {inTransit.toLocaleString()} Transit
+                                </span>
+                              )}
+                              {audit > 0 && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">
+                                  ⚠️ {audit.toLocaleString()} Review
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-zinc-300 text-xs font-medium">—</span>
+                          )}
                         </td>
 
                         {/* Status Badge */}
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-3.5">
                           {audit > 0 ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-bold text-rose-800">
-                              <AlertOctagon className="h-3 w-3" /> Audit Discrepancy
+                            <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-[11px] font-bold text-rose-800">
+                              <AlertOctagon className="h-3 w-3" /> Under Review
                             </span>
                           ) : isOutOfStock ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-700">
-                              <XCircle className="h-3 w-3" /> Depleted
+                            <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 border border-zinc-200 px-2.5 py-0.5 text-[11px] font-semibold text-zinc-600">
+                              <XCircle className="h-3 w-3 text-zinc-400" /> Out of Stock
                             </span>
                           ) : isLowStock ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-800">
                               <AlertTriangle className="h-3 w-3" /> Low Stock
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
-                              <CheckCircle2 className="h-3 w-3" /> On Shelf
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800">
+                              <CheckCircle2 className="h-3 w-3" /> In Stock
                             </span>
                           )}
                         </td>
@@ -948,7 +971,7 @@ export default function InventoryView() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={10} className="px-6 py-12 text-center">
+                    <td colSpan={isDetailedView ? 9 : 7} className="px-6 py-12 text-center">
                       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 text-zinc-400">
                         <Package className="h-6 w-6" />
                       </div>

@@ -4,13 +4,14 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import {
   Search,
   Package,
-  AlertTriangle,
   ChevronLeft,
   ChevronRight,
   Zap,
   X,
   Barcode,
   Shirt,
+  Sparkles,
+  Check,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { POSProduct, CartItem } from '@/types/pos'
@@ -19,20 +20,32 @@ import { playSuccessChime, playErrorBuzz } from '@/lib/sound-effects'
 
 const PHP = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' })
 
-// ── Tabs ──────────────────────────────────────────────────────────────────────
+// ── Department Tabs ───────────────────────────────────────────────────────────
 const CATALOG_TABS = [
-  { key: 'All',                  label: '⚡ All Products' },
+  { key: 'All',                  label: '⚡ All Catalog' },
   { key: 'APPAREL BRAND',        label: '👕 Apparel Brands' },
-  { key: 'DIGITAL CONSUMABLE',   label: '🖨️ Digital' },
-  { key: 'SILKSCREEN SUPPLIES',  label: '🎨 Silkscreen' },
+  { key: 'DIGITAL CONSUMABLE',   label: '🖨️ Digital Consumables' },
+  { key: 'SILKSCREEN SUPPLIES',  label: '🎨 Silkscreen Supplies' },
   { key: 'SUBLIMATION APPARELS', label: '🌈 Sublimation' },
-  { key: 'MEDIA SUPPLY',         label: '📦 Media' },
+  { key: 'MEDIA SUPPLY',         label: '📦 Media Supplies' },
 ]
 
 const APPAREL_BRANDS = [
   'All', 'Smilee', 'Fruit of the Loom', 'Gildan', '3K',
   'AIIZ', 'Blu-Print', 'Winner', 'Simple', 'Tulco', 'Yalex', 'Artix', 'JJ Virgo',
 ]
+
+const BRAND_COLORS: Record<string, string> = {
+  'Smilee': 'bg-blue-50 text-blue-700 border-blue-200',
+  'Gildan': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  'Fruit of the Loom': 'bg-rose-50 text-rose-700 border-rose-200',
+  '3K': 'bg-violet-50 text-violet-700 border-violet-200',
+  'AIIZ': 'bg-amber-50 text-amber-700 border-amber-200',
+  'Blu-Print': 'bg-cyan-50 text-cyan-700 border-cyan-200',
+  'Winner': 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  'Simple': 'bg-teal-50 text-teal-700 border-teal-200',
+  'Tulco': 'bg-orange-50 text-orange-700 border-orange-200',
+}
 
 const SIZE_PILLS = ['All', 'XS', 'SM', 'MD', 'LG', 'XL', '2XL', '3XL', '4XL', '5XL']
 
@@ -147,12 +160,8 @@ export default function POSProductCatalog({
       (p) => p.sku.toUpperCase() === q || (p as any).barcode === q
     )
     if (hit) {
-      if (hit.stock_quantity <= 0) {
-        playErrorBuzz()
-      } else {
-        onAddToCart(hit)
-        playSuccessChime()
-      }
+      onAddToCart(hit)
+      playSuccessChime()
     } else {
       playErrorBuzz()
     }
@@ -164,46 +173,53 @@ export default function POSProductCatalog({
   const showSizePills = activeTab === 'All' || activeTab === 'APPAREL BRAND'
 
   return (
-    <div className="flex flex-col h-full bg-slate-50">
+    <div className="flex flex-col h-full bg-slate-50 select-none">
 
-      {/* ── SKU / Barcode Quick-Scan Bar ─────────────────────────────────────── */}
-      <div className="px-3 pt-3 pb-2.5 bg-gradient-to-r from-indigo-700 to-indigo-900 border-b border-indigo-900">
+      {/* ── Modern High-Contrast Barcode & SKU Scan Dock ─────────────────────── */}
+      <div className="px-3.5 py-2.5 bg-white border-b border-slate-200 shadow-2xs">
         <div className="flex items-center gap-2">
-          <Barcode className="h-4 w-4 text-indigo-300 shrink-0" />
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 rounded-lg text-slate-700 text-xs font-bold shrink-0">
+            <Barcode className="h-4 w-4 text-slate-600" />
+            <span className="hidden sm:inline">Scan / SKU</span>
+          </div>
+
           <div className="relative flex-1">
             <input
               ref={scanRef}
               type="text"
-              placeholder="Scan barcode or type exact SKU + Enter → instant add to cart"
+              placeholder="Scan barcode gun or type SKU + press Enter (instant add to cart)…"
               value={scanInput}
               onChange={(e) => setScanInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleScan() }}
               onFocus={handlePosInputFocus}
-              className="w-full rounded-lg border border-indigo-500/40 bg-indigo-900/60 py-2 pl-3 pr-9 text-xs font-mono text-white placeholder-indigo-300/70 focus:outline-none focus:ring-2 focus:ring-white/25 transition"
+              className="w-full rounded-xl border border-slate-300 bg-slate-50 py-2 pl-3 pr-9 text-xs font-mono font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white transition"
             />
             {scanInput && (
               <button
                 type="button"
                 onClick={() => setScanInput('')}
-                className="absolute right-2.5 top-2 text-indigo-300 hover:text-white transition"
+                className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-700 transition"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
+
           <button
             type="button"
             onClick={handleScan}
             disabled={!scanInput.trim()}
-            className="shrink-0 rounded-lg bg-white px-3 py-2 text-xs font-bold text-indigo-700 shadow hover:bg-indigo-50 transition disabled:opacity-40 active:scale-95"
+            className="shrink-0 inline-flex items-center gap-1 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition disabled:opacity-40 active:scale-95"
+            title="Auto-add scanned product to cart"
           >
             <Zap className="h-3.5 w-3.5" />
+            <span className="hidden md:inline">Quick Add</span>
           </button>
         </div>
       </div>
 
       {/* ── Department Tabs ──────────────────────────────────────────────────── */}
-      <div className="flex gap-1 px-3 pt-2 pb-2 overflow-x-auto scrollbar-hide border-b border-slate-200 bg-white">
+      <div className="flex gap-1.5 px-3.5 py-2 overflow-x-auto scrollbar-hide border-b border-slate-200 bg-white">
         {CATALOG_TABS.map((tab) => {
           const count    = tabCounts[tab.key] ?? 0
           const isActive = activeTab === tab.key
@@ -213,16 +229,16 @@ export default function POSProductCatalog({
               type="button"
               onClick={() => switchTab(tab.key)}
               className={cn(
-                'shrink-0 inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-bold transition whitespace-nowrap',
+                'shrink-0 inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition whitespace-nowrap shadow-2xs',
                 isActive
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  ? 'bg-indigo-600 text-white shadow-indigo-200'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               )}
             >
               <span>{tab.label}</span>
               <span className={cn(
-                'rounded-full px-1.5 py-0.5 text-[9px] font-bold leading-none',
-                isActive ? 'bg-white/25 text-white' : 'bg-slate-200 text-slate-500'
+                'rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none',
+                isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
               )}>
                 {count.toLocaleString()}
               </span>
@@ -233,7 +249,7 @@ export default function POSProductCatalog({
 
       {/* ── Brand Drilldown (Apparel only) ──────────────────────────────────── */}
       {activeTab === 'APPAREL BRAND' && (
-        <div className="flex gap-1.5 px-3 py-2 overflow-x-auto scrollbar-hide bg-white border-b border-slate-100">
+        <div className="flex gap-1.5 px-3.5 py-2 overflow-x-auto scrollbar-hide bg-slate-50/70 border-b border-slate-200">
           {APPAREL_BRANDS.map((bKey) => {
             const cnt      = brandCounts[bKey] ?? 0
             if (bKey !== 'All' && cnt === 0) return null
@@ -244,16 +260,16 @@ export default function POSProductCatalog({
                 type="button"
                 onClick={() => { setActiveBrand(bKey); setActiveSize('All'); setCurrentPage(1) }}
                 className={cn(
-                  'shrink-0 inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition border',
+                  'shrink-0 inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition border shadow-2xs',
                   isActive
-                    ? 'bg-violet-600 text-white border-violet-700 shadow-sm'
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-violet-50 hover:border-violet-200'
+                    ? 'bg-violet-600 text-white border-violet-700'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-violet-50 hover:border-violet-200'
                 )}
               >
-                {bKey !== 'All' && <Shirt className="h-3 w-3 opacity-60" />}
+                {bKey !== 'All' && <Shirt className="h-3 w-3 opacity-70" />}
                 <span>{bKey}</span>
                 <span className={cn(
-                  'rounded-full px-1 text-[9px] font-bold leading-none',
+                  'rounded-full px-1.5 py-0.2 text-[9px] font-bold leading-none',
                   isActive ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500'
                 )}>
                   {cnt}
@@ -266,8 +282,8 @@ export default function POSProductCatalog({
 
       {/* ── Size Quick Pills ─────────────────────────────────────────────────── */}
       {showSizePills && (
-        <div className="flex items-center gap-1 px-3 py-1.5 overflow-x-auto scrollbar-hide bg-slate-50 border-b border-slate-100">
-          <span className="shrink-0 text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Size</span>
+        <div className="flex items-center gap-1.5 px-3.5 py-1.5 overflow-x-auto scrollbar-hide bg-white border-b border-slate-200">
+          <span className="shrink-0 text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Apparel Size:</span>
           {SIZE_PILLS.map((sz) => {
             const isActive = activeSize === sz
             return (
@@ -276,10 +292,10 @@ export default function POSProductCatalog({
                 type="button"
                 onClick={() => { setActiveSize(sz); setCurrentPage(1) }}
                 className={cn(
-                  'shrink-0 rounded-md px-2 py-1 text-[11px] font-bold transition border',
+                  'shrink-0 rounded-lg px-2.5 py-1 text-xs font-bold transition border shadow-2xs',
                   isActive
-                    ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-amber-50 hover:border-amber-300'
+                    ? 'bg-amber-500 text-white border-amber-600 shadow-amber-200'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-amber-50 hover:border-amber-300'
                 )}
               >
                 {sz}
@@ -290,16 +306,16 @@ export default function POSProductCatalog({
       )}
 
       {/* ── Search Bar ──────────────────────────────────────────────────────── */}
-      <div className="px-3 py-2 bg-white border-b border-slate-100">
+      <div className="px-3.5 py-2 bg-slate-50/80 border-b border-slate-200">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           <input
             type="text"
-            placeholder={`Search ${products.length.toLocaleString()} products by name, SKU, brand…`}
+            placeholder={`Filter ${filtered.length.toLocaleString()} items by name, model, color…`}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onFocus={handlePosInputFocus}
-            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-8 pr-8 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
+            className="w-full rounded-xl border border-slate-300 bg-white py-1.5 pl-8 pr-8 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition"
           />
           {search && (
             <button
@@ -313,102 +329,114 @@ export default function POSProductCatalog({
         </div>
       </div>
 
-      {/* ── Product Grid ─────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto p-2.5">
+      {/* ── Product Grid (High Contrast & Deduplicated) ──────────────────────── */}
+      <div className="flex-1 overflow-y-auto p-3">
         {isLoading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2.5">
             {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="h-28 rounded-xl bg-slate-200 animate-pulse" />
+              <div key={i} className="h-32 rounded-xl bg-slate-200 animate-pulse" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-slate-400 gap-3">
-            <Package className="h-10 w-10 opacity-25" />
+          <div className="flex flex-col items-center justify-center h-56 text-slate-400 gap-3">
+            <Package className="h-12 w-12 opacity-30 text-slate-400" />
             <div className="text-center">
-              <p className="text-sm font-semibold text-slate-500">No products found</p>
-              <p className="text-xs text-slate-400 mt-0.5">Try adjusting filters or search term</p>
+              <p className="text-sm font-bold text-slate-700">No matching catalog items</p>
+              <p className="text-xs text-slate-400 mt-0.5">Try selecting another brand or size filter</p>
             </div>
             {(activeTab !== 'All' || activeBrand !== 'All' || activeSize !== 'All' || search) && (
               <button
                 type="button"
                 onClick={() => { setSearch(''); setActiveTab('All'); setActiveBrand('All'); setActiveSize('All') }}
-                className="text-xs text-indigo-600 font-semibold hover:text-indigo-800 underline"
+                className="text-xs text-indigo-600 font-bold hover:text-indigo-800 underline"
               >
-                Clear all filters
+                Reset all filters
               </button>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2.5">
             {paginated.map((product) => {
               const inCart     = cartMap[product.id] ?? 0
-              const outOfStock = product.stock_quantity <= 0
-              const isLowStock = !outOfStock && product.stock_quantity <= (product.reorder_level ?? 10)
+              const availStock = Number(product.stock_quantity) || 0
               const pBrand     = (product as any).brand as string | undefined
               const sz         = extractSize(product.sku, product.item_name)
+              const brandColor = (pBrand && BRAND_COLORS[pBrand]) ? BRAND_COLORS[pBrand] : 'bg-slate-100 text-slate-700 border-slate-200'
+
+              // Deduplicate check
+              const isSkuIdentical = product.sku.trim().toUpperCase() === product.item_name.trim().toUpperCase()
 
               return (
                 <button
                   key={product.id}
                   type="button"
-                  onClick={() => { if (!outOfStock) onAddToCart(product) }}
-                  disabled={outOfStock}
+                  onClick={() => onAddToCart(product)}
                   className={cn(
-                    'relative flex flex-col items-start gap-1 rounded-xl border p-2.5 text-left transition-all duration-150 min-h-[110px] active:scale-95',
-                    outOfStock
-                      ? 'border-slate-200 bg-slate-50 opacity-45 cursor-not-allowed'
-                      : inCart > 0
-                      ? 'border-indigo-400 bg-indigo-50 shadow-md hover:shadow-lg'
-                      : 'border-slate-200 bg-white shadow-xs hover:shadow-md hover:border-indigo-200 hover:-translate-y-0.5'
+                    'relative flex flex-col items-start gap-1 rounded-2xl border p-3 text-left transition-all duration-150 min-h-[120px] shadow-xs active:scale-95 group',
+                    inCart > 0
+                      ? 'border-indigo-500 bg-indigo-50/70 shadow-md ring-2 ring-indigo-500/20'
+                      : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-md hover:-translate-y-0.5'
                   )}
                 >
-                  {/* Brand + size row */}
+                  {/* Top Bar: Brand Pill + Size Pill */}
                   <div className="flex w-full items-center justify-between gap-1 min-w-0">
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-500 uppercase truncate max-w-[65%]">
-                      {pBrand || product.category || '—'}
+                    <span className={cn('rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase truncate max-w-[65%] border', brandColor)}>
+                      {pBrand || product.category || 'General'}
                     </span>
-                    {sz && (
-                      <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">
+                    {sz ? (
+                      <span className="shrink-0 rounded-md bg-amber-500 text-white px-1.5 py-0.5 text-[9px] font-extrabold shadow-2xs">
                         {sz}
+                      </span>
+                    ) : (
+                      <span className="shrink-0 text-[10px] font-bold text-slate-400">
+                        {(product as any).tab ? (product as any).tab.split(' ')[0] : ''}
                       </span>
                     )}
                   </div>
 
-                  {/* Product name */}
-                  <p className="text-[11px] font-semibold text-slate-900 leading-tight line-clamp-2 flex-1 w-full">
+                  {/* Clean Product Name */}
+                  <p className="text-xs font-bold text-slate-900 leading-snug line-clamp-2 flex-1 w-full mt-0.5 group-hover:text-indigo-600 transition">
                     {product.item_name}
                   </p>
 
-                  {/* SKU */}
-                  <p className="text-[9px] text-slate-400 font-mono truncate w-full">{product.sku}</p>
-
-                  {/* Price */}
-                  <div className="mt-auto w-full flex items-center justify-between gap-1">
-                    <p className="text-sm font-bold text-indigo-700">
-                      {product.unit_price > 0
-                        ? PHP.format(product.unit_price)
-                        : <span className="text-xs text-slate-400 font-normal">Price TBD</span>
-                      }
+                  {/* SKU (Only show sub-tag if not identical to avoid doubling) */}
+                  {!isSkuIdentical && (
+                    <p className="text-[9px] text-slate-400 font-mono truncate w-full">
+                      SKU: {product.sku}
                     </p>
-                    {/* Stock badge */}
-                    {outOfStock ? (
-                      <span className="flex items-center gap-0.5 text-[9px] font-bold text-rose-600">
-                        <AlertTriangle className="h-2.5 w-2.5" /> Depleted
-                      </span>
-                    ) : isLowStock ? (
-                      <span className="text-[9px] font-bold text-amber-600">
-                        Low: {product.stock_quantity}
-                      </span>
-                    ) : (
-                      <span className="text-[9px] text-slate-400 font-semibold">
-                        {product.stock_quantity} in stock
-                      </span>
-                    )}
+                  )}
+
+                  {/* Price & Stock Row */}
+                  <div className="mt-auto pt-1 w-full flex items-center justify-between gap-1 border-t border-slate-100">
+                    <div>
+                      {product.unit_price > 0 ? (
+                        <p className="text-sm font-extrabold text-indigo-700 tabular-nums">
+                          {PHP.format(product.unit_price)}
+                        </p>
+                      ) : (
+                        <span className="inline-block text-[10px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                          ₱0.00 <span className="font-normal text-slate-400 text-[9px]">(Set)</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Stock readout */}
+                    <div>
+                      {availStock > 0 ? (
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                          ● {availStock} in stock
+                        </span>
+                      ) : (
+                        <span className="text-[9px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                          0 Stock
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Cart badge */}
+                  {/* Cart Indicator Badge */}
                   {inCart > 0 && (
-                    <span className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-white shadow">
+                    <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-black text-white shadow-md ring-2 ring-white">
                       {inCart}
                     </span>
                   )}
@@ -421,14 +449,11 @@ export default function POSProductCatalog({
 
       {/* ── Pagination Footer ────────────────────────────────────────────────── */}
       {!isLoading && filtered.length > 0 && (
-        <div className="border-t border-slate-200 bg-white px-3 py-2 flex items-center justify-between gap-2 shrink-0">
-          <div className="text-[11px] text-slate-500">
-            <span className="font-semibold text-slate-800">{startItem.toLocaleString()}–{endItem.toLocaleString()}</span>
+        <div className="border-t border-slate-200 bg-white px-3.5 py-2 flex items-center justify-between gap-2 shrink-0">
+          <div className="text-xs text-slate-600">
+            Showing <span className="font-bold text-slate-900">{startItem.toLocaleString()}–{endItem.toLocaleString()}</span>
             {' '}of{' '}
-            <span className="font-bold text-slate-900">{filtered.length.toLocaleString()}</span>
-            {filtered.length !== products.length && (
-              <span className="text-slate-400"> (total: {products.length.toLocaleString()})</span>
-            )}
+            <span className="font-extrabold text-slate-900">{filtered.length.toLocaleString()}</span> products
           </div>
 
           <div className="flex items-center gap-1">
@@ -436,7 +461,7 @@ export default function POSProductCatalog({
               type="button"
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={safePage <= 1}
-              className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 hover:bg-slate-50 disabled:opacity-40 transition"
+              className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 hover:bg-slate-50 disabled:opacity-40 transition shadow-2xs"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
@@ -451,17 +476,17 @@ export default function POSProductCatalog({
                 }, [])
                 .map((p, idx) =>
                   p === '…' ? (
-                    <span key={`el-${idx}`} className="px-1 text-[11px] text-slate-400">…</span>
+                    <span key={`el-${idx}`} className="px-1 text-xs text-slate-400">…</span>
                   ) : (
                     <button
                       key={p}
                       type="button"
                       onClick={() => setCurrentPage(p as number)}
                       className={cn(
-                        'h-6 min-w-[24px] rounded-md text-[11px] font-semibold transition px-1.5',
+                        'h-7 min-w-[28px] rounded-lg text-xs font-bold transition px-1.5',
                         safePage === p
-                          ? 'bg-indigo-600 text-white shadow-sm'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                       )}
                     >
                       {p}
@@ -474,7 +499,7 @@ export default function POSProductCatalog({
               type="button"
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={safePage >= totalPages}
-              className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 hover:bg-slate-50 disabled:opacity-40 transition"
+              className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-700 hover:bg-slate-50 disabled:opacity-40 transition shadow-2xs"
             >
               <ChevronRight className="h-3.5 w-3.5" />
             </button>

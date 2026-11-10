@@ -15,9 +15,8 @@ import { Package, ShoppingCart, CreditCard, ArrowRight, Plus, Wallet } from 'luc
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
-// ─── Currency & VAT Rate ──────────────────────────────────────────────────────
+// ─── Currency Formatter (Non-VAT / Gross Pricing) ─────────────────────────────
 const PHP = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' })
-const VAT_RATE = 0.12
 
 function generateInvoiceNo(): string {
   const now = new Date()
@@ -169,17 +168,13 @@ export default function POSView() {
       } else if (cartDiscount.type === 'fixed') {
         discountAmount = Math.min(cartDiscount.value, subtotal)
       } else if (cartDiscount.type === 'senior_pwd') {
-        // Remove VAT first, then apply 20%
-        const vatExclusive = subtotal / (1 + VAT_RATE)
-        discountAmount = vatExclusive * 0.20
+        // Direct 20% discount on subtotal (Non-VAT)
+        discountAmount = subtotal * 0.20
       }
     }
 
-    const discountedSubtotal = Math.max(subtotal - discountAmount, 0)
-    const vatAmount = discountedSubtotal * VAT_RATE / (1 + VAT_RATE)  // VAT-inclusive breakdown
-    const grandTotal = discountedSubtotal
-
-    return { subtotal, discountAmount, vatAmount, grandTotal }
+    const grandTotal = Math.max(subtotal - discountAmount, 0)
+    return { subtotal, discountAmount, vatAmount: 0, grandTotal }
   }, [cartItems, cartDiscount])
 
   const totalItemCount = useMemo(() => {

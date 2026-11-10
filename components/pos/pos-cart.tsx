@@ -91,16 +91,27 @@ export default function POSCart({
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full bg-slate-50/50">
         <div className="px-4 py-3 bg-white border-b border-slate-200 flex items-center justify-between">
           <span className="text-sm font-bold text-slate-800 flex items-center gap-2">
             <ShoppingCart className="h-4 w-4 text-indigo-600" /> Active Cart
           </span>
+          <span className="text-xs text-slate-400 font-medium">0 items</span>
         </div>
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-300 p-8">
-          <ShoppingCart className="h-16 w-16 opacity-20" />
-          <p className="text-sm font-medium text-slate-400">Cart is empty</p>
-          <p className="text-xs text-slate-300 text-center">Tap a product from the catalog to add it here</p>
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-400 p-8 text-center">
+          <div className="h-16 w-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-2xs">
+            <ShoppingCart className="h-8 w-8" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-slate-800">Ready for Transaction</p>
+            <p className="text-xs text-slate-500 max-w-xs mt-1">
+              Scan barcode gun, type SKU + Enter, or tap any product from the catalog on the left.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 mt-2 text-[11px] font-semibold text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-2xs">
+            <span>💡 Tip:</span>
+            <span>All 2,556 items available</span>
+          </div>
         </div>
       </div>
     )

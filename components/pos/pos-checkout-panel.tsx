@@ -89,19 +89,11 @@ export default function POSCheckoutPanel({ totals, itemCount, cartDiscount, onCh
         </div>
 
         {totals.discountAmount > 0 && (
-          <div className="flex justify-between text-amber-600 font-medium text-[11px]">
+          <div className="flex justify-between text-emerald-600 font-medium text-[11px]">
             <span>Total Discount {cartDiscount ? `(${cartDiscount.label})` : ''}</span>
             <span className="tabular-nums">-{PHP.format(totals.discountAmount)}</span>
           </div>
         )}
-
-        <div className="flex justify-between text-slate-500 text-[11px]">
-          <span className="flex items-center gap-1">
-            12% VAT Included
-            <span className="rounded bg-slate-100 px-1 text-[9px] text-slate-400 font-mono">12%</span>
-          </span>
-          <span className="tabular-nums">{PHP.format(totals.vatAmount)}</span>
-        </div>
 
         <div className="pt-1.5 border-t border-slate-200 flex justify-between items-baseline">
           <span className="text-xs sm:text-sm font-bold text-slate-900">Grand Total</span>
@@ -246,7 +238,7 @@ export default function POSCheckoutPanel({ totals, itemCount, cartDiscount, onCh
             'w-full min-h-[56px] rounded-2xl flex items-center justify-center gap-2 font-black text-white shadow-modern transition-all duration-150 active:scale-[0.98]',
             totals.grandTotal <= 0 || (selectedMethod === 'CASH' && !isExactOrGreater)
               ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
-              : 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-modern-hover'
+              : 'bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-500/25 active:scale-95'
           )}
         >
           <CheckCircle2 className="h-4 w-4" />

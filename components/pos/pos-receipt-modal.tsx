@@ -95,8 +95,6 @@ export default function POSReceiptModal({ transaction, onNewSale }: Props) {
         ctx.fillText(`DISCOUNT                               -${transaction.totalDiscount.toFixed(2).padStart(9, ' ')}`, 40, y)
         y += 22
       }
-      ctx.fillText(`12% VAT INCLUDED                       ${transaction.vatAmount.toFixed(2).padStart(10, ' ')}`, 40, y)
-      y += 22
       ctx.fillText('-------------------------------------------------', 40, y)
       y += 25
 
@@ -234,15 +232,11 @@ export default function POSReceiptModal({ transaction, onNewSale }: Props) {
                 <span>{PHP.format(transaction.subtotal)}</span>
               </div>
               {transaction.totalDiscount > 0 && (
-                <div className="flex justify-between text-amber-600 font-semibold">
+                <div className="flex justify-between text-emerald-600 font-semibold">
                   <span>DISCOUNT</span>
                   <span>-{PHP.format(transaction.totalDiscount)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-slate-400 text-[10px]">
-                <span>12% VAT INCLUDED</span>
-                <span>{PHP.format(transaction.vatAmount)}</span>
-              </div>
               <div className="flex justify-between text-sm font-extrabold text-slate-900 pt-2 border-t border-slate-200">
                 <span>GRAND TOTAL</span>
                 <span className="text-indigo-700">{PHP.format(transaction.grandTotal)}</span>
