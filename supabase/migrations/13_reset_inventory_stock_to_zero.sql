@@ -25,3 +25,4 @@ SET
 UPDATE stock_transfers
 SET status = 'cancelled'
 WHERE status = 'pending' OR status = 'in_transit';
+

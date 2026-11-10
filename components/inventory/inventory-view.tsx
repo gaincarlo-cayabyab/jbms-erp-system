@@ -10,6 +10,7 @@ import ProductFormModal from './product-form-modal'
 import StockAdjustmentModal from './stock-adjustment-modal'
 import { createClient } from '@/lib/supabase/client'
 import { ProductItem, StockStatusTab } from '@/types/inventory'
+import { parseProductPresentation } from '@/lib/product-presentation'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import { useBranch } from '@/lib/branch-context'
 import {
@@ -315,15 +316,18 @@ export default function InventoryView() {
           if (sz !== sizeFilter) return false
         }
 
-        // Search Query (SKU, Name, Barcode, Category, Brand)
+        // Search Query (SKU, Clean Title, Variant Specs, Name, Barcode, Category, Brand)
         const q = searchQuery.toLowerCase().trim()
         if (q) {
+          const parsed = parseProductPresentation(p)
           const matchSku = p.sku.toLowerCase().includes(q)
           const matchName = p.item_name.toLowerCase().includes(q)
+          const matchCleanTitle = parsed.title.toLowerCase().includes(q)
+          const matchDetails = parsed.variantDetails.toLowerCase().includes(q)
           const matchBarcode = p.barcode?.toLowerCase().includes(q)
           const matchCat = p.category?.toLowerCase().includes(q)
           const matchBrand = p.brand?.toLowerCase().includes(q)
-          if (!matchSku && !matchName && !matchBarcode && !matchCat && !matchBrand) {
+          if (!matchSku && !matchName && !matchCleanTitle && !matchDetails && !matchBarcode && !matchCat && !matchBrand) {
             return false
           }
         }
@@ -795,6 +799,7 @@ export default function InventoryView() {
                     const audit = Number(product.quarantine_stock) || 0
                     const reorder = Number(product.reorder_level) || 10
                     const isSelected = selectedProductIds.includes(product.id)
+                    const parsed = parseProductPresentation(product)
 
                     const isOutOfStock = avail <= 0
                     const isLowStock = !isOutOfStock && avail <= reorder
@@ -830,18 +835,33 @@ export default function InventoryView() {
                           />
                         </td>
 
-                        {/* Product & SKU Details (Consolidated - No Doubling) */}
+                        {/* Product & SKU Details (Distinct Title, Variant Specs, & Internal SKU) */}
                         <td className="px-4 py-3.5">
-                          <div className="flex flex-col gap-0.5">
-                            <p className="font-semibold text-zinc-900 text-sm max-w-md leading-snug" title={product.item_name}>
-                              {product.item_name}
+                          <div className="flex flex-col gap-1">
+                            {/* 1. Clean Human-Readable Product Name */}
+                            <p className="font-bold text-zinc-900 text-sm max-w-lg leading-snug" title={parsed.title}>
+                              {parsed.title}
                             </p>
+
+                            {/* 2. Structured Variant Specifications (Color, Size, Fit) */}
+                            {parsed.variantDetails ? (
+                              <div className="flex items-center gap-1.5">
+                                <span className="inline-flex items-center gap-1 rounded bg-amber-50 text-amber-900 border border-amber-200/70 px-2 py-0.5 text-[11px] font-semibold">
+                                  {parsed.variantDetails}
+                                </span>
+                              </div>
+                            ) : null}
+
+                            {/* 3. Internal Tracking SKU & Classification Tag */}
                             <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                              <span className="font-mono text-[11px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
-                                SKU: {product.sku}
+                              <span
+                                className="font-mono text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200 shadow-2xs"
+                                title="Stock Keeping Unit (Internal Alphanumeric Code)"
+                              >
+                                SKU: {parsed.sku}
                               </span>
                               {product.barcode && (
-                                <span className="text-[11px] font-mono text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded">
+                                <span className="text-[10px] font-mono text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded">
                                   UPC: {product.barcode}
                                 </span>
                               )}

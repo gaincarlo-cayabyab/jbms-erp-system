@@ -4,6 +4,7 @@ import { useRef } from 'react'
 import { toast } from 'sonner'
 import { Download, Printer, PlusCircle, CheckCircle, Share2, Mail } from 'lucide-react'
 import type { Transaction } from '@/types/pos'
+import { parseProductPresentation } from '@/lib/product-presentation'
 
 const PHP = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' })
 
@@ -76,7 +77,8 @@ export default function POSReceiptModal({ transaction, onNewSale }: Props) {
       let y = 350
       ctx.font = '13px Courier New, monospace'
       transaction.items.forEach((item) => {
-        const name = item.product.item_name.padEnd(26, ' ').slice(0, 26)
+        const parsed = parseProductPresentation(item.product)
+        const name = parsed.title.padEnd(26, ' ').slice(0, 26)
         const qty = String(item.quantity).padStart(3, ' ')
         const price = Math.round(item.unitPrice).toLocaleString().padStart(7, ' ')
         const lineTotal = (item.unitPrice * item.quantity - item.lineDiscount).toFixed(2).padStart(10, ' ')
@@ -212,16 +214,24 @@ export default function POSReceiptModal({ transaction, onNewSale }: Props) {
                 <span className="text-right w-20">Total</span>
               </div>
               <div className="space-y-1.5">
-                {transaction.items.map((item) => (
-                  <div key={item.product.id} className="flex justify-between items-baseline text-[11px]">
-                    <span className="truncate flex-1 pr-2 font-medium">{item.product.item_name}</span>
-                    <span className="w-12 text-center text-slate-500">{item.quantity}</span>
-                    <span className="w-16 text-right text-slate-500">{Math.round(item.unitPrice).toLocaleString()}</span>
-                    <span className="w-20 text-right font-bold">
-                      {PHP.format(item.unitPrice * item.quantity - item.lineDiscount)}
-                    </span>
-                  </div>
-                ))}
+                {transaction.items.map((item) => {
+                  const parsed = parseProductPresentation(item.product)
+                  return (
+                    <div key={item.product.id} className="flex justify-between items-baseline text-[11px]">
+                      <div className="flex flex-col flex-1 pr-2 min-w-0">
+                        <span className="truncate font-semibold text-slate-900">{parsed.title}</span>
+                        {parsed.variantDetails && (
+                          <span className="text-[10px] text-slate-500 font-normal truncate">{parsed.variantDetails}</span>
+                        )}
+                      </div>
+                      <span className="w-12 text-center text-slate-500">{item.quantity}</span>
+                      <span className="w-16 text-right text-slate-500">{Math.round(item.unitPrice).toLocaleString()}</span>
+                      <span className="w-20 text-right font-bold text-slate-900">
+                        {PHP.format(item.unitPrice * item.quantity - item.lineDiscount)}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             </div>
 

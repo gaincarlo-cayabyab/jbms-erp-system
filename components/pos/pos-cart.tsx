@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import type { CartItem, CartDiscount, DiscountType } from '@/types/pos'
+import { parseProductPresentation } from '@/lib/product-presentation'
 
 const PHP = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' })
 
@@ -167,6 +168,8 @@ export default function POSCart({
           const isEditingPrice = inlineEdit?.productId === item.product.id && inlineEdit.field === 'price'
           const isEditingDiscount = inlineEdit?.productId === item.product.id && inlineEdit.field === 'discount'
 
+          const parsed = parseProductPresentation(item.product)
+
           return (
             <div
               key={item.product.id}
@@ -174,9 +177,14 @@ export default function POSCart({
             >
               {/* Item info */}
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-slate-900 leading-tight truncate">{item.product.item_name}</p>
+                <p className="text-xs font-bold text-slate-900 leading-tight truncate">{parsed.title}</p>
+                {parsed.variantDetails && (
+                  <p className="text-[10px] font-semibold text-amber-800 truncate mt-0.5">
+                    {parsed.variantDetails}
+                  </p>
+                )}
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <span className="text-[10px] text-slate-400 font-mono">{item.product.sku}</span>
+                  <span className="text-[10px] text-slate-400 font-mono">SKU: {parsed.sku}</span>
 
                   {/* Unit price (editable) */}
                   {isEditingPrice ? (

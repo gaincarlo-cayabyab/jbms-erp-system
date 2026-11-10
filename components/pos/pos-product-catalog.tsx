@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils'
 import type { POSProduct, CartItem } from '@/types/pos'
 import { handlePosInputFocus } from '@/lib/device-context'
 import { playSuccessChime, playErrorBuzz } from '@/lib/sound-effects'
+import { parseProductPresentation } from '@/lib/product-presentation'
 
 const PHP = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' })
 
@@ -136,7 +137,8 @@ export default function POSProductCatalog({
       }
 
       if (q) {
-        const hay = `${p.item_name} ${p.sku} ${p.category || ''} ${pBrand || ''}`.toLowerCase()
+        const parsed = parseProductPresentation(p)
+        const hay = `${parsed.title} ${parsed.variantDetails} ${p.item_name} ${p.sku} ${p.category || ''} ${pBrand || ''}`.toLowerCase()
         if (!hay.includes(q)) return false
       }
 
@@ -360,11 +362,9 @@ export default function POSProductCatalog({
               const inCart     = cartMap[product.id] ?? 0
               const availStock = Number(product.stock_quantity) || 0
               const pBrand     = (product as any).brand as string | undefined
-              const sz         = extractSize(product.sku, product.item_name)
+              const parsed     = parseProductPresentation(product)
+              const sz         = parsed.size || extractSize(product.sku, product.item_name)
               const brandColor = (pBrand && BRAND_COLORS[pBrand]) ? BRAND_COLORS[pBrand] : 'bg-slate-100 text-slate-700 border-slate-200'
-
-              // Deduplicate check
-              const isSkuIdentical = product.sku.trim().toUpperCase() === product.item_name.trim().toUpperCase()
 
               return (
                 <button
@@ -372,7 +372,7 @@ export default function POSProductCatalog({
                   type="button"
                   onClick={() => onAddToCart(product)}
                   className={cn(
-                    'relative flex flex-col items-start gap-1 rounded-2xl border p-3 text-left transition-all duration-150 min-h-[120px] shadow-xs active:scale-95 group',
+                    'relative flex flex-col items-start gap-1 rounded-2xl border p-3 text-left transition-all duration-150 min-h-[128px] shadow-xs active:scale-95 group',
                     inCart > 0
                       ? 'border-indigo-500 bg-indigo-50/70 shadow-md ring-2 ring-indigo-500/20'
                       : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-md hover:-translate-y-0.5'
@@ -394,17 +394,22 @@ export default function POSProductCatalog({
                     )}
                   </div>
 
-                  {/* Clean Product Name */}
+                  {/* 1. Clean Human-Readable Product Name */}
                   <p className="text-xs font-bold text-slate-900 leading-snug line-clamp-2 flex-1 w-full mt-0.5 group-hover:text-indigo-600 transition">
-                    {product.item_name}
+                    {parsed.title}
                   </p>
 
-                  {/* SKU (Only show sub-tag if not identical to avoid doubling) */}
-                  {!isSkuIdentical && (
-                    <p className="text-[9px] text-slate-400 font-mono truncate w-full">
-                      SKU: {product.sku}
+                  {/* 2. Distinct Variant Details (Color / Specs) */}
+                  {parsed.variantDetails ? (
+                    <p className="text-[10px] font-semibold text-amber-800 bg-amber-50/80 border border-amber-200/50 px-1.5 py-0.5 rounded truncate max-w-full">
+                      {parsed.variantDetails}
                     </p>
-                  )}
+                  ) : null}
+
+                  {/* 3. Internal Tracking SKU */}
+                  <p className="text-[9px] text-slate-400 font-mono truncate w-full" title={parsed.sku}>
+                    SKU: {parsed.sku}
+                  </p>
 
                   {/* Price & Stock Row */}
                   <div className="mt-auto pt-1 w-full flex items-center justify-between gap-1 border-t border-slate-100">
