@@ -8,3 +8,4 @@ UPDATE public.cash_accounts
 SET current_balance = 0.00,
     updated_at = NOW()
 WHERE is_archived = false;
+

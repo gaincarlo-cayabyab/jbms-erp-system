@@ -39,6 +39,7 @@ const ROLE_ALLOWED_ROUTES: Record<string, string[]> = {
     '/financials',
     '/payroll',
     '/audit',
+    '/help',
   ],
   Manager: [
     '/',
@@ -51,18 +52,22 @@ const ROLE_ALLOWED_ROUTES: Record<string, string[]> = {
     '/inventory',
     '/transfers',
     '/cash-management',
+    '/help',
   ],
   Cashier: [
     '/pos',
+    '/help',
   ],
   Inventory: [
     '/inventory',
     '/transfers',
     '/production',
+    '/help',
   ],
   Staff: [
     '/production',
     '/inventory',
+    '/help',
   ],
 }
 

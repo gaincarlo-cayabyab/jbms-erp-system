@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   Search,
   Package,
@@ -19,7 +19,10 @@ import {
   Lightbulb,
   CheckCircle2,
   Sparkles,
+  ShieldCheck,
+  UserCheck,
 } from 'lucide-react'
+import { useAuth } from '@/lib/auth-context'
 
 interface HelpItem {
   question: string
@@ -35,6 +38,54 @@ interface HelpSection {
   color: string
   description: string
   items: HelpItem[]
+}
+
+// ── Role-to-Section Mapping ──────────────────────────────────────────────────
+// Each role only sees documentation for the modules they have permissions for.
+const ROLE_ALLOWED_SECTIONS: Record<string, string[]> = {
+  Admin: ['pos', 'inventory', 'cash', 'financials', 'payroll', 'production', 'sales', 'transfers'],
+  Manager: ['pos', 'inventory', 'cash', 'production', 'sales', 'transfers'],
+  Cashier: ['pos'],
+  Inventory: ['inventory', 'transfers', 'production'],
+  Staff: ['production', 'inventory'],
+}
+
+const ROLE_INFO: Record<string, { label: string; badgeClass: string; desc: string }> = {
+  Admin: {
+    label: 'Administrator (Executive Access)',
+    badgeClass: 'bg-indigo-100 text-indigo-800 border-indigo-300',
+    desc: 'You have full administrative authorization across all system modules, P&L reports, payroll, and compliance.',
+  },
+  Manager: {
+    label: 'Store Manager',
+    badgeClass: 'bg-blue-100 text-blue-800 border-blue-300',
+    desc: 'Showing guides for retail POS, inventory control, cash management, production queues, and stock transfers.',
+  },
+  Cashier: {
+    label: 'Cashier / POS Terminal',
+    badgeClass: 'bg-rose-100 text-rose-800 border-rose-300',
+    desc: 'Showing guide topics specifically tailored for retail checkout, barcode guns, cart discounts, and cash drawer operations.',
+  },
+  Inventory: {
+    label: 'Inventory Specialist',
+    badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    desc: 'Showing guide topics for multi-store catalog management, shelf counts (S_avail), and branch STO transfers.',
+  },
+  Staff: {
+    label: 'Production Staff',
+    badgeClass: 'bg-violet-100 text-violet-800 border-violet-300',
+    desc: 'Showing guide topics for job orders, 7-stage printing workflows, and raw materials stock consumption.',
+  },
+}
+
+function normalizeUserRole(rawRole: string | undefined | null): string {
+  if (!rawRole) return 'Admin'
+  if (rawRole === 'Production_Staff' || rawRole === 'Staff') return 'Staff'
+  if (rawRole === 'Store_Manager' || rawRole === 'Manager') return 'Manager'
+  if (rawRole === 'Cashier') return 'Cashier'
+  if (rawRole === 'Inventory') return 'Inventory'
+  if (rawRole === 'Admin' || rawRole === 'Accountant') return 'Admin'
+  return 'Admin'
 }
 
 const helpSections: HelpSection[] = [
@@ -350,13 +401,35 @@ function HelpSectionCard({ section, searchQuery }: { section: HelpSection; searc
 }
 
 export default function HelpView() {
+  const { user } = useAuth()
+  const currentActualRole = normalizeUserRole(user?.role)
+  const [selectedRoleView, setSelectedRoleView] = useState<string>(currentActualRole)
   const [searchQuery, setSearchQuery] = useState('')
 
-  const totalTopics = useMemo(() => helpSections.reduce((sum, s) => sum + s.items.length, 0), [])
+  // Sync state if user loads late
+  useEffect(() => {
+    if (user?.role) {
+      setSelectedRoleView(normalizeUserRole(user.role))
+    }
+  }, [user])
+
+  const isAdmin = currentActualRole === 'Admin'
+  const activeRoleInfo = ROLE_INFO[selectedRoleView] || ROLE_INFO['Admin']
+
+  // Filter sections allowed for this role
+  const allowedSectionIds = useMemo(() => {
+    return ROLE_ALLOWED_SECTIONS[selectedRoleView] || ROLE_ALLOWED_SECTIONS['Admin']
+  }, [selectedRoleView])
+
+  const filteredSections = useMemo(() => {
+    return helpSections.filter((section) => allowedSectionIds.includes(section.id))
+  }, [allowedSectionIds])
+
+  const totalTopics = useMemo(() => filteredSections.reduce((sum, s) => sum + s.items.length, 0), [filteredSections])
 
   const matchCount = useMemo(() => {
     if (!searchQuery.trim()) return totalTopics
-    return helpSections.reduce((sum, s) => {
+    return filteredSections.reduce((sum, s) => {
       return (
         sum +
         s.items.filter(
@@ -366,12 +439,29 @@ export default function HelpView() {
         ).length
       )
     }, 0)
-  }, [searchQuery, totalTopics])
+  }, [searchQuery, filteredSections, totalTopics])
+
+  // Contextual popular search pills based on user's active role
+  const popularPills = useMemo(() => {
+    const list: { text: string; sectionId: string }[] = [
+      { text: 'Where does POS cash go?', sectionId: 'pos' },
+      { text: 'What is Price TBD?', sectionId: 'pos' },
+      { text: 'How do I apply discounts?', sectionId: 'pos' },
+      { text: 'What is S_avail?', sectionId: 'inventory' },
+      { text: 'What is a Safe Drop?', sectionId: 'cash' },
+      { text: 'What is CRV and CDV?', sectionId: 'cash' },
+      { text: 'How is profit calculated?', sectionId: 'financials' },
+      { text: 'What are the 7 job stages?', sectionId: 'production' },
+      { text: 'What is DTR?', sectionId: 'payroll' },
+      { text: 'How do stock transfers work?', sectionId: 'transfers' },
+    ]
+    return list.filter((p) => allowedSectionIds.includes(p.sectionId)).slice(0, 5)
+  }, [allowedSectionIds])
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-4xl mx-auto">
-      {/* Page Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      {/* ── Page Header ────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2.5">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50 border border-sky-200 text-sky-700 shadow-2xs">
@@ -380,25 +470,65 @@ export default function HelpView() {
             <div>
               <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900">System Help & Knowledge Base</h1>
               <p className="text-xs text-zinc-500">
-                Clear definitions, workflows, and step-by-step guidance for every JAPA Core ERP module.
+                Tailored operational guides, definitions, and step-by-step procedures.
               </p>
             </div>
           </div>
         </div>
+
         <div className="flex items-center gap-2 rounded-xl bg-sky-50 border border-sky-200 px-3.5 py-1.5 text-xs font-bold text-sky-800">
           <CheckCircle2 className="h-4 w-4 text-sky-600" />
-          <span>{totalTopics} Guides Available</span>
+          <span>{totalTopics} Guides for Your Role</span>
         </div>
       </div>
 
-      {/* Search Bar */}
+      {/* ── Role Scope Banner ──────────────────────────────────────── */}
+      <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-700">
+            <UserCheck className="h-4 w-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Active Workspace Scope:</span>
+              <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold border ${activeRoleInfo.badgeClass}`}>
+                {activeRoleInfo.label}
+              </span>
+            </div>
+            <p className="text-xs text-zinc-600 mt-0.5">{activeRoleInfo.desc}</p>
+          </div>
+        </div>
+
+        {/* Admin Role Selector Preview */}
+        {isAdmin && (
+          <div className="flex items-center gap-1.5 bg-zinc-50 border border-zinc-200 p-1 rounded-xl text-xs font-semibold self-start sm:self-auto">
+            <span className="px-2 text-[10px] text-zinc-400 font-bold uppercase">Role View:</span>
+            {(['Admin', 'Manager', 'Cashier', 'Inventory', 'Staff'] as const).map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setSelectedRoleView(r)}
+                className={`rounded-lg px-2 py-1 transition ${
+                  selectedRoleView === r
+                    ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+                    : 'text-zinc-500 hover:text-zinc-900'
+                }`}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Search Bar ─────────────────────────────────────────────── */}
       <div className="relative">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search topics... (e.g., 'Safe Drop', 'profit', 'S_avail', 'reorder level', 'barcode', 'DTR')"
+          placeholder={`Search ${activeRoleInfo.label} topics... (e.g., 'Safe Drop', 'stock', 'barcode', 'discounts')`}
           className="w-full rounded-xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500 shadow-sm"
         />
         {searchQuery && (
@@ -408,36 +538,30 @@ export default function HelpView() {
         )}
       </div>
 
-      {/* Quick Suggestion Pills */}
-      {!searchQuery && (
+      {/* ── Popular Suggestion Pills ─────────────────────────────────── */}
+      {!searchQuery && popularPills.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold text-zinc-400">Popular:</span>
-          {[
-            'What is S_avail?',
-            'What is a Safe Drop?',
-            'Where does POS cash go?',
-            'How is profit calculated?',
-            'What is CRV and CDV?',
-          ].map((pill) => (
+          {popularPills.map((pill) => (
             <button
-              key={pill}
+              key={pill.text}
               type="button"
-              onClick={() => setSearchQuery(pill.replace(/^What is |^How is |^Where does /i, '').replace('?', '').trim())}
+              onClick={() => setSearchQuery(pill.text.replace(/^What is |^How is |^Where does |^How do /i, '').replace('?', '').trim())}
               className="rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-sky-50 hover:border-sky-200 hover:text-sky-800 transition"
             >
-              {pill}
+              {pill.text}
             </button>
           ))}
         </div>
       )}
 
-      {/* Help Sections Accordions */}
+      {/* ── Help Sections Accordions ───────────────────────────────── */}
       <div className="space-y-3">
         {matchCount === 0 && searchQuery && (
           <div className="rounded-2xl border border-zinc-200 bg-white p-10 text-center">
             <HelpCircle className="h-10 w-10 text-zinc-300 mx-auto mb-3" />
             <p className="text-sm font-bold text-zinc-700">No results found for &ldquo;{searchQuery}&rdquo;</p>
-            <p className="text-xs text-zinc-400 mt-1">Try keywords like &ldquo;cash&rdquo;, &ldquo;stock&rdquo;, &ldquo;profit&rdquo;, or &ldquo;payroll&rdquo;</p>
+            <p className="text-xs text-zinc-400 mt-1">Try keywords matching your role: &ldquo;barcode&rdquo;, &ldquo;stock&rdquo;, or &ldquo;cash&rdquo;</p>
             <button
               type="button"
               onClick={() => setSearchQuery('')}
@@ -448,7 +572,7 @@ export default function HelpView() {
           </div>
         )}
 
-        {helpSections.map((section) => (
+        {filteredSections.map((section) => (
           <HelpSectionCard key={section.id} section={section} searchQuery={searchQuery} />
         ))}
       </div>
