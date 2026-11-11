@@ -91,11 +91,13 @@ export default function ExecutiveDashboard() {
       }
 
       // Parallel fetch from Supabase tables
-      const [salesRes, jobsRes, productsRes, customersRes, payrollRes, expensesRes] =
+      const [salesRes, jobsRes, p1Res, p2Res, p3Res, customersRes, payrollRes, expensesRes] =
         await Promise.allSettled([
           supabase.from('sales_orders').select('*, customers(name)').order('created_at', { ascending: false }),
           supabase.from('job_orders').select('*').order('created_at', { ascending: false }),
-          supabase.from('products_and_inventory').select('*').order('created_at', { ascending: false }),
+          supabase.from('products_and_inventory').select('*').order('sku', { ascending: true }).range(0, 999),
+          supabase.from('products_and_inventory').select('*').order('sku', { ascending: true }).range(1000, 1999),
+          supabase.from('products_and_inventory').select('*').order('sku', { ascending: true }).range(2000, 2999),
           supabase.from('customers').select('*').order('created_at', { ascending: false }),
           getPayrollRecords(),
           getExpenses(),
@@ -117,35 +119,51 @@ export default function ExecutiveDashboard() {
         setJobOrders(jobsRes.value.data as JobOrder[])
       }
 
-      if (productsRes.status === 'fulfilled' && productsRes.value.data) {
-        let prods = productsRes.value.data as ProductItem[]
-        // If viewing a specific branch, apply branch-level inventory_stock numbers
-        if (activeBranchId && activeBranchId !== 'all') {
-          const { data: bStock } = await supabase
+      const b1 = p1Res.status === 'fulfilled' ? (p1Res.value.data as ProductItem[]) || [] : []
+      const b2 = p2Res.status === 'fulfilled' ? (p2Res.value.data as ProductItem[]) || [] : []
+      const b3 = p3Res.status === 'fulfilled' ? (p3Res.value.data as ProductItem[]) || [] : []
+      let prods = [...b1, ...b2, ...b3]
+
+      // If viewing a specific branch, apply branch-level inventory_stock numbers across all 3 ranges
+      if (activeBranchId && activeBranchId !== 'all') {
+        const [sb1, sb2, sb3] = await Promise.all([
+          supabase
             .from('inventory_stock')
             .select('product_id, quantity_on_hand, reserved_quantity, in_transit_quantity, quarantine_quantity, reorder_level')
             .eq('branch_id', activeBranchId)
+            .range(0, 999),
+          supabase
+            .from('inventory_stock')
+            .select('product_id, quantity_on_hand, reserved_quantity, in_transit_quantity, quarantine_quantity, reorder_level')
+            .eq('branch_id', activeBranchId)
+            .range(1000, 1999),
+          supabase
+            .from('inventory_stock')
+            .select('product_id, quantity_on_hand, reserved_quantity, in_transit_quantity, quarantine_quantity, reorder_level')
+            .eq('branch_id', activeBranchId)
+            .range(2000, 2999),
+        ])
 
-          if (bStock && bStock.length > 0) {
-            const bsMap = new Map(bStock.map((s) => [s.product_id, s]))
-            prods = prods.map((p) => {
-              const bs = bsMap.get(p.id)
-              if (bs) {
-                return {
-                  ...p,
-                  stock_quantity: bs.quantity_on_hand ?? p.stock_quantity,
-                  reserved_stock: bs.reserved_quantity ?? p.reserved_stock,
-                  in_transit_stock: bs.in_transit_quantity ?? p.in_transit_stock,
-                  quarantine_stock: bs.quarantine_quantity ?? p.quarantine_stock,
-                  reorder_level: bs.reorder_level ?? p.reorder_level,
-                }
+        const bStock = [...(sb1.data || []), ...(sb2.data || []), ...(sb3.data || [])]
+        if (bStock.length > 0) {
+          const bsMap = new Map(bStock.map((s) => [s.product_id, s]))
+          prods = prods.map((p) => {
+            const bs = bsMap.get(p.id)
+            if (bs) {
+              return {
+                ...p,
+                stock_quantity: bs.quantity_on_hand ?? p.stock_quantity,
+                reserved_stock: bs.reserved_quantity ?? p.reserved_stock,
+                in_transit_stock: bs.in_transit_quantity ?? p.in_transit_stock,
+                quarantine_stock: bs.quarantine_quantity ?? p.quarantine_stock,
+                reorder_level: bs.reorder_level ?? p.reorder_level,
               }
-              return p
-            })
-          }
+            }
+            return p
+          })
         }
-        setProducts(prods)
       }
+      setProducts(prods)
 
       if (customersRes.status === 'fulfilled' && customersRes.value.data) {
         setCustomers(customersRes.value.data as Customer[])
@@ -432,7 +450,7 @@ export default function ExecutiveDashboard() {
     { label: 'CRM / Customers', count: `${customers.length} clients`, href: '/customers', status: 'Live' },
     { label: 'Sales & Quotes', count: `${salesOrders.length} orders`, href: '/sales', status: 'Live' },
     { label: 'Production Queue', count: `${jobOrders.length} jobs`, href: '/production', status: 'Live' },
-    { label: 'Multi-Store Catalog', count: `${products.length} items`, href: '/inventory', status: 'Live' },
+    { label: 'Multi-Store Catalog', count: `${products.length.toLocaleString()} items`, href: '/inventory', status: 'Live' },
     { label: 'Financials & P&L', count: `${expenses.length} expenses`, href: '/financials', status: 'Live' },
     { label: 'Attendance & Payroll', count: `${payrollRecords.length} records`, href: '/payroll', status: 'Live' },
     { label: 'Supabase Cloud', count: 'Online & synced', href: '#', status: 'Connected' },
@@ -684,7 +702,7 @@ export default function ExecutiveDashboard() {
                 Multi-Store Catalog
               </p>
               <p className="text-base sm:text-lg font-extrabold text-slate-900 tabular-nums truncate">
-                {products.length} Products
+                {products.length.toLocaleString()} Products
               </p>
             </div>
           </div>
