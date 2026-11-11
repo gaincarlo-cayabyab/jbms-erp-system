@@ -25,6 +25,7 @@ import {
   BarChart3,
   HelpCircle,
   Banknote,
+  Landmark,
 } from 'lucide-react'
 import StatCard from '@/components/stat-card'
 import { cn } from '@/lib/utils'
@@ -276,6 +277,16 @@ export default function ExecutiveDashboard() {
   const primaryTillBalance = Number(primaryTill?.current_balance) || 0
   const secondaryTill = activeBranchId === 'manila_branch' ? dagupanTill : manilaTill
   const secondaryTillBalance = Number(secondaryTill?.current_balance) || 0
+
+  // Total Liquid Cash across all accounts (Till, Safes, Vaults & Commercial Reserves)
+  const branchCashAccounts = cashAccounts.filter((a) => {
+    if (!activeBranchId || activeBranchId === 'all') return true
+    return a.branch_id === activeBranchId
+  })
+  const totalLiquidCash = branchCashAccounts.reduce(
+    (sum, a) => sum + (Number(a.current_balance) || 0),
+    0
+  )
 
   const totalExpenses = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
   const netProfit = totalRevenue - totalExpenses
@@ -590,8 +601,8 @@ export default function ExecutiveDashboard() {
         </div>
       </div>
 
-      {/* ── Focused Operational Command Cards (Sales, Cashier Till, Receivables, Jobs, Stock) ── */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 sm:gap-4">
+      {/* ── Core Executive Command Deck (Sales, Cashier Till, Total Liquid Treasury) ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* 1. Total Gross Revenue & Today's Sales */}
         <Link href="/sales" className="block transition-transform active:scale-[0.99]">
           <StatCard
@@ -607,7 +618,7 @@ export default function ExecutiveDashboard() {
             icon={TrendingUp}
             colorClass="bg-blue-50 text-blue-600 border border-blue-200/80 ring-2 ring-blue-500/10"
             trend={{
-              value: todaySalesOrders.length > 0 ? `+${fmt(todayRevenue)} today` : 'Live tracker',
+              value: todaySalesOrders.length > 0 ? `+${fmt(todayRevenue)} today` : 'Live sales tracker',
               positive: todayRevenue > 0 || totalRevenue > 0,
             }}
           />
@@ -633,67 +644,22 @@ export default function ExecutiveDashboard() {
           />
         </Link>
 
-        {/* 3. Pending Receivables */}
-        <Link href="/financials" className="block transition-transform active:scale-[0.99]">
+        {/* 3. Total Liquid Treasury across all Safes, Vaults & Banks */}
+        <Link href="/cash-management" className="block transition-transform active:scale-[0.99]">
           <StatCard
-            title="Pending Receivables"
-            value={fmt(accountsReceivable)}
+            title="Total Liquid Treasury"
+            value={fmt(totalLiquidCash)}
             subtitle={
-              pendingSales.length > 0
-                ? `${pendingSales.length} uncollected ${pendingSales.length === 1 ? 'order' : 'orders'}`
-                : 'All invoices settled & collected'
+              activeBranchId === 'all'
+                ? 'Across 13 Store Safes, Vaults & Bank Accounts'
+                : `${branchCashAccounts.length} Active Safes, Vaults & Reserves`
             }
-            icon={Clock}
-            colorClass={
-              accountsReceivable > 0
-                ? 'bg-amber-50 text-amber-600 border border-amber-200/80 ring-2 ring-amber-500/10'
-                : 'bg-emerald-50 text-emerald-600 border border-emerald-200/80 ring-2 ring-emerald-500/10'
-            }
+            icon={Landmark}
+            colorClass="bg-indigo-50 text-indigo-600 border border-indigo-200/80 ring-2 ring-indigo-500/10"
             trend={{
-              value: accountsReceivable > 0 ? `${pendingSales.length} unpaid` : 'Zero receivables',
-              positive: accountsReceivable === 0,
-            }}
-          />
-        </Link>
-
-        {/* 4. Active Job Orders */}
-        <Link href="/production" className="block transition-transform active:scale-[0.99]">
-          <StatCard
-            title="Active Job Orders"
-            value={activeJobs.length}
-            subtitle={
-              completedJobs.length > 0 || activeJobs.length > 0
-                ? `${completedJobs.length} completed • ${activeJobs.length} in production`
-                : 'No job orders in queue'
-            }
-            icon={Layers}
-            colorClass="bg-violet-50 text-violet-600 border border-violet-200/80 ring-2 ring-violet-500/10"
-            trend={{
-              value: activeJobs.length > 0 ? `${activeJobs.length} in progress` : 'Queue idle',
-              positive: true,
-            }}
-          />
-        </Link>
-
-        {/* 5. Stock Warnings */}
-        <Link href="/inventory?status=low_stock" className="block transition-transform active:scale-[0.99]">
-          <StatCard
-            title="Stock Warnings"
-            value={lowStockItems.length}
-            subtitle={
-              lowStockItems.length > 0
-                ? `${lowStockItems.length} item${lowStockItems.length === 1 ? '' : 's'} low stock`
-                : 'All stock levels healthy'
-            }
-            icon={lowStockItems.length > 0 ? AlertTriangle : CheckCircle2}
-            colorClass={
-              lowStockItems.length > 0
-                ? 'bg-amber-50 text-amber-600 border border-amber-200/80 ring-2 ring-amber-500/10'
-                : 'bg-emerald-50 text-emerald-600 border border-emerald-200/80 ring-2 ring-emerald-500/10'
-            }
-            trend={{
-              value: lowStockItems.length > 0 ? 'Restock required' : 'Optimal stock',
-              positive: lowStockItems.length === 0,
+              value: 'Vaults, safes & banks',
+              positive: totalLiquidCash > 0,
+              neutral: totalLiquidCash === 0,
             }}
           />
         </Link>
