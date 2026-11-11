@@ -366,60 +366,78 @@ export default function CashManagementView() {
     <DashboardShell>
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
         {/* ── Page Header ────────────────────────────────────────── */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl font-black tracking-tight text-zinc-900">
                 Cash Management & Liquidity
               </h1>
-              <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+              <span className="rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 text-xs font-bold text-emerald-800 shadow-2xs">
                 Live Treasury Monitor
               </span>
             </div>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mt-1 text-xs sm:text-sm text-zinc-500">
               Manage your cash containers, track daily inflows and outflows, and control the safe drop workflow.
             </p>
           </div>
 
           {/* Action Buttons Toolbar */}
           <div className="flex flex-wrap items-center gap-2">
+            {/* Quick Inflow / Outflow Primary Actions */}
+            <div className="inline-flex items-center rounded-xl bg-zinc-100 p-0.5 border border-zinc-200 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => {
+                  soundEffects.keyClick()
+                  setInflowModalOpen(true)
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-emerald-700 active:scale-95 transition"
+              >
+                <ArrowDownLeft className="h-3.5 w-3.5" />
+                <span>+ Inflow</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  soundEffects.keyClick()
+                  setOutflowModalOpen(true)
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-white active:scale-95 transition"
+              >
+                <ArrowUpRight className="h-3.5 w-3.5" />
+                <span>- Outflow</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  soundEffects.keyClick()
+                  setSelectedDrawerAccount(null)
+                  setDrawerInitialMode('outflow')
+                  setDrawerCashModalOpen(true)
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-zinc-800 hover:bg-white active:scale-95 transition"
+                title="POS Drawer Paid Out / Cash In"
+              >
+                <Coins className="h-3.5 w-3.5 text-rose-600" />
+                <span>Till In/Out</span>
+              </button>
+            </div>
+
+            {/* Treasury Control: Transfer & Safe Drop */}
             <button
               type="button"
               onClick={() => {
                 soundEffects.keyClick()
-                loadData(true)
+                setTransferModalOpen(true)
               }}
-              disabled={refreshing}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 shadow-2xs hover:bg-zinc-50 hover:text-zinc-900 transition disabled:opacity-50"
-              title="Refresh Treasury Data"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs font-bold text-zinc-800 shadow-2xs hover:bg-zinc-50 active:scale-95 transition"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Refresh</span>
+              <ArrowRightLeft className="h-3.5 w-3.5 text-zinc-500" />
+              <span>Transfer</span>
             </button>
 
-            {/* Direct Link to POS */}
-            <Link
-              href="/pos"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 shadow-2xs hover:bg-rose-100 transition active:scale-95"
-            >
-              <Receipt className="h-3.5 w-3.5" />
-              <span>🛒 Cashier POS</span>
-            </Link>
-
-            {/* + Create Cash Container (Admin Control - Blueprint 5.3) */}
-            <button
-              type="button"
-              onClick={() => {
-                soundEffects.keyClick()
-                setCreateContainerOpen(true)
-              }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-indigo-700 transition active:scale-95"
-            >
-              <Plus className="h-4 w-4" />
-              <span>+ Create Container</span>
-            </button>
-
-            {/* Safe Drop Action (Blueprint 3.1) */}
             <button
               type="button"
               onClick={() => {
@@ -427,65 +445,46 @@ export default function CashManagementView() {
                 setSafeDropDrawerId(undefined)
                 setSafeDropModalOpen(true)
               }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3.5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-amber-700 transition active:scale-95"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 shadow-2xs hover:bg-amber-100 active:scale-95 transition"
             >
-              <Lock className="h-4 w-4" />
+              <Lock className="h-3.5 w-3.5 text-amber-600" />
               <span>Safe Drop</span>
             </button>
 
-            {/* + Inflow */}
+            {/* Admin Container Action */}
             <button
               type="button"
               onClick={() => {
                 soundEffects.keyClick()
-                setInflowModalOpen(true)
+                setCreateContainerOpen(true)
               }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-emerald-700 transition active:scale-95"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white shadow-2xs hover:bg-indigo-700 active:scale-95 transition"
             >
-              <ArrowDownLeft className="h-4 w-4" />
-              <span>+ Inflow (CRV)</span>
+              <Plus className="h-3.5 w-3.5" />
+              <span>+ Container</span>
             </button>
 
-            {/* - Outflow */}
-            <button
-              type="button"
-              onClick={() => {
-                soundEffects.keyClick()
-                setOutflowModalOpen(true)
-              }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-3.5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-rose-700 transition active:scale-95"
+            {/* Secondary Utilities */}
+            <Link
+              href="/pos"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-bold text-zinc-700 shadow-2xs hover:bg-zinc-50 active:scale-95 transition"
+              title="Open Cashier POS Terminal"
             >
-              <ArrowUpRight className="h-4 w-4" />
-              <span>- Outflow (CDV)</span>
-            </button>
+              <Receipt className="h-3.5 w-3.5 text-zinc-500" />
+              <span>POS</span>
+            </Link>
 
-            {/* Quick Till In/Out (Disbursement / COD / Courier) */}
             <button
               type="button"
               onClick={() => {
                 soundEffects.keyClick()
-                setSelectedDrawerAccount(null)
-                setDrawerInitialMode('outflow')
-                setDrawerCashModalOpen(true)
+                loadData(true)
               }}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-rose-300 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 shadow-2xs hover:bg-rose-100 transition active:scale-95"
-              title="Record Cash Drawer Paid Out or Till Inflow"
+              disabled={refreshing}
+              className="rounded-xl border border-zinc-200 bg-white p-2 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 shadow-2xs transition disabled:opacity-50"
+              title="Refresh Treasury Data"
             >
-              <Coins className="h-4 w-4" />
-              <span>Paid Out / Cash In</span>
-            </button>
-
-            {/* Inter-Account Transfer */}
-            <button
-              type="button"
-              onClick={() => {
-                soundEffects.keyClick()
-                setTransferModalOpen(true)
-              }}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-xs font-bold text-zinc-800 shadow-2xs hover:bg-zinc-50 transition active:scale-95"
-            >
-              <ArrowRightLeft className="h-4 w-4" />
-              <span>Transfer</span>
+              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
@@ -916,46 +915,61 @@ export default function CashManagementView() {
           {activeTab === 'journal' && (
             <div>
               {/* Controls Bar */}
-              <div className="border-b border-zinc-200 p-4 bg-zinc-50/50 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-                <div className="flex flex-1 items-center gap-2">
-                  <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+              <div className="border-b border-zinc-200 p-4 bg-zinc-50/60 flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3">
+                {/* Search & Flow Filter */}
+                <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                  <div className="relative flex-1 max-w-md">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
                     <input
                       type="text"
                       value={journalSearch}
                       onChange={(e) => setJournalSearch(e.target.value)}
                       placeholder="Search voucher #, payee, reference..."
-                      className="w-full rounded-lg border border-zinc-300 bg-white pl-9 pr-3.5 py-1.5 text-xs text-zinc-900 focus:border-indigo-500 focus:outline-hidden"
+                      className="w-full rounded-xl border border-zinc-200 bg-white pl-9 pr-3.5 py-1.5 text-xs text-zinc-900 shadow-2xs focus:border-indigo-500 focus:outline-hidden transition"
                     />
                   </div>
 
-                  <div className="flex items-center bg-zinc-100 rounded-lg p-1 text-xs font-semibold text-zinc-600 border border-zinc-200">
+                  {/* Flow Filter Segmented Control */}
+                  <div className="inline-flex items-center rounded-xl bg-zinc-200/60 p-0.5 text-xs font-semibold text-zinc-600 border border-zinc-200 shrink-0">
                     <button
                       onClick={() => setJournalFlowFilter('all')}
-                      className={`px-2.5 py-1 rounded-md transition ${journalFlowFilter === 'all' ? 'bg-white text-zinc-900 shadow-2xs' : ''}`}
+                      className={`px-3 py-1 rounded-lg transition text-xs font-bold ${
+                        journalFlowFilter === 'all'
+                          ? 'bg-white text-zinc-900 shadow-2xs'
+                          : 'hover:text-zinc-900'
+                      }`}
                     >
-                      All
+                      All Flows
                     </button>
                     <button
                       onClick={() => setJournalFlowFilter('inflow')}
-                      className={`px-2.5 py-1 rounded-md text-emerald-700 transition ${journalFlowFilter === 'inflow' ? 'bg-white shadow-2xs font-bold' : ''}`}
+                      className={`px-3 py-1 rounded-lg transition text-xs font-bold ${
+                        journalFlowFilter === 'inflow'
+                          ? 'bg-emerald-600 text-white shadow-2xs'
+                          : 'text-emerald-700 hover:text-emerald-800'
+                      }`}
                     >
                       Inflows
                     </button>
                     <button
                       onClick={() => setJournalFlowFilter('outflow')}
-                      className={`px-2.5 py-1 rounded-md text-rose-700 transition ${journalFlowFilter === 'outflow' ? 'bg-white shadow-2xs font-bold' : ''}`}
+                      className={`px-3 py-1 rounded-lg transition text-xs font-bold ${
+                        journalFlowFilter === 'outflow'
+                          ? 'bg-rose-600 text-white shadow-2xs'
+                          : 'text-rose-700 hover:text-rose-800'
+                      }`}
                     >
                       Outflows
                     </button>
                   </div>
                 </div>
 
+                {/* Filters & Export Reports */}
                 <div className="flex flex-wrap items-center gap-2">
                   <select
                     value={journalCategoryFilter}
                     onChange={(e) => setJournalCategoryFilter(e.target.value)}
-                    className="rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-xs text-zinc-700 focus:border-indigo-500 focus:outline-hidden"
+                    className="rounded-xl border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-700 shadow-2xs focus:border-indigo-500 focus:outline-hidden transition"
                   >
                     <option value="all">All Categories</option>
                     {categories.map((c) => (
@@ -968,7 +982,7 @@ export default function CashManagementView() {
                   <select
                     value={journalMethodFilter}
                     onChange={(e) => setJournalMethodFilter(e.target.value)}
-                    className="rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-xs text-zinc-700 focus:border-indigo-500 focus:outline-hidden"
+                    className="rounded-xl border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-700 shadow-2xs focus:border-indigo-500 focus:outline-hidden transition"
                   >
                     <option value="all">All Methods</option>
                     <option value="cash">Cash</option>
@@ -977,47 +991,49 @@ export default function CashManagementView() {
                     <option value="check">Check</option>
                   </select>
 
-                  <button
-                    onClick={() => {
-                      soundEffects.keyClick()
-                      setPayoutSlipModalOpen(true)
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100 transition shadow-2xs"
-                    title="Consolidated End-of-Shift Payout Vouchers Slip"
-                  >
-                    <Printer className="h-3.5 w-3.5 text-rose-600" />
-                    <span>End-of-Shift Slip</span>
-                  </button>
+                  <div className="inline-flex items-center gap-1.5 border-l border-zinc-200 pl-2">
+                    <button
+                      onClick={() => {
+                        soundEffects.keyClick()
+                        setPayoutSlipModalOpen(true)
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 shadow-2xs hover:bg-rose-100 active:scale-95 transition"
+                      title="Consolidated End-of-Shift Payout Vouchers Slip"
+                    >
+                      <Printer className="h-3.5 w-3.5 text-rose-600" />
+                      <span>Shift Slip</span>
+                    </button>
 
-                  <button
-                    onClick={exportJournalCSV}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 transition shadow-2xs"
-                  >
-                    <Download className="h-3.5 w-3.5 text-zinc-500" />
-                    <span>Export CSV</span>
-                  </button>
+                    <button
+                      onClick={exportJournalCSV}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-bold text-zinc-700 shadow-2xs hover:bg-zinc-50 active:scale-95 transition"
+                    >
+                      <Download className="h-3.5 w-3.5 text-zinc-500" />
+                      <span>CSV</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Transactions Table */}
+              {/* Transactions Table with Proportional Desktop Fitting */}
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-semibold uppercase tracking-wider">
+                <table className="w-full text-left text-xs min-w-[880px] lg:min-w-0 lg:table-fixed">
+                  <thead className="bg-zinc-50 border-b border-zinc-200 text-zinc-500 font-bold uppercase text-[10px] tracking-wider">
                     <tr>
-                      <th className="px-4 py-3">Voucher #</th>
-                      <th className="px-4 py-3">Date / Time</th>
-                      <th className="px-4 py-3">Account & Branch</th>
-                      <th className="px-4 py-3">Category</th>
-                      <th className="px-4 py-3">Payee / Payer</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3 text-right">Amount (PHP)</th>
-                      <th className="px-4 py-3 text-center">Audit Actions</th>
+                      <th className="px-3.5 py-3 w-[150px]">Voucher #</th>
+                      <th className="px-3 py-3 w-[110px]">Date / Time</th>
+                      <th className="px-3.5 py-3 w-[170px]">Account & Branch</th>
+                      <th className="px-3 py-3 w-[130px]">Category</th>
+                      <th className="px-3 py-3 w-[160px]">Payee / Payer</th>
+                      <th className="px-3 py-3 w-[95px]">Status</th>
+                      <th className="px-3 py-3 text-right w-[110px]">Amount (PHP)</th>
+                      <th className="px-3.5 py-3 text-right w-[135px] pr-4">Audit Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-200">
+                  <tbody className="divide-y divide-zinc-100">
                     {filteredTransactions.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
+                        <td colSpan={8} className="px-4 py-12 text-center text-zinc-400">
                           No transactions recorded matching the selected filters.
                         </td>
                       </tr>
@@ -1028,59 +1044,104 @@ export default function CashManagementView() {
                         const isPendingDrop = tx.status === 'pending'
 
                         return (
-                          <tr key={tx.id} className={`transition-colors ${isReversed ? 'bg-zinc-100/60 opacity-70' : 'hover:bg-slate-50/70'}`}>
-                            <td className="px-4 py-3 font-mono font-bold whitespace-nowrap">
+                          <tr
+                            key={tx.id}
+                            className={`transition-colors ${
+                              isReversed ? 'bg-zinc-50/60 opacity-75' : 'hover:bg-zinc-50/80'
+                            }`}
+                          >
+                            {/* Voucher # */}
+                            <td className="px-3.5 py-3 font-mono font-bold whitespace-nowrap">
                               <span
-                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold ${
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold tracking-tight ${
                                   isReversed
-                                    ? 'bg-zinc-200 text-zinc-600 line-through'
+                                    ? 'bg-zinc-100 text-zinc-500 line-through'
                                     : isInflow
-                                    ? 'bg-emerald-50 text-emerald-700'
-                                    : 'bg-rose-50 text-rose-700'
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                                    : 'bg-rose-50 text-rose-700 border border-rose-200/60'
                                 }`}
                               >
                                 {tx.transaction_no}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
-                              {new Date(tx.created_at).toLocaleString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
+
+                            {/* Date / Time */}
+                            <td className="px-3 py-3 text-zinc-500 whitespace-nowrap">
+                              <div className="font-medium text-zinc-700">
+                                {new Date(tx.created_at).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                })}
+                              </div>
+                              <div className="text-[10px] text-zinc-400 font-mono">
+                                {new Date(tx.created_at).toLocaleTimeString('en-US', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </div>
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <div className="font-semibold text-slate-900">
+
+                            {/* Account & Branch */}
+                            <td className="px-3.5 py-3">
+                              <div
+                                className="font-bold text-zinc-900 truncate max-w-[165px]"
+                                title={tx.cash_accounts?.account_name || 'Container'}
+                              >
                                 {tx.cash_accounts?.account_name || 'Account'}
                               </div>
-                              <span className="text-[10px] text-slate-400 uppercase font-semibold">
+                              <span className="inline-block text-[10px] text-zinc-400 uppercase font-semibold tracking-wider">
                                 {tx.branch_id === 'dagupan_main' ? 'Dagupan Main' : 'Manila Hub'}
                               </span>
                             </td>
-                            <td className="px-4 py-3 font-medium text-slate-700 whitespace-nowrap">
-                              {tx.cash_categories?.category_name || 'Category'}
+
+                            {/* Category */}
+                            <td className="px-3 py-3">
+                              <div
+                                className="font-semibold text-zinc-700 truncate max-w-[125px]"
+                                title={tx.cash_categories?.category_name || 'Category'}
+                              >
+                                {tx.cash_categories?.category_name || 'Category'}
+                              </div>
                             </td>
-                            <td className="px-4 py-3 text-slate-800 whitespace-nowrap">
-                              {tx.payee_or_payer || '—'}
+
+                            {/* Payee / Payer */}
+                            <td className="px-3 py-3">
+                              <div
+                                className="text-zinc-800 font-medium truncate max-w-[155px]"
+                                title={tx.payee_or_payer || '—'}
+                              >
+                                {tx.payee_or_payer || '—'}
+                              </div>
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
+
+                            {/* Status */}
+                            <td className="px-3 py-3 whitespace-nowrap">
                               {isReversed ? (
-                                <span className="inline-flex rounded-full bg-zinc-200 px-2 py-0.5 text-[10px] font-bold text-zinc-700">
+                                <span className="inline-flex rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-bold text-zinc-600 border border-zinc-200">
                                   Reversed
                                 </span>
                               ) : isPendingDrop ? (
-                                <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                                <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200">
                                   Pending Drop
                                 </span>
                               ) : (
-                                <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                                <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
                                   Completed
                                 </span>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-right whitespace-nowrap font-black">
-                              <span className={isReversed ? 'text-zinc-500 line-through' : isInflow ? 'text-emerald-700' : 'text-rose-700'}>
+
+                            {/* Amount */}
+                            <td className="px-3 py-3 text-right whitespace-nowrap font-mono font-black text-xs">
+                              <span
+                                className={
+                                  isReversed
+                                    ? 'text-zinc-400 line-through'
+                                    : isInflow
+                                    ? 'text-emerald-700'
+                                    : 'text-rose-700'
+                                }
+                              >
                                 {isInflow ? '+' : '-'}₱
                                 {Number(tx.amount).toLocaleString('en-PH', {
                                   minimumFractionDigits: 2,
@@ -1088,29 +1149,34 @@ export default function CashManagementView() {
                                 })}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-center whitespace-nowrap">
-                              <div className="inline-flex items-center gap-1.5 justify-center">
+
+                            {/* Audit Actions */}
+                            <td className="px-3.5 py-3 text-right whitespace-nowrap pr-4">
+                              <div className="inline-flex items-center gap-1.5 justify-end">
                                 {isReversed ? (
-                                  <span className="text-[10px] text-zinc-400 italic">
-                                    Voided: {tx.reversal_reason || 'Reversed'}
+                                  <span
+                                    className="text-[10px] text-zinc-400 italic max-w-[80px] truncate"
+                                    title={tx.reversal_reason || 'Reversed'}
+                                  >
+                                    Voided
                                   </span>
                                 ) : isPendingDrop ? (
                                   <button
                                     type="button"
                                     onClick={() => handleApproveSafeDrop(tx.transaction_no)}
-                                    className="rounded bg-emerald-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-emerald-700"
+                                    className="rounded-lg bg-emerald-600 px-2.5 py-1 text-[10px] font-bold text-white hover:bg-emerald-700 shadow-2xs transition"
                                   >
-                                    Accept Drop
+                                    Accept
                                   </button>
                                 ) : (
                                   <button
                                     type="button"
                                     onClick={() => setReversingTx(tx)}
-                                    className="inline-flex items-center gap-1 rounded border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] font-semibold text-rose-700 hover:bg-rose-100 transition"
+                                    className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700 hover:bg-rose-100 active:scale-95 transition"
                                     title="Audit Reversal / Void entry"
                                   >
                                     <RotateCcw className="h-3 w-3" />
-                                    <span>Void/Reverse</span>
+                                    <span>Void</span>
                                   </button>
                                 )}
 
@@ -1122,7 +1188,7 @@ export default function CashManagementView() {
                                     setPendingDeleteTx(tx)
                                     setPinModalOpen(true)
                                   }}
-                                  className="inline-flex items-center rounded border border-zinc-200 bg-zinc-50 p-1 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                                  className="inline-flex items-center justify-center h-6 w-6 rounded-lg border border-zinc-200 bg-zinc-50 text-zinc-400 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 active:scale-95 transition shadow-2xs"
                                   title="Permanently Delete Voucher (Requires Manager PIN)"
                                 >
                                   <Trash2 className="h-3 w-3" />
