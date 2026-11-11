@@ -24,6 +24,7 @@ import {
   Receipt,
   BarChart3,
   HelpCircle,
+  Banknote,
 } from 'lucide-react'
 import StatCard from '@/components/stat-card'
 import { cn } from '@/lib/utils'
@@ -37,6 +38,7 @@ import type { ProductItem } from '@/types/inventory'
 import type { Customer } from '@/types/customer'
 import type { PayrollRecord } from '@/types/payroll'
 import type { Expense } from '@/types/financials'
+import type { CashAccount } from '@/types/cash'
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(n)
@@ -71,6 +73,7 @@ export default function ExecutiveDashboard() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [cashAccounts, setCashAccounts] = useState<CashAccount[]>([])
 
   // User state
   const [userRole, setUserRole] = useState('Admin')
@@ -91,7 +94,7 @@ export default function ExecutiveDashboard() {
       }
 
       // Parallel fetch from Supabase tables
-      const [salesRes, jobsRes, p1Res, p2Res, p3Res, customersRes, payrollRes, expensesRes] =
+      const [salesRes, jobsRes, p1Res, p2Res, p3Res, customersRes, payrollRes, expensesRes, cashAccountsRes] =
         await Promise.allSettled([
           supabase.from('sales_orders').select('*, customers(name)').order('created_at', { ascending: false }),
           supabase.from('job_orders').select('*').order('created_at', { ascending: false }),
@@ -101,6 +104,7 @@ export default function ExecutiveDashboard() {
           supabase.from('customers').select('*').order('created_at', { ascending: false }),
           getPayrollRecords(),
           getExpenses(),
+          supabase.from('cash_accounts').select('*'),
         ])
 
       if (salesRes.status === 'fulfilled' && salesRes.value.data) {
@@ -185,6 +189,10 @@ export default function ExecutiveDashboard() {
         setExpenses(exps)
       }
 
+      if (cashAccountsRes.status === 'fulfilled' && cashAccountsRes.value.data) {
+        setCashAccounts(cashAccountsRes.value.data as CashAccount[])
+      }
+
       setLastUpdated(new Date())
     } catch {
       // Graceful fallback
@@ -221,6 +229,9 @@ export default function ExecutiveDashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_transactions' }, () => {
         fetchData()
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_accounts' }, () => {
+        fetchData()
+      })
       .subscribe()
 
     return () => {
@@ -243,6 +254,29 @@ export default function ExecutiveDashboard() {
     (sum, o) => sum + (Number(o.total_amount) || 0),
     0
   )
+
+  // Today's Sales Calculation
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const todaySalesOrders = salesOrders.filter(
+    (o) => o.created_at && o.created_at.slice(0, 10) === todayStr
+  )
+  const todayRevenue = todaySalesOrders.reduce(
+    (sum, o) => sum + (Number(o.total_amount) || 0),
+    0
+  )
+
+  // Cashier Till Balances (Focus on Dagupan Cash Drawer 01)
+  const dagupanTill = cashAccounts.find(
+    (a) => a.account_type === 'cash_drawer' && a.branch_id === 'dagupan_main'
+  )
+  const manilaTill = cashAccounts.find(
+    (a) => a.account_type === 'cash_drawer' && a.branch_id === 'manila_branch'
+  )
+  const primaryTill = activeBranchId === 'manila_branch' ? manilaTill : dagupanTill
+  const primaryTillBalance = Number(primaryTill?.current_balance) || 0
+  const secondaryTill = activeBranchId === 'manila_branch' ? dagupanTill : manilaTill
+  const secondaryTillBalance = Number(secondaryTill?.current_balance) || 0
+
   const totalExpenses = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
   const netProfit = totalRevenue - totalExpenses
   const profitMargin = totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 100) : 0
@@ -556,70 +590,50 @@ export default function ExecutiveDashboard() {
         </div>
       </div>
 
-      {/* ── Primary KPI Cards ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
-        {/* Total Revenue */}
+      {/* ── Focused Operational Command Cards (Sales, Cashier Till, Receivables, Jobs, Stock) ── */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 sm:gap-4">
+        {/* 1. Total Gross Revenue & Today's Sales */}
         <Link href="/sales" className="block transition-transform active:scale-[0.99]">
           <StatCard
             title="Total Gross Revenue"
             value={fmt(totalRevenue)}
             subtitle={
-              salesOrders.length > 0
-                ? `${paidOrders.length} settled of ${salesOrders.length} total orders`
-                : 'No sales orders recorded'
+              todaySalesOrders.length > 0
+                ? `Today: +${fmt(todayRevenue)} (${todaySalesOrders.length} order${todaySalesOrders.length === 1 ? '' : 's'})`
+                : salesOrders.length > 0
+                ? `Today: ₱0.00 • ${salesOrders.length} all-time orders`
+                : 'No sales recorded yet'
             }
             icon={TrendingUp}
             colorClass="bg-blue-50 text-blue-600 border border-blue-200/80 ring-2 ring-blue-500/10"
             trend={{
-              value: paidOrders.length > 0 ? `${paidOrders.length} paid` : 'Live tracker',
-              positive: totalRevenue > 0,
+              value: todaySalesOrders.length > 0 ? `+${fmt(todayRevenue)} today` : 'Live tracker',
+              positive: todayRevenue > 0 || totalRevenue > 0,
             }}
           />
         </Link>
 
-        {/* Active Production Queue */}
-        <Link href="/production" className="block transition-transform active:scale-[0.99]">
+        {/* 2. POS Cashier Available Cash (Mainly Dagupan Cashier Till) */}
+        <Link href="/cash-management" className="block transition-transform active:scale-[0.99]">
           <StatCard
-            title="Active Job Orders"
-            value={activeJobs.length}
+            title={activeBranchId === 'manila_branch' ? 'POS Cashier (Manila)' : 'POS Cashier (Dagupan)'}
+            value={fmt(primaryTillBalance)}
             subtitle={
-              completedJobs.length > 0 || activeJobs.length > 0
-                ? `${completedJobs.length} completed • ${activeJobs.length} in production`
-                : 'No job orders in queue'
+              activeBranchId === 'all'
+                ? `Dagupan Main Till • Manila: ${fmt(secondaryTillBalance)}`
+                : `${primaryTill?.account_name || 'POS Cash Drawer 01'} · Level 1 Active Till`
             }
-            icon={Layers}
-            colorClass="bg-violet-50 text-violet-600 border border-violet-200/80 ring-2 ring-violet-500/10"
+            icon={Banknote}
+            colorClass="bg-emerald-50 text-emerald-600 border border-emerald-200/80 ring-2 ring-emerald-500/10"
             trend={{
-              value: activeJobs.length > 0 ? `${activeJobs.length} in progress` : 'Queue idle',
-              positive: true,
+              value: 'Live cash in drawer',
+              positive: primaryTillBalance > 0,
+              neutral: primaryTillBalance === 0,
             }}
           />
         </Link>
 
-        {/* Low Stock Alerts */}
-        <Link href="/inventory?status=low_stock" className="block transition-transform active:scale-[0.99]">
-          <StatCard
-            title="Stock Warnings"
-            value={lowStockItems.length}
-            subtitle={
-              lowStockItems.length > 0
-                ? `${lowStockItems.length} item${lowStockItems.length === 1 ? '' : 's'} low stock`
-                : 'All stock levels healthy'
-            }
-            icon={lowStockItems.length > 0 ? AlertTriangle : CheckCircle2}
-            colorClass={
-              lowStockItems.length > 0
-                ? 'bg-amber-50 text-amber-600 border border-amber-200/80 ring-2 ring-amber-500/10'
-                : 'bg-emerald-50 text-emerald-600 border border-emerald-200/80 ring-2 ring-emerald-500/10'
-            }
-            trend={{
-              value: lowStockItems.length > 0 ? 'Restock required' : 'Optimal stock',
-              positive: lowStockItems.length === 0,
-            }}
-          />
-        </Link>
-
-        {/* Outstanding Receivables */}
+        {/* 3. Pending Receivables */}
         <Link href="/financials" className="block transition-transform active:scale-[0.99]">
           <StatCard
             title="Pending Receivables"
@@ -641,74 +655,47 @@ export default function ExecutiveDashboard() {
             }}
           />
         </Link>
-      </div>
 
-      {/* ── Secondary Summary Strip ────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-        <Link
-          href="/payroll"
-          className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition hover:border-emerald-300 hover:shadow-sm active:scale-[0.99]"
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200/70">
-              <Wallet className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate">
-                Monthly Payroll Budget
-              </p>
-              <p className="text-base sm:text-lg font-extrabold text-slate-900 tabular-nums truncate">
-                {fmt(totalPayrollBudget)}
-              </p>
-            </div>
-          </div>
-          <span className="shrink-0 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-            {pendingPayrollCount > 0 ? `${pendingPayrollCount} pending` : `${payrollRecords.length} records`}
-          </span>
+        {/* 4. Active Job Orders */}
+        <Link href="/production" className="block transition-transform active:scale-[0.99]">
+          <StatCard
+            title="Active Job Orders"
+            value={activeJobs.length}
+            subtitle={
+              completedJobs.length > 0 || activeJobs.length > 0
+                ? `${completedJobs.length} completed • ${activeJobs.length} in production`
+                : 'No job orders in queue'
+            }
+            icon={Layers}
+            colorClass="bg-violet-50 text-violet-600 border border-violet-200/80 ring-2 ring-violet-500/10"
+            trend={{
+              value: activeJobs.length > 0 ? `${activeJobs.length} in progress` : 'Queue idle',
+              positive: true,
+            }}
+          />
         </Link>
 
-        <Link
-          href="/customers"
-          className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition hover:border-blue-300 hover:shadow-sm active:scale-[0.99]"
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-200/70">
-              <Users className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate">
-                Client Directory
-              </p>
-              <p className="text-base sm:text-lg font-extrabold text-slate-900 tabular-nums truncate">
-                {customers.length} Accounts
-              </p>
-            </div>
-          </div>
-          <span className="shrink-0 rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-[10px] font-bold text-blue-700">
-            Active Accounts
-          </span>
-        </Link>
-
-        <Link
-          href="/inventory"
-          className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition hover:border-indigo-300 hover:shadow-sm active:scale-[0.99]"
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-200/70">
-              <Package className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate">
-                Multi-Store Catalog
-              </p>
-              <p className="text-base sm:text-lg font-extrabold text-slate-900 tabular-nums truncate">
-                {products.length.toLocaleString()} Products
-              </p>
-            </div>
-          </div>
-          <span className="shrink-0 rounded-full bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
-            Dagupan • Manila
-          </span>
+        {/* 5. Stock Warnings */}
+        <Link href="/inventory?status=low_stock" className="block transition-transform active:scale-[0.99]">
+          <StatCard
+            title="Stock Warnings"
+            value={lowStockItems.length}
+            subtitle={
+              lowStockItems.length > 0
+                ? `${lowStockItems.length} item${lowStockItems.length === 1 ? '' : 's'} low stock`
+                : 'All stock levels healthy'
+            }
+            icon={lowStockItems.length > 0 ? AlertTriangle : CheckCircle2}
+            colorClass={
+              lowStockItems.length > 0
+                ? 'bg-amber-50 text-amber-600 border border-amber-200/80 ring-2 ring-amber-500/10'
+                : 'bg-emerald-50 text-emerald-600 border border-emerald-200/80 ring-2 ring-emerald-500/10'
+            }
+            trend={{
+              value: lowStockItems.length > 0 ? 'Restock required' : 'Optimal stock',
+              positive: lowStockItems.length === 0,
+            }}
+          />
         </Link>
       </div>
 
