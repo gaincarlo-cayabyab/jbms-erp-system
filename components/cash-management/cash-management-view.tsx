@@ -9,12 +9,7 @@ import {
   CashReconciliation,
   CashSummaryStats,
 } from '@/types/cash'
-import {
-  approveSafeDrop,
-  archiveCashContainer,
-  updateCashContainer,
-  deleteCashContainer,
-} from '@/app/actions/cash'
+import { approveSafeDrop } from '@/app/actions/cash'
 import { useBranch } from '@/lib/branch-context'
 import { soundEffects } from '@/lib/sound-effects'
 import { toast } from 'sonner'
@@ -350,7 +345,13 @@ export default function CashManagementView() {
     if (!ok) return
 
     try {
-      await archiveCashContainer(account.id)
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('cash_accounts')
+        .update({ is_archived: true, is_active: false })
+        .eq('id', account.id)
+
+      if (error) throw new Error(error.message)
       soundEffects.success()
       toast.success(`Container "${account.account_name}" archived.`)
       loadData(true)
@@ -372,11 +373,27 @@ export default function CashManagementView() {
     if (!ok) return
 
     try {
-      const res = await deleteCashContainer(account.id)
-      soundEffects.success()
-      if (res.archived) {
-        toast.info(`Container has past activity, so it was archived and hidden from view.`)
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('cash_accounts')
+        .delete()
+        .eq('id', account.id)
+
+      if (error) {
+        if (error.code === '23503') {
+          // Has foreign key references (past transactions) - archive safely instead
+          const { error: archErr } = await supabase
+            .from('cash_accounts')
+            .update({ is_archived: true, is_active: false })
+            .eq('id', account.id)
+          if (archErr) throw new Error(archErr.message)
+          soundEffects.success()
+          toast.info(`Container has past activity, so it was archived and hidden from view.`)
+        } else {
+          throw new Error(error.message)
+        }
       } else {
+        soundEffects.success()
         toast.success(`Container "${account.account_name}" permanently deleted.`)
       }
       loadData(true)

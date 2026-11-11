@@ -85,6 +85,42 @@ export default function DashboardShell({ children }: { children: React.ReactNode
     }
   }, [pathname])
 
+  // Auto-recover from Next.js deployment version skew (e.g. Server Action hash mismatch when new code is deployed)
+  useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const msg = event?.reason?.message || String(event?.reason || '')
+      if (
+        msg.includes('was not found on the server') ||
+        msg.includes('failed-to-find-server-action') ||
+        msg.includes('Failed to find Server Action')
+      ) {
+        event.preventDefault()
+        console.warn('[Deployment Sync] New server version detected. Refreshing workspace...')
+        window.location.reload()
+      }
+    }
+
+    const handleError = (event: ErrorEvent) => {
+      const msg = event?.message || ''
+      if (
+        msg.includes('was not found on the server') ||
+        msg.includes('failed-to-find-server-action') ||
+        msg.includes('Failed to find Server Action')
+      ) {
+        event.preventDefault()
+        console.warn('[Deployment Sync] New server version detected. Refreshing workspace...')
+        window.location.reload()
+      }
+    }
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection)
+    window.addEventListener('error', handleError)
+    return () => {
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection)
+      window.removeEventListener('error', handleError)
+    }
+  }, [])
+
   function toggleSidebar() {
     if (window.innerWidth < 1024) {
       setMobileDrawerOpen((prev) => !prev)
