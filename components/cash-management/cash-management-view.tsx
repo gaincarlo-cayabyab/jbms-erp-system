@@ -198,6 +198,15 @@ export default function CashManagementView() {
     loadData()
   }, [loadData])
 
+  // Pinned POS Front Tills vs Reservoirs / Safes / Vaults
+  const posDrawers = useMemo(() => {
+    return accounts.filter((a) => a.account_type === 'cash_drawer')
+  }, [accounts])
+
+  const reserveContainers = useMemo(() => {
+    return accounts.filter((a) => a.account_type !== 'cash_drawer')
+  }, [accounts])
+
   // Pending Safe Drops
   const pendingSafeDrops = useMemo(() => {
     return transactions.filter((tx) => tx.is_safe_drop && tx.status === 'pending')
@@ -656,173 +665,357 @@ export default function CashManagementView() {
 
           {/* ── TAB 1: ACCOUNTS & VAULTS REGISTRY ───────────────────────────── */}
           {activeTab === 'accounts' && (
-            <div className="p-4 sm:p-6 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div>
-                  <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-900">
-                    Cash Containers & Vault Hierarchy
-                  </h2>
-                  <p className="text-xs text-zinc-500">
-                    Cash flows upward: POS Drawer (Level 1) → Manager Safe (Level 2) → Main Vault (Level 3) → Bank (Level 4).
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setCreateContainerOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition shadow-2xs"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>+ New Container</span>
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {accounts.map((account) => {
-                  const isDagupan = account.branch_id === 'dagupan_main'
-                  const levelInfo = getLevelLabel(account.account_type)
-                  const ceiling = account.cash_ceiling || 15000
-                  const isOverCeiling = account.account_type === 'cash_drawer' && account.current_balance >= ceiling
-
-                  return (
-                    <div
-                      key={account.id}
-                      className={`rounded-xl bg-white p-5 shadow-xs border transition-shadow relative group ${
-                        isOverCeiling ? 'border-amber-300 ring-2 ring-amber-200/50' : 'border-zinc-200 hover:shadow-md'
-                      }`}
-                    >
-                      {/* Ceiling Warning Banner */}
-                      {isOverCeiling && (
-                        <div className="mb-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-1.5 text-xs text-amber-800 flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-                            <span className="font-bold">Safe Drop Required (≥ ₱{ceiling.toLocaleString()})</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSafeDropDrawerId(account.id)
-                              setSafeDropModalOpen(true)
-                            }}
-                            className="rounded bg-amber-600 px-2 py-0.5 text-[11px] font-bold text-white hover:bg-amber-700 shadow-2xs"
-                          >
-                            Drop Now
-                          </button>
+            <div className="p-4 sm:p-6 space-y-6">
+              {/* SECTION 1: PINNED ACTIVE POS CASH DRAWERS (LEVEL 1: TILLS) */}
+              {posDrawers.length > 0 && (
+                <div className="space-y-3.5 pb-6 border-b border-zinc-200">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-700 border border-rose-200">
+                        <Receipt className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-sm font-black text-zinc-900 uppercase tracking-wider">
+                            Active POS Cash Drawers & Registers
+                          </h2>
+                          <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-800 uppercase tracking-wider">
+                            Level 1: Pinned Tills
+                          </span>
                         </div>
-                      )}
+                        <p className="text-[11px] text-zinc-500">
+                          Frontline cash drawers for daily checkout, paid out disbursements, and safe drops.
+                        </p>
+                      </div>
+                    </div>
 
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-700">
-                            {getAccountIcon(account.account_type)}
-                          </div>
-                          <div>
-                            <h3 className="text-sm font-bold text-zinc-900 line-clamp-1">
-                              {account.account_name}
-                            </h3>
-                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                              <span
-                                className={`inline-flex items-center rounded-md px-1.5 py-0.2 text-[10px] font-bold uppercase tracking-wider ${
-                                  isDagupan
-                                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                    : 'bg-purple-50 text-purple-700 border border-purple-200'
-                                }`}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-2.5 py-1">
+                        {posDrawers.length} Active POS {posDrawers.length === 1 ? 'Till' : 'Tills'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 2-Column Responsive Grid for POS Tills (Spacious Width) */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {posDrawers.map((account) => {
+                      const isDagupan = account.branch_id === 'dagupan_main'
+                      const ceiling = account.cash_ceiling || 15000
+                      const balance = Number(account.current_balance) || 0
+                      const isOverCeiling = balance >= ceiling
+                      const pct = Math.min(Math.round((balance / ceiling) * 100), 100)
+
+                      return (
+                        <div
+                          key={account.id}
+                          className={`rounded-2xl bg-white p-5 shadow-xs border transition-all duration-150 relative ${
+                            isOverCeiling
+                              ? 'border-amber-300 ring-2 ring-amber-300/40 bg-gradient-to-b from-amber-50/20 to-white'
+                              : 'border-zinc-200 hover:border-zinc-300 hover:shadow-md'
+                          }`}
+                        >
+                          {/* Ceiling Alert Banner */}
+                          {isOverCeiling && (
+                            <div className="mb-3.5 rounded-xl bg-amber-50 border border-amber-200/90 px-3.5 py-2 text-xs text-amber-900 flex items-center justify-between shadow-2xs">
+                              <div className="flex items-center gap-2">
+                                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 animate-pulse" />
+                                <div>
+                                  <span className="font-bold">Safe Drop Limit Reached</span>
+                                  <span className="text-[11px] text-amber-700 ml-1">
+                                    (₱{balance.toLocaleString('en-PH', { minimumFractionDigits: 2 })} ≥ ₱{ceiling.toLocaleString()})
+                                  </span>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  soundEffects.keyClick()
+                                  setSafeDropDrawerId(account.id)
+                                  setSafeDropModalOpen(true)
+                                }}
+                                className="rounded-lg bg-amber-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-amber-700 active:scale-95 transition shadow-2xs shrink-0"
                               >
-                                {isDagupan ? 'Dagupan Main' : 'Manila Hub'}
+                                Safe Drop Now
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Top Identity Row */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-50 border border-rose-200/80 text-rose-600 shadow-2xs">
+                                <Receipt className="h-6 w-6" />
+                              </div>
+                              <div>
+                                <h3 className="text-sm font-black text-zinc-900 tracking-tight">
+                                  {account.account_name}
+                                </h3>
+                                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                  <span
+                                    className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                                      isDagupan
+                                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                        : 'bg-purple-50 text-purple-700 border border-purple-200'
+                                    }`}
+                                  >
+                                    {isDagupan ? 'Dagupan Main' : 'Manila Hub'}
+                                  </span>
+                                  <span className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                    Level 1: Till
+                                  </span>
+                                  <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span>Active Register</span>
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Safe Drop Progress Indicator */}
+                            <div className="hidden sm:flex flex-col items-end text-right">
+                              <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                                Safe Drop Ceiling
                               </span>
-                              <span className={`inline-flex items-center rounded-md px-1.5 py-0.2 text-[10px] font-bold border ${levelInfo.color}`}>
-                                {levelInfo.label}
+                              <span className="text-xs font-bold text-zinc-600 font-mono mt-0.5">
+                                ₱{ceiling.toLocaleString()}
                               </span>
+                              <div className="w-20 h-1.5 bg-zinc-100 rounded-full mt-1 overflow-hidden border border-zinc-200">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-300 ${
+                                    isOverCeiling ? 'bg-amber-500' : 'bg-emerald-500'
+                                  }`}
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </div>
 
-                      <div className="mt-4 pt-3 border-t border-zinc-100 flex items-end justify-between">
-                        <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                            Current Balance
-                          </span>
-                          <div className="text-xl font-bold text-zinc-900">
-                            ₱{Number(account.current_balance).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                          {/* Hero Balance Block */}
+                          <div className="mt-4 pt-3 pb-3 border-t border-zinc-100 flex items-baseline justify-between">
+                            <div>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                                Current Cash in Till
+                              </span>
+                              <div className="text-2xl sm:text-3xl font-black text-zinc-900 font-mono tracking-tight mt-0.5">
+                                ₱{balance.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </div>
+                            </div>
+                            <span className="text-xs text-zinc-400 font-medium">
+                              Non-VAT Gross Pricing
+                            </span>
                           </div>
-                          {account.account_number && (
-                            <p className="text-[11px] font-mono text-zinc-500 mt-0.5">
-                              Acct: {account.account_number}
-                            </p>
-                          )}
-                        </div>
 
-                        <div className="flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition-opacity">
-                          {account.account_type === 'cash_drawer' && (
-                            <>
+                          {/* DEDICATED FULL-WIDTH ACTION TOOLBAR (Spacious, Never Wrapped) */}
+                          <div className="mt-2 pt-3 border-t border-zinc-100 flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {/* 1. Paid Out / Cash In */}
                               <button
+                                type="button"
                                 onClick={() => {
                                   soundEffects.keyClick()
                                   setSelectedDrawerAccount(account)
                                   setDrawerInitialMode('outflow')
                                   setDrawerCashModalOpen(true)
                                 }}
-                                className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition"
-                                title="Record Paid Out disbursement or Cash In to this drawer"
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 hover:border-rose-300 active:scale-95 transition shadow-2xs whitespace-nowrap"
+                                title="Disburse cash (Courier, COD, Supplies) or Cash In Float"
                               >
-                                Paid Out / In
+                                <Coins className="h-3.5 w-3.5 text-rose-600" />
+                                <span>Paid Out / In</span>
                               </button>
+
+                              {/* 2. Safe Drop */}
                               <button
+                                type="button"
                                 onClick={() => {
+                                  soundEffects.keyClick()
                                   setSafeDropDrawerId(account.id)
                                   setSafeDropModalOpen(true)
                                 }}
-                                className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition"
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100 hover:border-amber-400 active:scale-95 transition shadow-2xs whitespace-nowrap"
                                 title="Initiate Safe Drop to Manager Safe"
                               >
-                                Safe Drop
+                                <Lock className="h-3.5 w-3.5 text-amber-600" />
+                                <span>Safe Drop</span>
                               </button>
-                            </>
-                          )}
 
-                          <button
-                            onClick={() => {
-                              soundEffects.keyClick()
-                              setTransferModalOpen(true)
-                            }}
-                            className="rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-semibold text-zinc-700 hover:bg-indigo-50 hover:text-indigo-600 transition"
-                            title="Transfer funds"
-                          >
-                            Transfer
-                          </button>
+                              {/* 3. Transfer */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  soundEffects.keyClick()
+                                  setTransferModalOpen(true)
+                                }}
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-bold text-zinc-700 hover:bg-zinc-50 hover:border-zinc-300 active:scale-95 transition shadow-2xs whitespace-nowrap"
+                                title="Transfer funds to another account"
+                              >
+                                <ArrowRightLeft className="h-3.5 w-3.5 text-zinc-500" />
+                                <span>Transfer</span>
+                              </button>
+                            </div>
 
-                          <button
-                            onClick={() => {
-                              soundEffects.keyClick()
-                              setEditingAccount(account)
-                              setEditContainerOpen(true)
-                            }}
-                            className="rounded-lg p-1 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 transition"
-                            title="Edit Container Details & Balance"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
+                            {/* Secondary Administrative Icons */}
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => {
+                                  soundEffects.keyClick()
+                                  setEditingAccount(account)
+                                  setEditContainerOpen(true)
+                                }}
+                                className="rounded-lg p-1.5 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 transition"
+                                title="Edit Container Details & Balance"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
 
-                          <button
-                            onClick={() => handleArchiveContainer(account)}
-                            className="rounded-lg p-1 text-zinc-400 hover:text-amber-600 hover:bg-amber-50 transition"
-                            title="Archive Container (Hide)"
-                          >
-                            <Archive className="h-3.5 w-3.5" />
-                          </button>
+                              <button
+                                onClick={() => handleArchiveContainer(account)}
+                                className="rounded-lg p-1.5 text-zinc-400 hover:text-amber-600 hover:bg-amber-50 transition"
+                                title="Archive Container"
+                              >
+                                <Archive className="h-3.5 w-3.5" />
+                              </button>
 
-                          <button
-                            onClick={() => handleDeleteContainer(account)}
-                            className="rounded-lg p-1 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition"
-                            title="Permanently Delete Container"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                              <button
+                                onClick={() => handleDeleteContainer(account)}
+                                className="rounded-lg p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                                title="Permanently Delete Container"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION 2: SAFES, VAULTS & COMMERCIAL RESERVES (LEVELS 2–4) */}
+              <div className="space-y-3.5 pt-2">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div>
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-900">
+                      Store Safes, Main Vaults & Commercial Reserves (Levels 2–4)
+                    </h2>
+                    <p className="text-xs text-zinc-500">
+                      Hierarchy storage: Manager Safe (Level 2) → Main Vault (Level 3) → Corporate Banks & GCash (Level 4).
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-zinc-500 font-medium">
+                      {reserveContainers.length} Reserve Accounts
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCreateContainerOpen(true)}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition shadow-2xs"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      <span>+ New Container</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {reserveContainers.map((account) => {
+                    const isDagupan = account.branch_id === 'dagupan_main'
+                    const levelInfo = getLevelLabel(account.account_type)
+
+                    return (
+                      <div
+                        key={account.id}
+                        className="rounded-2xl bg-white p-5 shadow-xs border border-zinc-200 hover:border-zinc-300 hover:shadow-md transition-all duration-150 relative group"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-700">
+                              {getAccountIcon(account.account_type)}
+                            </div>
+                            <div>
+                              <h3 className="text-sm font-bold text-zinc-900 line-clamp-1">
+                                {account.account_name}
+                              </h3>
+                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                <span
+                                  className={`inline-flex items-center rounded-md px-1.5 py-0.2 text-[10px] font-bold uppercase tracking-wider ${
+                                    isDagupan
+                                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                      : 'bg-purple-50 text-purple-700 border border-purple-200'
+                                  }`}
+                                >
+                                  {isDagupan ? 'Dagupan Main' : 'Manila Hub'}
+                                </span>
+                                <span className={`inline-flex items-center rounded-md px-1.5 py-0.2 text-[10px] font-bold border ${levelInfo.color}`}>
+                                  {levelInfo.label}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 pt-3 border-t border-zinc-100 flex items-end justify-between">
+                          <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                              Current Balance
+                            </span>
+                            <div className="text-xl font-bold text-zinc-900 font-mono">
+                              ₱{Number(account.current_balance).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                            </div>
+                            {account.account_number && (
+                              <p className="text-[11px] font-mono text-zinc-500 mt-0.5">
+                                Acct: {account.account_number}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => {
+                                soundEffects.keyClick()
+                                setTransferModalOpen(true)
+                              }}
+                              className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-bold text-zinc-700 hover:bg-indigo-50 hover:text-indigo-600 transition shadow-2xs whitespace-nowrap"
+                              title="Transfer funds"
+                            >
+                              Transfer
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                soundEffects.keyClick()
+                                setEditingAccount(account)
+                                setEditContainerOpen(true)
+                              }}
+                              className="rounded-lg p-1.5 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 transition"
+                              title="Edit Container Details & Balance"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+
+                            <button
+                              onClick={() => handleArchiveContainer(account)}
+                              className="rounded-lg p-1.5 text-zinc-400 hover:text-amber-600 hover:bg-amber-50 transition"
+                              title="Archive Container (Hide)"
+                            >
+                              <Archive className="h-3.5 w-3.5" />
+                            </button>
+
+                            <button
+                              onClick={() => handleDeleteContainer(account)}
+                              className="rounded-lg p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                              title="Permanently Delete Container"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
               </div>
             </div>
           )}
