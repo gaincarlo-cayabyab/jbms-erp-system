@@ -237,6 +237,22 @@ export async function recordExpense(
 export async function removeExpense(id: string): Promise<boolean> {
   try {
     const supabase = createClient()
+    // Fetch expense first to find linked cash transactions
+    const { data: exp } = await supabase
+      .from('expenses')
+      .select('reference_no, description')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (exp) {
+      if (exp.reference_no) {
+        await supabase.from('cash_transactions').delete().eq('reference_no', exp.reference_no)
+      }
+      if (exp.description) {
+        await supabase.from('cash_transactions').delete().eq('payee_or_payer', exp.description)
+      }
+    }
+
     const { error } = await supabase.from('expenses').delete().eq('id', id)
     if (!error) return true
   } catch {

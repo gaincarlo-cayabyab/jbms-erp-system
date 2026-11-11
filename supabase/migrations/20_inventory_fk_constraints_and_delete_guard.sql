@@ -105,6 +105,14 @@ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.cash_accounts;
   END IF;
 
+  -- Add expenses if not already in publication
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND tablename = 'expenses'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.expenses;
+  END IF;
+
   RAISE NOTICE 'supabase_realtime publication verified for operational tables';
 EXCEPTION WHEN OTHERS THEN
   RAISE NOTICE 'supabase_realtime publication notice: %', SQLERRM;

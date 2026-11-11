@@ -99,9 +99,30 @@ export default function FinancialsView() {
     loadFinancialData()
   }, [])
 
-  const handleExpenseCreated = (newExp: Expense) => {
-    setExpenses((prev) => [newExp, ...prev])
-    toast.success(`Expense of ₱${Number(newExp.amount).toLocaleString()} recorded.`)
+  // Realtime sync — auto-refresh when sales orders, expenses, or cash transactions change
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel('financials-realtime-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sales_orders' }, () => {
+        loadFinancialData()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, () => {
+        loadFinancialData()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_transactions' }, () => {
+        loadFinancialData()
+      })
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
+  const handleExpenseCreated = (_newExp: Expense) => {
+    // Reload full data so all totals (income + expenses) are consistent
+    loadFinancialData()
+    toast.success('Expense recorded — financials updated.')
   }
 
   const confirm = useConfirm()
@@ -115,8 +136,9 @@ export default function FinancialsView() {
     })
     if (!ok) return
     await removeExpense(id)
-    setExpenses((prev) => prev.filter((e) => e.id !== id))
-    toast.success('Expense entry removed.')
+    // Reload full financial data so all metrics recalculate correctly
+    await loadFinancialData()
+    toast.success('Expense entry removed — financials updated.')
   }
 
   // Financial Metrics Calculations
@@ -232,7 +254,7 @@ export default function FinancialsView() {
                 Financials & Expense Management
               </h1>
               <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
-                Module 5
+                Module 4
               </span>
             </div>
             <p className="mt-1 text-sm text-zinc-500">

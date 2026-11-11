@@ -129,16 +129,49 @@ export default function CashManagementView() {
     if (!pendingDeleteTx) return
     try {
       const supabase = createClient()
-      const { error } = await supabase
+
+      // 1. If this was a POS sale / sales order voucher (e.g. reference_no starts with 'INV-' or 'SO-')
+      if (
+        pendingDeleteTx.reference_no &&
+        (pendingDeleteTx.source_module === 'pos' ||
+          pendingDeleteTx.reference_no.startsWith('INV-') ||
+          pendingDeleteTx.reference_no.startsWith('SO-') ||
+          pendingDeleteTx.reference_no.startsWith('QT-'))
+      ) {
+        const { data: matchedOrder } = await supabase
+          .from('sales_orders')
+          .select('id')
+          .eq('order_number', pendingDeleteTx.reference_no)
+          .maybeSingle()
+
+        if (matchedOrder?.id) {
+          await supabase.rpc('delete_sales_order_with_reversal', {
+            p_order_id: matchedOrder.id,
+            p_authorized_by: `${authorizedBy} (${role})`,
+            p_reason: reason,
+          })
+        }
+      }
+
+      // 2. If this was an expense / outflow voucher, synchronize and delete from expenses table
+      if (pendingDeleteTx.flow_type === 'outflow') {
+        if (pendingDeleteTx.reference_no) {
+          await supabase.from('expenses').delete().eq('reference_no', pendingDeleteTx.reference_no)
+        }
+        if (pendingDeleteTx.notes) {
+          await supabase.from('expenses').delete().eq('description', pendingDeleteTx.notes)
+        }
+      }
+
+      // 3. Delete from cash_transactions (if not already removed by RPC)
+      await supabase
         .from('cash_transactions')
         .delete()
         .eq('id', pendingDeleteTx.id)
 
-      if (error) throw new Error(error.message)
-
       soundEffects.success()
       toast.success(
-        `Voucher ${pendingDeleteTx.transaction_no} permanently deleted by ${authorizedBy} (${role}). Cash balance reconciled.`
+        `Voucher ${pendingDeleteTx.transaction_no} deleted by ${authorizedBy} (${role}). Reconciled with Sales & Financials.`
       )
       setPinModalOpen(false)
       setPendingDeleteTx(null)
