@@ -98,6 +98,28 @@ export default function POSView() {
     loadProducts()
   }, [loadProducts])
 
+  // Realtime sync — refresh POS catalog when inventory or branch stock changes (edits, deletions, stock adjustments, branch sales)
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`pos-inventory-realtime-${activeBranch}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'products_and_inventory' },
+        () => { loadProducts() }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'inventory_stock' },
+        () => { loadProducts() }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [loadProducts, activeBranch])
+
   // ── Cart Operations ────────────────────────────────────────────────────────
   function addToCart(product: POSProduct) {
     if (product.stock_quantity <= 0) {

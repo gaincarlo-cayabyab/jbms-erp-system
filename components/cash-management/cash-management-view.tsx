@@ -198,6 +198,28 @@ export default function CashManagementView() {
     loadData()
   }, [loadData])
 
+  // Realtime subscription for cash transactions and container balance changes
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`cash-realtime-sync-${selectedBranch}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'cash_transactions' },
+        () => { loadData(true) }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'cash_accounts' },
+        () => { loadData(true) }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [loadData, selectedBranch])
+
   // Pinned POS Front Tills vs Reservoirs / Safes / Vaults
   const posDrawers = useMemo(() => {
     return accounts.filter((a) => a.account_type === 'cash_drawer')

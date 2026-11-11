@@ -95,7 +95,7 @@ export default function InventoryView() {
     if (selectedProductIds.length === 0) return
     const confirmed = await confirm({
       title: `Delete ${selectedProductIds.length} Selected Products?`,
-      message: 'This will permanently remove these catalog items and their stock records from the database.',
+      message: 'This will permanently remove these catalog items and branch stock records from the database. Any past sales orders will be safely preserved for financial auditing.',
       confirmText: 'Delete Items',
       variant: 'danger',
     })
@@ -112,7 +112,7 @@ export default function InventoryView() {
 
       setProducts((prev) => prev.filter((p) => !selectedProductIds.includes(p.id)))
       setSelectedProductIds([])
-      toast.success(`Successfully deleted ${selectedProductIds.length} product(s).`)
+      toast.success(`Successfully deleted ${selectedProductIds.length} product(s). (Sales history preserved)`)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to delete selected products'
       toast.error(`Error deleting products: ${msg}`)
@@ -195,6 +195,29 @@ export default function InventoryView() {
     loadProducts()
   }, [activeBranchId])
 
+  // Supabase Realtime — auto-refresh inventory when stock changes from any source (POS, edits, etc.)
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel('inventory-realtime-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'products_and_inventory' },
+        () => { loadProducts() }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'inventory_stock' },
+        () => { loadProducts() }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBranchId])
+
   // Handle saved product (create or edit)
   const handleProductSaved = (savedProduct: ProductItem, isEdit: boolean) => {
     if (isEdit) {
@@ -216,18 +239,29 @@ export default function InventoryView() {
     toast.success(`Stock for "${updatedProduct.item_name}" updated.`)
   }
 
-  // Handle delete product
+  // Handle delete product — warns if sales history exists (FK is SET NULL, audit trail preserved)
   const handleDeleteProduct = async (product: ProductItem) => {
+    const supabase = createClient()
+
+    // Check if product has sales history
+    const { count: salesCount } = await supabase
+      .from('sales_order_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('product_id', product.id)
+
+    const hasSalesHistory = (salesCount ?? 0) > 0
+
     const ok = await confirm({
       title: `Delete "${product.item_name}"?`,
-      message: `Are you sure you want to delete SKU: ${product.sku}? This action cannot be reversed.`,
+      message: hasSalesHistory
+        ? `This product appears in ${salesCount} sales order line item(s). The sales records will be preserved (product reference will be cleared), but the product will be removed from the catalog and all branch stock records. This action cannot be reversed.`
+        : `Are you sure you want to delete SKU: ${product.sku}? This will remove it from the catalog and all branch stock records. This action cannot be reversed.`,
       confirmText: 'Delete Product',
       variant: 'danger',
     })
     if (!ok) return
 
     try {
-      const supabase = createClient()
       const { error } = await supabase
         .from('products_and_inventory')
         .delete()
@@ -236,7 +270,7 @@ export default function InventoryView() {
       if (error) throw new Error(error.message)
 
       setProducts((prev) => prev.filter((p) => p.id !== product.id))
-      toast.success(`Product "${product.item_name}" deleted.`)
+      toast.success(`Product "${product.item_name}" deleted.${hasSalesHistory ? ' Sales history preserved.' : ''}`)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to delete product'
       toast.error(`Error deleting product: ${msg}`)

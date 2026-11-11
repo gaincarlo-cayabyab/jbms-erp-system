@@ -98,6 +98,23 @@ export default function SalesView() {
     loadData()
   }, [])
 
+  // Realtime subscription for incoming sales and orders (e.g. from POS checkout or reversals)
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel('sales-realtime-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'sales_orders' },
+        () => { loadData() }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
   const handleOrderSaved = (savedOrder: SalesOrder, isEdit?: boolean) => {
     if (isEdit) {
       setOrders((prev) =>
