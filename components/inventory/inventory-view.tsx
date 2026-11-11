@@ -110,9 +110,9 @@ export default function InventoryView() {
 
       if (error) throw new Error(error.message)
 
-      setProducts((prev) => prev.filter((p) => !selectedProductIds.includes(p.id)))
       setSelectedProductIds([])
       toast.success(`Successfully deleted ${selectedProductIds.length} product(s). (Sales history preserved)`)
+      await loadProducts()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to delete selected products'
       toast.error(`Error deleting products: ${msg}`)
@@ -219,24 +219,19 @@ export default function InventoryView() {
   }, [activeBranchId])
 
   // Handle saved product (create or edit)
-  const handleProductSaved = (savedProduct: ProductItem, isEdit: boolean) => {
+  const handleProductSaved = async (savedProduct: ProductItem, isEdit: boolean) => {
     if (isEdit) {
-      setProducts((prev) =>
-        prev.map((p) => (p.id === savedProduct.id ? savedProduct : p))
-      )
       toast.success(`Product "${savedProduct.item_name}" updated successfully.`)
     } else {
-      setProducts((prev) => [savedProduct, ...prev])
       toast.success(`Product "${savedProduct.item_name}" added to catalog.`)
     }
+    await loadProducts()
   }
 
   // Handle stock adjustment
-  const handleStockAdjusted = (updatedProduct: ProductItem) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p))
-    )
+  const handleStockAdjusted = async (updatedProduct: ProductItem) => {
     toast.success(`Stock for "${updatedProduct.item_name}" updated.`)
+    await loadProducts()
   }
 
   // Handle delete product — warns if sales history exists (FK is SET NULL, audit trail preserved)
@@ -269,8 +264,8 @@ export default function InventoryView() {
 
       if (error) throw new Error(error.message)
 
-      setProducts((prev) => prev.filter((p) => p.id !== product.id))
       toast.success(`Product "${product.item_name}" deleted.${hasSalesHistory ? ' Sales history preserved.' : ''}`)
+      await loadProducts()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to delete product'
       toast.error(`Error deleting product: ${msg}`)

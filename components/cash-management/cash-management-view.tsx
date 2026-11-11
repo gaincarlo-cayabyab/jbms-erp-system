@@ -10,11 +10,6 @@ import {
   CashSummaryStats,
 } from '@/types/cash'
 import {
-  getCashAccounts,
-  getCashCategories,
-  getCashTransactions,
-  getCashSummaryStats,
-  getCashReconciliations,
   approveSafeDrop,
   archiveCashContainer,
   updateCashContainer,
@@ -172,19 +167,112 @@ export default function CashManagementView() {
     else setRefreshing(true)
 
     try {
-      const [accs, cats, txs, stats, recs] = await Promise.all([
-        getCashAccounts(selectedBranch),
-        getCashCategories(),
-        getCashTransactions({ branchId: selectedBranch, limit: 200 }),
-        getCashSummaryStats(selectedBranch),
-        getCashReconciliations(selectedBranch, 50),
+      const supabase = createClient()
+      const normalizedBranch =
+        selectedBranch && selectedBranch !== 'all'
+          ? (selectedBranch.toLowerCase().includes('manila') ? 'manila_branch' : 'dagupan_main')
+          : null
+
+      // Build parallel PostgREST queries directly against Supabase (bypasses slow server action round-trips)
+      let accountsQuery = supabase
+        .from('cash_accounts')
+        .select('*')
+        .eq('is_active', true)
+        .order('account_name', { ascending: true })
+
+      if (normalizedBranch) {
+        accountsQuery = accountsQuery.eq('branch_id', normalizedBranch)
+      }
+
+      const categoriesQuery = supabase
+        .from('cash_categories')
+        .select('*')
+        .order('category_name', { ascending: true })
+
+      let txQuery = supabase
+        .from('cash_transactions')
+        .select(`
+          *,
+          cash_accounts (id, account_name, branch_id, account_type),
+          cash_categories (id, category_name, flow_type)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(200)
+
+      if (normalizedBranch) {
+        txQuery = txQuery.eq('branch_id', normalizedBranch)
+      }
+
+      let recsQuery = supabase
+        .from('cash_reconciliations')
+        .select(`
+          *,
+          cash_accounts (id, account_name, branch_id)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      if (normalizedBranch) {
+        recsQuery = recsQuery.eq('branch_id', normalizedBranch)
+      }
+
+      const startOfDay = new Date()
+      startOfDay.setHours(0, 0, 0, 0)
+
+      let todayStatsQuery = supabase
+        .from('cash_transactions')
+        .select('amount, flow_type')
+        .eq('status', 'completed')
+        .gte('created_at', startOfDay.toISOString())
+
+      if (normalizedBranch) {
+        todayStatsQuery = todayStatsQuery.eq('branch_id', normalizedBranch)
+      }
+
+      // Execute all 5 queries simultaneously in parallel via browser PostgREST (~150ms total)
+      const [accsRes, catsRes, txsRes, recsRes, todayRes] = await Promise.all([
+        accountsQuery,
+        categoriesQuery,
+        txQuery,
+        recsQuery,
+        todayStatsQuery,
       ])
 
-      setAccounts(accs as CashAccount[])
-      setCategories(cats as CashCategory[])
-      setTransactions(txs as CashTransaction[])
-      setSummary(stats)
-      setReconciliations(recs as CashReconciliation[])
+      if (accsRes.error) throw accsRes.error
+      if (catsRes.error) throw catsRes.error
+      if (txsRes.error) throw txsRes.error
+
+      const accs = (accsRes.data || []) as CashAccount[]
+      const cats = (catsRes.data || []) as CashCategory[]
+      const txs = (txsRes.data || []) as CashTransaction[]
+      const recs = (recsRes.data || []) as CashReconciliation[]
+      const todayTxs = todayRes.data || []
+
+      // Calculate total liquid cash balance
+      const totalCashBalance = accs.reduce(
+        (sum, acc) => sum + (Number(acc.current_balance) || 0),
+        0
+      )
+
+      // Calculate today's inflows & outflows
+      let dailyInflows = 0
+      let dailyOutflows = 0
+      for (const t of todayTxs) {
+        const amt = Number(t.amount) || 0
+        if (t.flow_type === 'inflow') dailyInflows += amt
+        else if (t.flow_type === 'outflow') dailyOutflows += amt
+      }
+
+      setAccounts(accs)
+      setCategories(cats)
+      setTransactions(txs)
+      setSummary({
+        totalCashBalance,
+        dailyInflows,
+        dailyOutflows,
+        netCashFlow: dailyInflows - dailyOutflows,
+      })
+      setReconciliations(recs)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed loading cash data.'
       toast.error(msg)

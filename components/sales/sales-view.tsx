@@ -115,17 +115,14 @@ export default function SalesView() {
     }
   }, [])
 
-  const handleOrderSaved = (savedOrder: SalesOrder, isEdit?: boolean) => {
+  const handleOrderSaved = async (savedOrder: SalesOrder, isEdit?: boolean) => {
     if (isEdit) {
-      setOrders((prev) =>
-        prev.map((o) => (o.id === savedOrder.id ? savedOrder : o))
-      )
       toast.success(`Order "${savedOrder.order_number}" updated successfully.`)
     } else {
-      setOrders((prev) => [savedOrder, ...prev])
       toast.success(`Order/Quotation "${savedOrder.order_number}" created successfully.`)
     }
     setEditingOrder(null)
+    await loadData()
   }
 
   const handleEditOrder = (order: SalesOrder) => {
@@ -169,7 +166,6 @@ export default function SalesView() {
         throw new Error((data as { error?: string }).error || 'Failed to delete order')
       }
 
-      setOrders((prev) => prev.filter((o) => o.id !== pendingDeleteOrder.id))
       if (selectedOrder?.id === pendingDeleteOrder.id) {
         setSelectedOrder(null)
       }
@@ -178,6 +174,7 @@ export default function SalesView() {
       )
       setPinModalOpen(false)
       setPendingDeleteOrder(null)
+      await loadData()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to delete order'
       toast.error(`Error deleting order: ${msg}`)
@@ -196,19 +193,15 @@ export default function SalesView() {
 
     try {
       const supabase = createClient()
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('sales_orders')
         .update({ order_status: 'Cancelled' })
         .eq('id', order.id)
-        .select('*, customers(*)')
-        .single()
 
       if (error) throw new Error(error.message)
 
-      setOrders((prev) =>
-        prev.map((o) => (o.id === order.id ? (data as SalesOrder) : o))
-      )
       toast.success(`Order ${order.order_number} marked as Cancelled.`)
+      await loadData()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to cancel order'
       toast.error(`Error cancelling order: ${msg}`)

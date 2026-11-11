@@ -73,7 +73,7 @@ export default function ManagerPinModal({
   }, [])
 
   const handleKeyPress = (num: string) => {
-    if (pin.length >= 6) return
+    if (pin.length >= 4) return
     soundEffects.keyClick()
     setErrorMsg(null)
     setPin((prev) => prev + num)
@@ -110,8 +110,8 @@ export default function ManagerPinModal({
   }, [isOpen, pin])
 
   const handleAuthorize = async () => {
-    if (pin.length < 4) {
-      setErrorMsg('Please enter 4 to 6 digit Manager PIN')
+    if (pin.length !== 4) {
+      setErrorMsg('Please enter your 4-digit Manager PIN')
       triggerShake()
       soundEffects.error()
       return
@@ -300,22 +300,20 @@ export default function ManagerPinModal({
                   <span>Enter Manager PIN</span>
                 </span>
                 <span className="text-[10px] font-semibold text-slate-400">
-                  {pin.length > 0 ? `${pin.length} digits entered` : '4–6 digits'}
+                  {pin.length > 0 ? `${pin.length} / 4 digits` : '4 digits'}
                 </span>
               </div>
 
-              {/* PIN Indicator Dots */}
-              <div className="flex justify-center items-center gap-2.5 py-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                {[0, 1, 2, 3, 4, 5].map((i) => (
+              {/* PIN Indicator Dots — 4 Manager Digits */}
+              <div className="flex justify-center items-center gap-3.5 py-3 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                {[0, 1, 2, 3].map((i) => (
                   <div
                     key={i}
                     className={cn(
-                      'h-3.5 w-3.5 rounded-full transition-all duration-150',
+                      'h-4 w-4 rounded-full transition-all duration-150',
                       pin.length > i
                         ? 'bg-rose-600 scale-110 shadow-xs shadow-rose-500/40 ring-2 ring-rose-200'
-                        : i < 4
-                        ? 'border-2 border-slate-300 bg-slate-50'
-                        : 'border border-dashed border-slate-200 bg-transparent'
+                        : 'border-2 border-slate-300 bg-slate-50'
                     )}
                   />
                 ))}

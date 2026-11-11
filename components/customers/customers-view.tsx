@@ -73,9 +73,9 @@ export default function CustomersView() {
   }, [])
 
   // Handle successful customer creation
-  const handleCustomerCreated = (newCustomer: Customer) => {
-    setCustomers((prev) => [newCustomer, ...prev])
+  const handleCustomerCreated = async (newCustomer: Customer) => {
     toast.success(`Customer "${newCustomer.name}" registered successfully.`)
+    await loadCustomers()
   }
 
   // Search & Filter Logic
