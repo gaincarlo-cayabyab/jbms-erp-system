@@ -95,3 +95,4 @@ SET current_balance = COALESCE((
 updated_at = NOW()
 WHERE account_type = 'cash_drawer'
   AND branch_id = 'dagupan_main';
+

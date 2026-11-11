@@ -32,6 +32,10 @@ import EditContainerModal from './edit-container-modal'
 import SafeDropModal from './safe-drop-modal'
 import ReverseTransactionModal from './reverse-transaction-modal'
 import { useConfirm } from '@/components/ui/confirm-dialog'
+import { createClient } from '@/lib/supabase/client'
+import ManagerPinModal from '@/components/ui/manager-pin-modal'
+import DrawerCashInOutModal from './drawer-cash-in-out-modal'
+import PayoutSlipModal from './payout-slip-modal'
 import {
   Wallet,
   ArrowDownLeft,
@@ -66,6 +70,7 @@ import {
   Sparkles,
   Pencil,
   Trash2,
+  Printer,
 } from 'lucide-react'
 
 export default function CashManagementView() {
@@ -109,6 +114,52 @@ export default function CashManagementView() {
   const [safeDropDrawerId, setSafeDropDrawerId] = useState<string | undefined>()
   const [reversingTx, setReversingTx] = useState<CashTransaction | null>(null)
   const [approvingSafeDrop, setApprovingSafeDrop] = useState<string | null>(null)
+
+  // Manager PIN Deletion of Transactions
+  const [pinModalOpen, setPinModalOpen] = useState(false)
+  const [pendingDeleteTx, setPendingDeleteTx] = useState<CashTransaction | null>(null)
+
+  // Till Cash In / Paid Out Modal
+  const [drawerCashModalOpen, setDrawerCashModalOpen] = useState(false)
+  const [selectedDrawerAccount, setSelectedDrawerAccount] = useState<CashAccount | null>(null)
+  const [drawerInitialMode, setDrawerInitialMode] = useState<'outflow' | 'inflow'>('outflow')
+
+  // End-of-Shift Consolidated Payout Slip Modal
+  const [payoutSlipModalOpen, setPayoutSlipModalOpen] = useState(false)
+
+  const handleAuthorizedDeleteTx = async ({
+    authorizedBy,
+    role,
+    reason,
+  }: {
+    authorizedBy: string
+    role: string
+    reason: string
+  }) => {
+    if (!pendingDeleteTx) return
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('cash_transactions')
+        .delete()
+        .eq('id', pendingDeleteTx.id)
+
+      if (error) throw new Error(error.message)
+
+      soundEffects.success()
+      toast.success(
+        `Voucher ${pendingDeleteTx.transaction_no} permanently deleted by ${authorizedBy} (${role}). Cash balance reconciled.`
+      )
+      setPinModalOpen(false)
+      setPendingDeleteTx(null)
+      loadData(true)
+    } catch (err: unknown) {
+      soundEffects.error()
+      const msg = err instanceof Error ? err.message : 'Failed to delete transaction'
+      toast.error(msg)
+      throw err
+    }
+  }
 
   // Journal Filters
   const [journalSearch, setJournalSearch] = useState('')
@@ -408,6 +459,22 @@ export default function CashManagementView() {
               <span>- Outflow (CDV)</span>
             </button>
 
+            {/* Quick Till In/Out (Disbursement / COD / Courier) */}
+            <button
+              type="button"
+              onClick={() => {
+                soundEffects.keyClick()
+                setSelectedDrawerAccount(null)
+                setDrawerInitialMode('outflow')
+                setDrawerCashModalOpen(true)
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-rose-300 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 shadow-2xs hover:bg-rose-100 transition active:scale-95"
+              title="Record Cash Drawer Paid Out or Till Inflow"
+            >
+              <Coins className="h-4 w-4" />
+              <span>Paid Out / Cash In</span>
+            </button>
+
             {/* Inter-Account Transfer */}
             <button
               type="button"
@@ -688,16 +755,30 @@ export default function CashManagementView() {
 
                         <div className="flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition-opacity">
                           {account.account_type === 'cash_drawer' && (
-                            <button
-                              onClick={() => {
-                                setSafeDropDrawerId(account.id)
-                                setSafeDropModalOpen(true)
-                              }}
-                              className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition"
-                              title="Initiate Safe Drop to Manager Safe"
-                            >
-                              Safe Drop
-                            </button>
+                            <>
+                              <button
+                                onClick={() => {
+                                  soundEffects.keyClick()
+                                  setSelectedDrawerAccount(account)
+                                  setDrawerInitialMode('outflow')
+                                  setDrawerCashModalOpen(true)
+                                }}
+                                className="rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition"
+                                title="Record Paid Out disbursement or Cash In to this drawer"
+                              >
+                                Paid Out / In
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSafeDropDrawerId(account.id)
+                                  setSafeDropModalOpen(true)
+                                }}
+                                className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition"
+                                title="Initiate Safe Drop to Manager Safe"
+                              >
+                                Safe Drop
+                              </button>
+                            </>
                           )}
 
                           <button
@@ -897,6 +978,18 @@ export default function CashManagementView() {
                   </select>
 
                   <button
+                    onClick={() => {
+                      soundEffects.keyClick()
+                      setPayoutSlipModalOpen(true)
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100 transition shadow-2xs"
+                    title="Consolidated End-of-Shift Payout Vouchers Slip"
+                  >
+                    <Printer className="h-3.5 w-3.5 text-rose-600" />
+                    <span>End-of-Shift Slip</span>
+                  </button>
+
+                  <button
                     onClick={exportJournalCSV}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 transition shadow-2xs"
                   >
@@ -996,29 +1089,45 @@ export default function CashManagementView() {
                               </span>
                             </td>
                             <td className="px-4 py-3 text-center whitespace-nowrap">
-                              {isReversed ? (
-                                <span className="text-[10px] text-zinc-400 italic">
-                                  Voided: {tx.reversal_reason || 'Reversed'}
-                                </span>
-                              ) : isPendingDrop ? (
+                              <div className="inline-flex items-center gap-1.5 justify-center">
+                                {isReversed ? (
+                                  <span className="text-[10px] text-zinc-400 italic">
+                                    Voided: {tx.reversal_reason || 'Reversed'}
+                                  </span>
+                                ) : isPendingDrop ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleApproveSafeDrop(tx.transaction_no)}
+                                    className="rounded bg-emerald-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-emerald-700"
+                                  >
+                                    Accept Drop
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => setReversingTx(tx)}
+                                    className="inline-flex items-center gap-1 rounded border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] font-semibold text-rose-700 hover:bg-rose-100 transition"
+                                    title="Audit Reversal / Void entry"
+                                  >
+                                    <RotateCcw className="h-3 w-3" />
+                                    <span>Void/Reverse</span>
+                                  </button>
+                                )}
+
+                                {/* Delete Voucher with Manager PIN authorization */}
                                 <button
                                   type="button"
-                                  onClick={() => handleApproveSafeDrop(tx.transaction_no)}
-                                  className="rounded bg-emerald-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-emerald-700"
+                                  onClick={() => {
+                                    soundEffects.keyClick()
+                                    setPendingDeleteTx(tx)
+                                    setPinModalOpen(true)
+                                  }}
+                                  className="inline-flex items-center rounded border border-zinc-200 bg-zinc-50 p-1 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                                  title="Permanently Delete Voucher (Requires Manager PIN)"
                                 >
-                                  Accept Drop
+                                  <Trash2 className="h-3 w-3" />
                                 </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => setReversingTx(tx)}
-                                  className="inline-flex items-center gap-1 rounded border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] font-semibold text-rose-700 hover:bg-rose-100 transition"
-                                  title="Audit Reversal / Void entry"
-                                >
-                                  <RotateCcw className="h-3 w-3" />
-                                  <span>Void/Reverse</span>
-                                </button>
-                              )}
+                              </div>
                             </td>
                           </tr>
                         )
@@ -1219,6 +1328,59 @@ export default function CashManagementView() {
         transaction={reversingTx}
         onClose={() => setReversingTx(null)}
         onSuccess={() => loadData(true)}
+      />
+
+      {/* Manager PIN Authorization Modal for Voucher Deletion */}
+      <ManagerPinModal
+        isOpen={pinModalOpen}
+        title={`Authorize Delete Voucher: ${pendingDeleteTx?.transaction_no || ''}`}
+        description="Permanently delete this cash transaction voucher from the treasury journal and automatically adjust the cash container balance."
+        itemDetails={[
+          { label: 'Voucher #', value: pendingDeleteTx?.transaction_no || '—' },
+          {
+            label: 'Type',
+            value: pendingDeleteTx?.flow_type === 'inflow' ? 'Cash In (CRV)' : 'Cash Out (CDV)',
+          },
+          {
+            label: 'Amount',
+            value: `₱${Number(pendingDeleteTx?.amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
+          },
+          { label: 'Account', value: pendingDeleteTx?.cash_accounts?.account_name || 'Container' },
+          { label: 'Payee / Payer', value: pendingDeleteTx?.payee_or_payer || '—' },
+        ]}
+        actionLabel="Authorize & Permanently Delete"
+        onClose={() => {
+          setPinModalOpen(false)
+          setPendingDeleteTx(null)
+        }}
+        onAuthorized={handleAuthorizedDeleteTx}
+      />
+
+      {/* POS Cash Drawer Cash In / Out (Paid Out) Modal */}
+      <DrawerCashInOutModal
+        isOpen={drawerCashModalOpen}
+        drawerId={selectedDrawerAccount?.id}
+        drawerName={selectedDrawerAccount?.account_name}
+        currentBalance={selectedDrawerAccount ? Number(selectedDrawerAccount.current_balance) : undefined}
+        branchId={selectedDrawerAccount?.branch_id || selectedBranch}
+        initialMode={drawerInitialMode}
+        onClose={() => {
+          setDrawerCashModalOpen(false)
+          setSelectedDrawerAccount(null)
+        }}
+        onSuccess={() => {
+          loadData(true)
+          setDrawerCashModalOpen(false)
+          setSelectedDrawerAccount(null)
+        }}
+      />
+
+      {/* End-of-Shift Consolidated Payout Slip Modal */}
+      <PayoutSlipModal
+        isOpen={payoutSlipModalOpen}
+        branchId={selectedBranch}
+        transactions={transactions}
+        onClose={() => setPayoutSlipModalOpen(false)}
       />
     </DashboardShell>
   )

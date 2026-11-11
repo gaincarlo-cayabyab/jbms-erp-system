@@ -8,10 +8,11 @@ import POSCart from './pos-cart'
 import POSCheckoutPanel, { type FulfillmentData } from './pos-checkout-panel'
 import POSTransactionModal from './pos-transaction-modal'
 import POSReceiptModal from './pos-receipt-modal'
+import DrawerCashInOutModal from '@/components/cash-management/drawer-cash-in-out-modal'
 import { createClient } from '@/lib/supabase/client'
 import type { POSProduct, CartItem, CartDiscount, PaymentMethod, Transaction } from '@/types/pos'
 import { DEFAULT_POS_PRODUCTS } from '@/types/pos'
-import { Package, ShoppingCart, CreditCard, ArrowRight, Plus, Wallet } from 'lucide-react'
+import { Package, ShoppingCart, CreditCard, ArrowRight, Plus, Wallet, Coins } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
@@ -40,6 +41,7 @@ export default function POSView() {
   const [completedTransaction, setCompletedTransaction] = useState<Transaction | null>(null)
   const [showTransactionModal, setShowTransactionModal] = useState(false)
   const [showReceiptModal, setShowReceiptModal] = useState(false)
+  const [drawerCashModalOpen, setDrawerCashModalOpen] = useState(false)
 
   // ── Load products from Supabase ───────────────────────────────────────────
   const loadProducts = useCallback(async () => {
@@ -300,6 +302,16 @@ export default function POSView() {
               <Wallet className="h-3.5 w-3.5" />
               <span>Cash & Safe Drop</span>
             </Link>
+
+            <button
+              type="button"
+              onClick={() => setDrawerCashModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-800 hover:bg-rose-100 transition shadow-2xs active:scale-95"
+              title="Disburse cash from drawer (Courier, COD, Supplies) or Cash In float"
+            >
+              <Coins className="h-3.5 w-3.5 text-rose-600" />
+              <span>Paid Out / In</span>
+            </button>
           </div>
 
           {/* Quick Tablet Portrait View Selector (visible below lg: 1024px) */}
@@ -495,6 +507,17 @@ export default function POSView() {
           onNewSale={onNewSale}
         />
       )}
+
+      {/* Till Cash In / Paid Out Modal */}
+      <DrawerCashInOutModal
+        isOpen={drawerCashModalOpen}
+        branchId={activeBranch === 'JAPA Dagupan (Main Branch)' ? 'dagupan_main' : 'manila_branch'}
+        onClose={() => setDrawerCashModalOpen(false)}
+        onSuccess={() => {
+          setDrawerCashModalOpen(false)
+          toast.success('Till cash transaction recorded successfully.')
+        }}
+      />
     </DashboardShell>
   )
 }

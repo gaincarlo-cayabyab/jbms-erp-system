@@ -32,6 +32,7 @@ import {
   Ban,
 } from 'lucide-react'
 import { useConfirm } from '@/components/ui/confirm-dialog'
+import ManagerPinModal from '@/components/ui/manager-pin-modal'
 
 export default function SalesView() {
   const confirm = useConfirm()
@@ -47,6 +48,8 @@ export default function SalesView() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingOrder, setEditingOrder] = useState<SalesOrder | null>(null)
   const [selectedOrder, setSelectedOrder] = useState<SalesOrder | null>(null)
+  const [pinModalOpen, setPinModalOpen] = useState(false)
+  const [pendingDeleteOrder, setPendingDeleteOrder] = useState<SalesOrder | null>(null)
   const [isPending, startTransition] = useTransition()
 
   // URL query params: e.g. /sales?new=true
@@ -113,29 +116,55 @@ export default function SalesView() {
     setIsModalOpen(true)
   }
 
-  const handleDeleteOrder = async (order: SalesOrder) => {
-    const ok = await confirm({
-      title: `Delete Order ${order.order_number}?`,
-      message: `Are you sure you want to permanently delete order ${order.order_number} (${formatCurrency(order.total_amount)})? This cannot be undone.`,
-      confirmText: 'Delete Order',
-      variant: 'danger',
-    })
-    if (!ok) return
+  const formatCurrency = (val: number | string) => {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP',
+      minimumFractionDigits: 2,
+    }).format(Number(val) || 0)
+  }
 
+  const handleDeleteOrder = (order: SalesOrder) => {
+    setPendingDeleteOrder(order)
+    setPinModalOpen(true)
+  }
+
+  const handleAuthorizedDelete = async ({
+    authorizedBy,
+    role,
+    reason,
+  }: {
+    authorizedBy: string
+    role: string
+    reason: string
+  }) => {
+    if (!pendingDeleteOrder) return
     try {
       const supabase = createClient()
-      const { error } = await supabase
-        .from('sales_orders')
-        .delete()
-        .eq('id', order.id)
+      const { data, error } = await supabase.rpc('delete_sales_order_with_reversal', {
+        p_order_id: pendingDeleteOrder.id,
+        p_authorized_by: `${authorizedBy} (${role})`,
+        p_reason: reason,
+      })
 
       if (error) throw new Error(error.message)
+      if (data && typeof data === 'object' && 'success' in data && !(data as { success: boolean }).success) {
+        throw new Error((data as { error?: string }).error || 'Failed to delete order')
+      }
 
-      setOrders((prev) => prev.filter((o) => o.id !== order.id))
-      toast.success(`Order ${order.order_number} deleted.`)
+      setOrders((prev) => prev.filter((o) => o.id !== pendingDeleteOrder.id))
+      if (selectedOrder?.id === pendingDeleteOrder.id) {
+        setSelectedOrder(null)
+      }
+      toast.success(
+        `Order ${pendingDeleteOrder.order_number} deleted. Inventory stock & cash drawer reconciled.`
+      )
+      setPinModalOpen(false)
+      setPendingDeleteOrder(null)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to delete order'
       toast.error(`Error deleting order: ${msg}`)
+      throw err // allow ManagerPinModal to show the error message
     }
   }
 
@@ -219,14 +248,6 @@ export default function SalesView() {
       return true
     })
   }, [orders, searchQuery, statusFilter, paymentFilter, activeTab])
-
-  const formatCurrency = (val: number | string) => {
-    return new Intl.NumberFormat('en-PH', {
-      style: 'currency',
-      currency: 'PHP',
-      minimumFractionDigits: 2,
-    }).format(Number(val) || 0)
-  }
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '—'
@@ -756,6 +777,35 @@ export default function SalesView() {
         onEdit={(ord) => handleEditOrder(ord)}
         onDelete={(ord) => handleDeleteOrder(ord)}
         onCancel={(ord) => handleCancelOrder(ord)}
+      />
+
+      {/* Manager PIN Authorization Modal for Destructive Order Deletion */}
+      <ManagerPinModal
+        isOpen={pinModalOpen}
+        title={`Authorize Deletion: ${pendingDeleteOrder?.order_number || ''}`}
+        description="Permanently delete this order from the system, restore deducted inventory quantities to stock, and reverse any linked POS cash drawer payments."
+        itemDetails={[
+          { label: 'Order / Invoice #', value: pendingDeleteOrder?.order_number || '—' },
+          {
+            label: 'Customer',
+            value:
+              pendingDeleteOrder?.customers?.name ||
+              pendingDeleteOrder?.recipient_name ||
+              'Walk-in Customer',
+          },
+          {
+            label: 'Total Amount',
+            value: formatCurrency(pendingDeleteOrder?.total_amount || 0),
+          },
+          { label: 'Order Status', value: pendingDeleteOrder?.order_status || 'Draft' },
+          { label: 'Payment Status', value: pendingDeleteOrder?.payment_status || 'Unpaid' },
+        ]}
+        actionLabel="Authorize & Permanently Delete"
+        onClose={() => {
+          setPinModalOpen(false)
+          setPendingDeleteOrder(null)
+        }}
+        onAuthorized={handleAuthorizedDelete}
       />
     </DashboardShell>
   )
