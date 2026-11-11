@@ -119,10 +119,17 @@ export default function InventoryView() {
     }
   }
 
-  // URL query check (e.g. /inventory?new=true)
+  // URL query check (e.g. /inventory?new=true or /inventory?status=low_stock)
   useEffect(() => {
     if (searchParams.get('new') === 'true') {
       setIsProductModalOpen(true)
+    }
+    const statusParam = searchParams.get('status') as StockStatusTab | null
+    if (
+      statusParam &&
+      ['available', 'low_stock', 'out_of_stock', 'reserved', 'in_transit', 'quarantine'].includes(statusParam)
+    ) {
+      setStockStatusTab(statusParam)
     }
   }, [searchParams])
 

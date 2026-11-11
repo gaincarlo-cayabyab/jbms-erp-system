@@ -28,6 +28,7 @@ import {
 import StatCard from '@/components/stat-card'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { useBranch } from '@/lib/branch-context'
 import { getPayrollRecords, getAttendanceLogs } from '@/lib/payroll/payroll-service'
 import { getExpenses } from '@/lib/financials/expense-service'
 import type { SalesOrder } from '@/types/sales'
@@ -57,6 +58,7 @@ interface ActivityItem {
 export default function ExecutiveDashboard() {
   const searchParams = useSearchParams()
   const accessDenied = searchParams?.get('error') === 'access_denied'
+  const { activeBranchId } = useBranch()
 
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -100,22 +102,69 @@ export default function ExecutiveDashboard() {
         ])
 
       if (salesRes.status === 'fulfilled' && salesRes.value.data) {
-        setSalesOrders(salesRes.value.data as SalesOrder[])
+        let orders = salesRes.value.data as SalesOrder[]
+        if (activeBranchId && activeBranchId !== 'all') {
+          orders = orders.filter((o) => {
+            if (!o.branch) return true
+            const b = o.branch.toLowerCase()
+            return activeBranchId === 'dagupan_main' ? b.includes('dagupan') : b.includes('manila')
+          })
+        }
+        setSalesOrders(orders)
       }
+
       if (jobsRes.status === 'fulfilled' && jobsRes.value.data) {
         setJobOrders(jobsRes.value.data as JobOrder[])
       }
+
       if (productsRes.status === 'fulfilled' && productsRes.value.data) {
-        setProducts(productsRes.value.data as ProductItem[])
+        let prods = productsRes.value.data as ProductItem[]
+        // If viewing a specific branch, apply branch-level inventory_stock numbers
+        if (activeBranchId && activeBranchId !== 'all') {
+          const { data: bStock } = await supabase
+            .from('inventory_stock')
+            .select('product_id, quantity_on_hand, reserved_quantity, in_transit_quantity, quarantine_quantity, reorder_level')
+            .eq('branch_id', activeBranchId)
+
+          if (bStock && bStock.length > 0) {
+            const bsMap = new Map(bStock.map((s) => [s.product_id, s]))
+            prods = prods.map((p) => {
+              const bs = bsMap.get(p.id)
+              if (bs) {
+                return {
+                  ...p,
+                  stock_quantity: bs.quantity_on_hand ?? p.stock_quantity,
+                  reserved_stock: bs.reserved_quantity ?? p.reserved_stock,
+                  in_transit_stock: bs.in_transit_quantity ?? p.in_transit_stock,
+                  quarantine_stock: bs.quarantine_quantity ?? p.quarantine_stock,
+                  reorder_level: bs.reorder_level ?? p.reorder_level,
+                }
+              }
+              return p
+            })
+          }
+        }
+        setProducts(prods)
       }
+
       if (customersRes.status === 'fulfilled' && customersRes.value.data) {
         setCustomers(customersRes.value.data as Customer[])
       }
+
       if (payrollRes.status === 'fulfilled') {
         setPayrollRecords(payrollRes.value)
       }
+
       if (expensesRes.status === 'fulfilled') {
-        setExpenses(expensesRes.value.data || [])
+        let exps = expensesRes.value.data || []
+        if (activeBranchId && activeBranchId !== 'all') {
+          exps = exps.filter((e) => {
+            if (!e.branch) return true
+            const b = e.branch.toLowerCase()
+            return activeBranchId === 'dagupan_main' ? b.includes('dagupan') : b.includes('manila')
+          })
+        }
+        setExpenses(exps)
       }
 
       setLastUpdated(new Date())
@@ -125,10 +174,40 @@ export default function ExecutiveDashboard() {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [])
+  }, [activeBranchId])
 
   useEffect(() => {
     fetchData()
+  }, [fetchData])
+
+  // Realtime synchronization across all operational tables
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel('dashboard-realtime-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sales_orders' }, () => {
+        fetchData()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products_and_inventory' }, () => {
+        fetchData()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_stock' }, () => {
+        fetchData()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'job_orders' }, () => {
+        fetchData()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, () => {
+        fetchData()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_transactions' }, () => {
+        fetchData()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [fetchData])
 
   async function handleRefresh() {
@@ -168,10 +247,12 @@ export default function ExecutiveDashboard() {
     ['Completed', 'Delivered', 'Done'].includes(j.stage_status)
   )
 
-  // 3. Inventory
-  const lowStockItems = products.filter(
-    (p) => Number(p.stock_quantity) <= Number(p.reorder_level)
-  )
+  // 3. Inventory — Low stock warnings (items with active positive stock running low at or below reorder threshold)
+  const lowStockItems = products.filter((p) => {
+    const stock = Number(p.stock_quantity) || 0
+    const reorder = Number(p.reorder_level) || 10
+    return stock > 0 && stock <= reorder
+  })
 
   // 4. Payroll
   const totalPayrollBudget = payrollRecords.reduce((sum, r) => sum + (Number(r.total_net_pay) || 0), 0)
@@ -216,7 +297,7 @@ export default function ExecutiveDashboard() {
     })
   })
 
-  // Add low stock warnings
+  // Add low stock warnings (only active low-stock items)
   lowStockItems.slice(0, 3).forEach((p) => {
     activities.push({
       id: `inv-${p.id}`,
@@ -226,9 +307,9 @@ export default function ExecutiveDashboard() {
       timestamp: 'Action Needed',
       statusBadge: {
         label: 'Low Stock',
-        colorClass: 'bg-rose-100 text-rose-800 font-semibold',
+        colorClass: 'bg-amber-100 text-amber-800 font-semibold',
       },
-      href: '/inventory',
+      href: '/inventory?status=low_stock',
     })
   })
 
@@ -498,19 +579,19 @@ export default function ExecutiveDashboard() {
         </Link>
 
         {/* Low Stock Alerts */}
-        <Link href="/inventory" className="block transition-transform active:scale-[0.99]">
+        <Link href="/inventory?status=low_stock" className="block transition-transform active:scale-[0.99]">
           <StatCard
             title="Stock Warnings"
             value={lowStockItems.length}
             subtitle={
               lowStockItems.length > 0
-                ? `${lowStockItems.length} item${lowStockItems.length === 1 ? '' : 's'} below reorder level`
-                : 'All inventory stock levels healthy'
+                ? `${lowStockItems.length} item${lowStockItems.length === 1 ? '' : 's'} low stock`
+                : 'All stock levels healthy'
             }
             icon={lowStockItems.length > 0 ? AlertTriangle : CheckCircle2}
             colorClass={
               lowStockItems.length > 0
-                ? 'bg-rose-50 text-rose-600 border border-rose-200/80 ring-2 ring-rose-500/10'
+                ? 'bg-amber-50 text-amber-600 border border-amber-200/80 ring-2 ring-amber-500/10'
                 : 'bg-emerald-50 text-emerald-600 border border-emerald-200/80 ring-2 ring-emerald-500/10'
             }
             trend={{
@@ -632,56 +713,66 @@ export default function ExecutiveDashboard() {
             </Link>
           </div>
 
-          <div className="divide-y divide-zinc-100 flex-1 overflow-y-auto max-h-[420px]">
-            {activities.map((act) => (
-              <Link
-                key={act.id}
-                href={act.href}
-                className="flex items-center justify-between px-6 py-3.5 transition-colors hover:bg-zinc-50/80 group"
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div
-                    className={cn(
-                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-bold',
-                      act.type === 'sale' && 'bg-blue-100 text-blue-700',
-                      act.type === 'job' && 'bg-violet-100 text-violet-700',
-                      act.type === 'inventory' && 'bg-rose-100 text-rose-700',
-                      act.type === 'payroll' && 'bg-emerald-100 text-emerald-700',
-                      act.type === 'customer' && 'bg-cyan-100 text-cyan-700'
-                    )}
-                  >
-                    {act.type === 'sale' && <ShoppingCart className="h-4 w-4" />}
-                    {act.type === 'job' && <Layers className="h-4 w-4" />}
-                    {act.type === 'inventory' && <Package className="h-4 w-4" />}
-                    {act.type === 'payroll' && <Wallet className="h-4 w-4" />}
-                    {act.type === 'customer' && <Users className="h-4 w-4" />}
+          <div className="divide-y divide-zinc-100 flex-1 overflow-y-auto">
+            {activities.length === 0 ? (
+              <div className="flex flex-1 flex-col items-center justify-center py-12 px-6 text-center">
+                <CheckCircle2 className="h-8 w-8 text-emerald-500 mb-2" />
+                <p className="text-xs font-bold text-zinc-700">All Operations Clear</p>
+                <p className="text-[11px] text-zinc-400 mt-0.5">
+                  No active stock alerts or pending exceptions. System is synchronized.
+                </p>
+              </div>
+            ) : (
+              activities.map((act) => (
+                <Link
+                  key={act.id}
+                  href={act.href}
+                  className="flex items-center justify-between px-6 py-3.5 transition-colors hover:bg-zinc-50/80 group"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div
+                      className={cn(
+                        'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-bold',
+                        act.type === 'sale' && 'bg-blue-100 text-blue-700',
+                        act.type === 'job' && 'bg-violet-100 text-violet-700',
+                        act.type === 'inventory' && 'bg-amber-100 text-amber-700',
+                        act.type === 'payroll' && 'bg-emerald-100 text-emerald-700',
+                        act.type === 'customer' && 'bg-cyan-100 text-cyan-700'
+                      )}
+                    >
+                      {act.type === 'sale' && <ShoppingCart className="h-4 w-4" />}
+                      {act.type === 'job' && <Layers className="h-4 w-4" />}
+                      {act.type === 'inventory' && <Package className="h-4 w-4" />}
+                      {act.type === 'payroll' && <Wallet className="h-4 w-4" />}
+                      {act.type === 'customer' && <Users className="h-4 w-4" />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-semibold text-zinc-900 group-hover:text-blue-600 transition-colors">
+                        {act.title}
+                      </p>
+                      <p className="truncate text-[11px] text-zinc-500">{act.subtitle}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-semibold text-zinc-900 group-hover:text-blue-600 transition-colors">
-                      {act.title}
-                    </p>
-                    <p className="truncate text-[11px] text-zinc-500">{act.subtitle}</p>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-3 shrink-0 ml-3">
-                  <span
-                    className={cn(
-                      'rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide',
-                      act.statusBadge.colorClass
-                    )}
-                  >
-                    {act.statusBadge.label}
-                  </span>
-                  <span className="text-[11px] text-zinc-400 font-medium hidden sm:inline">
-                    {act.timestamp}
-                  </span>
-                </div>
-              </Link>
-            ))}
+                  <div className="flex items-center gap-3 shrink-0 ml-3">
+                    <span
+                      className={cn(
+                        'rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide',
+                        act.statusBadge.colorClass
+                      )}
+                    >
+                      {act.statusBadge.label}
+                    </span>
+                    <span className="text-[11px] text-zinc-400 font-medium hidden sm:inline">
+                      {act.timestamp}
+                    </span>
+                  </div>
+                </Link>
+              ))
+            )}
           </div>
 
-          <div className="border-t border-zinc-100 bg-zinc-50 px-6 py-3 text-center">
+          <div className="mt-auto border-t border-zinc-100 bg-zinc-50 px-6 py-3 text-center">
             <p className="text-[11px] text-zinc-500">
               Aggregated across Sales, Production Queue, Inventory, and Payroll tables
             </p>
