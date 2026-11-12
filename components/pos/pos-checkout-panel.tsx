@@ -630,32 +630,8 @@ export default function POSCheckoutPanel({
           </span>
         </div>
 
-        {/* Order Type Toggle (Walk-in, Pickup, Delivery) */}
-        <div className="grid grid-cols-3 gap-1">
-          {FULFILLMENT_TYPES.map((ft) => {
-            const Icon     = ft.icon
-            const isActive = fulfillmentType === ft.id
-            return (
-              <button
-                key={ft.id}
-                type="button"
-                onClick={() => setFulfillmentType(ft.id)}
-                className={cn(
-                  'flex items-center justify-center gap-1 rounded-lg border py-1 px-1.5 text-center transition active:scale-95',
-                  isActive
-                    ? ft.activeClass
-                    : `bg-white border-slate-200 text-slate-600 ${ft.hoverClass}`
-                )}
-              >
-                <Icon className="h-3 w-3" />
-                <span className="text-[10px] font-bold truncate">{ft.label}</span>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* ── Payment Terms / Downpayment Selector (Below Walk-in / Order Type) ── */}
-        <div className="pt-1.5 border-t border-slate-200/80 space-y-1.5">
+        {/* ── Payment Terms / Downpayment Selector (Below Customer, Above Order Type) ── */}
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
               Payment Terms
@@ -667,8 +643,8 @@ export default function POSCheckoutPanel({
             )}
           </div>
 
-          {/* 4 Terms Buttons */}
-          <div className="grid grid-cols-4 gap-1">
+          {/* 2×2 grid so labels never overflow */}
+          <div className="grid grid-cols-2 gap-1">
             {PAYMENT_TERMS.map((term) => {
               const isSelected = paymentTerms === term.id
               return (
@@ -677,13 +653,13 @@ export default function POSCheckoutPanel({
                   type="button"
                   onClick={() => handleSelectPaymentTerms(term.id)}
                   className={cn(
-                    'rounded-lg border py-1.5 px-1 text-center transition-all active:scale-95 text-[10px] font-bold leading-tight flex flex-col items-center justify-center min-h-[38px]',
+                    'rounded-lg border py-1.5 px-2 text-center transition-all active:scale-95 leading-tight flex flex-col items-center justify-center min-h-[36px]',
                     isSelected
                       ? 'border-indigo-600 bg-indigo-600 text-white shadow-2xs'
                       : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100 hover:border-slate-300'
                   )}
                 >
-                  <span className="truncate">{term.label}</span>
+                  <span className="text-[10px] font-bold text-center w-full">{term.label}</span>
                   {term.id === 'downpayment_50' && totals.grandTotal > 0 && (
                     <span className={cn('text-[9px] font-semibold tabular-nums', isSelected ? 'text-indigo-100' : 'text-slate-400')}>
                       {PHP.format(Math.round(totals.grandTotal * 0.5))}
@@ -749,6 +725,33 @@ export default function POSCheckoutPanel({
               </div>
             </div>
           )}
+        </div>
+
+        {/* Order Type Toggle (Walk-in, Pickup, Delivery) */}
+        <div className="pt-1.5 border-t border-slate-200/80 space-y-1">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Order Type</span>
+          <div className="grid grid-cols-3 gap-1">
+            {FULFILLMENT_TYPES.map((ft) => {
+              const Icon     = ft.icon
+              const isActive = fulfillmentType === ft.id
+              return (
+                <button
+                  key={ft.id}
+                  type="button"
+                  onClick={() => setFulfillmentType(ft.id)}
+                  className={cn(
+                    'flex items-center justify-center gap-1 rounded-lg border py-1 px-1.5 text-center transition active:scale-95',
+                    isActive
+                      ? ft.activeClass
+                      : `bg-white border-slate-200 text-slate-600 ${ft.hoverClass}`
+                  )}
+                >
+                  <Icon className="h-3 w-3" />
+                  <span className="text-[10px] font-bold truncate">{ft.label}</span>
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         {/* Customer Details input if balance due > 0 or pickup/delivery */}
