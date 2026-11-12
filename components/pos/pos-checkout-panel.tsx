@@ -81,8 +81,7 @@ const PAYMENT_METHODS: {
 }[] = [
   { id: 'CASH',          label: 'Cash',            icon: Banknote },
   { id: 'GCASH',         label: 'GCash',           icon: Smartphone },
-  { id: 'CARD',          label: 'Card',            icon: CreditCard },
-  { id: 'BANK_TRANSFER', label: 'Bank',            icon: Building2 },
+  { id: 'BANK_TRANSFER', label: 'Bank Transfer',   icon: Building2 },
 ]
 
 const FULFILLMENT_TYPES = [
@@ -173,15 +172,61 @@ export default function POSCheckoutPanel({
   const [shippingFee, setShippingFee]         = useState('')
   const [deliveryDue, setDeliveryDue]         = useState('')
 
+  // Payment terms & deposit computation (applies to all fulfillment types including walk-ins)
+  function computePaymentAmounts(): { amountPaid: number; balanceDue: number } {
+    if (totals.grandTotal <= 0) return { amountPaid: 0, balanceDue: 0 }
+
+    if (paymentTerms === 'full_payment') {
+      return { amountPaid: totals.grandTotal, balanceDue: 0 }
+    }
+    if (paymentTerms === 'downpayment_50') {
+      const half = Math.round((totals.grandTotal * 0.5) * 100) / 100
+      return { amountPaid: half, balanceDue: Math.max(0, totals.grandTotal - half) }
+    }
+    if (paymentTerms === 'custom_deposit') {
+      const deposit = parseFloat(customDeposit) || 0
+      const paid = Math.min(totals.grandTotal, Math.max(0, deposit))
+      return { amountPaid: paid, balanceDue: Math.max(0, totals.grandTotal - paid) }
+    }
+    if (paymentTerms === 'pay_on_pickup') {
+      return { amountPaid: 0, balanceDue: totals.grandTotal }
+    }
+    return { amountPaid: totals.grandTotal, balanceDue: 0 }
+  }
+
   // Derived values
+  const { amountPaid: depositNow, balanceDue: depositBalance } = computePaymentAmounts()
   const tendered         = parseFloat(tenderedInput) || 0
-  const changeDue        = Math.max(0, tendered - totals.grandTotal)
-  const isExactOrGreater = tendered >= totals.grandTotal && totals.grandTotal > 0
-  const needsCustomer    = fulfillmentType !== 'walk_in'
+  const changeDue        = Math.max(0, tendered - depositNow)
+  const hasBalance       = depositBalance > 0
+  const isCashSufficient = depositNow === 0 || tendered >= depositNow
+  const needsCustomer    = fulfillmentType !== 'walk_in' || hasBalance
 
   const customerLoyalty = selectedCustomer
     ? getLoyaltyBadge(selectedCustomer.loyalty_tier, selectedCustomer.customer_type)
     : null
+
+  function handleSelectPaymentTerms(terms: string) {
+    soundEffects.keyClick(terms)
+    setPaymentTerms(terms)
+    if (terms === 'full_payment') {
+      if (selectedMethod !== 'CASH') {
+        setTenderedInput(String(totals.grandTotal))
+      }
+    } else if (terms === 'downpayment_50') {
+      const half = Math.round(totals.grandTotal * 0.5)
+      if (selectedMethod !== 'CASH') {
+        setTenderedInput(String(half))
+      }
+    } else if (terms === 'custom_deposit') {
+      const dep = parseFloat(customDeposit) || 0
+      if (selectedMethod !== 'CASH') {
+        setTenderedInput(String(dep))
+      }
+    } else if (terms === 'pay_on_pickup') {
+      setTenderedInput('0')
+    }
+  }
 
   function handleQuickAmount(amt: number) {
     soundEffects.keyClick(String(amt))
@@ -196,7 +241,7 @@ export default function POSCheckoutPanel({
 
   function handleExact() {
     soundEffects.keyClick('E')
-    setTenderedInput(String(Math.ceil(totals.grandTotal)))
+    setTenderedInput(String(Math.ceil(depositNow)))
   }
 
   function handleKeypadPress(val: string) {
@@ -256,43 +301,22 @@ export default function POSCheckoutPanel({
     setPinRequired(false)
   }
 
-  function computePaymentAmounts(): { amountPaid: number; balanceDue: number } {
-    if (fulfillmentType === 'walk_in') {
-      return { amountPaid: totals.grandTotal, balanceDue: 0 }
-    }
-    if (paymentTerms === 'full_payment') {
-      return { amountPaid: totals.grandTotal, balanceDue: 0 }
-    }
-    if (paymentTerms === 'downpayment_50') {
-      const paid = totals.grandTotal * 0.5
-      return { amountPaid: paid, balanceDue: totals.grandTotal - paid }
-    }
-    if (paymentTerms === 'custom_deposit') {
-      const paid = parseFloat(customDeposit) || 0
-      return { amountPaid: paid, balanceDue: Math.max(0, totals.grandTotal - paid) }
-    }
-    if (paymentTerms === 'pay_on_pickup') {
-      return { amountPaid: 0, balanceDue: totals.grandTotal }
-    }
-    return { amountPaid: totals.grandTotal, balanceDue: 0 }
-  }
-
   function buildFulfillmentData(): FulfillmentData {
     const { amountPaid, balanceDue } = computePaymentAmounts()
     const ft = FULFILLMENT_TYPES.find((f) => f.id === fulfillmentType)!
     const finalCustName =
       customerName.trim() ||
       selectedCustomer?.name ||
-      (fulfillmentType === 'walk_in' ? 'Walk-in Customer' : undefined)
+      (fulfillmentType === 'walk_in' && balanceDue === 0 ? 'Walk-in Customer' : 'Customer')
     const finalCustPhone = customerPhone.trim() || selectedCustomer?.contact_number || undefined
 
     return {
       fulfillmentType,
-      fulfillmentStatus: ft.status,
+      fulfillmentStatus: balanceDue > 0 && fulfillmentType === 'walk_in' ? 'pending_staging' : ft.status,
       paymentTerms,
       amountPaid,
       balanceDue,
-      pickupDate: fulfillmentType === 'pickup' ? (pickupDate || null) : null,
+      pickupDate: (fulfillmentType === 'pickup' || balanceDue > 0) ? (pickupDate || null) : null,
       customerId: selectedCustomer?.id || null,
       customerName: finalCustName,
       customerPhone: finalCustPhone,
@@ -313,17 +337,22 @@ export default function POSCheckoutPanel({
 
   function triggerCheckout() {
     if (totals.grandTotal <= 0) return
-    const finalTendered = selectedMethod === 'CASH' ? tendered : totals.grandTotal
+    const { amountPaid: depNow, balanceDue: depBal } = computePaymentAmounts()
+    const finalTendered = selectedMethod === 'CASH' ? tendered : depNow
 
-    if (fulfillmentType === 'walk_in' && selectedMethod === 'CASH' && !isExactOrGreater) {
+    if (selectedMethod === 'CASH' && depNow > 0 && tendered < depNow) {
       soundEffects.error()
-      toast.error('Tendered amount must be equal to or greater than the total amount due.')
+      toast.error(`Tendered amount must be at least ${PHP.format(depNow)} to cover the required payment.`)
       return
     }
 
     if (needsCustomer && !customerName.trim() && !selectedCustomer?.name) {
       soundEffects.error()
-      toast.error('Please specify a customer name for pickup / delivery orders.')
+      toast.error(
+        depBal > 0
+          ? 'Please enter customer name to track the remaining balance.'
+          : 'Please specify customer name for pickup / delivery orders.'
+      )
       return
     }
 
@@ -336,8 +365,6 @@ export default function POSCheckoutPanel({
     soundEffects.keyClick('Q')
     onSaveQuotation?.(buildFulfillmentData())
   }
-
-  const { amountPaid: depositNow, balanceDue: depositBalance } = computePaymentAmounts()
 
   return (
     <div className="flex flex-col h-full bg-white border-l border-slate-200 select-none">
@@ -417,9 +444,9 @@ export default function POSCheckoutPanel({
         </div>
       </div>
 
-      {/* ── Payment Method Quick Selector (Compact Pills) ─────────────── */}
+      {/* ── Payment Method Quick Selector (3 Methods: Cash, GCash, Bank Transfer) ── */}
       <div className="px-3 py-1.5 border-b border-slate-100 bg-slate-50/50 shrink-0">
-        <div className="grid grid-cols-4 gap-1">
+        <div className="grid grid-cols-3 gap-1.5">
           {PAYMENT_METHODS.map(({ id, label, icon: Icon }) => {
             const isSelected = selectedMethod === id
             return (
@@ -430,22 +457,119 @@ export default function POSCheckoutPanel({
                   soundEffects.keyClick(id)
                   setSelectedMethod(id)
                   if (id !== 'CASH') {
-                    setTenderedInput(String(totals.grandTotal))
+                    setTenderedInput(String(depositNow))
                   }
                 }}
                 className={cn(
-                  'flex items-center justify-center gap-1 rounded-lg border py-1.5 px-1 text-center transition active:scale-95',
+                  'flex items-center justify-center gap-1.5 rounded-lg border py-2 px-1 text-center transition active:scale-95 shadow-2xs',
                   isSelected
-                    ? 'border-indigo-600 bg-indigo-600 text-white font-bold shadow-2xs'
-                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+                    ? 'border-indigo-600 bg-indigo-600 text-white font-bold'
+                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100 hover:border-slate-300'
                 )}
               >
                 <Icon className={cn('h-3.5 w-3.5 shrink-0', isSelected ? 'text-white' : 'text-slate-500')} />
-                <span className="text-[10px] font-bold truncate">{label}</span>
+                <span className="text-[11px] font-bold truncate">{label}</span>
               </button>
             )
           })}
         </div>
+      </div>
+
+      {/* ── Payment Terms / Downpayment Selector ──────────────────────── */}
+      <div className="px-3 py-2 border-b border-slate-100 bg-slate-50/70 shrink-0 space-y-1.5">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            Payment Terms
+          </span>
+          {depositBalance > 0 && (
+            <span className="text-[10px] font-black text-amber-800 bg-amber-100/90 border border-amber-300 px-1.5 py-0.5 rounded-md">
+              Balance: {PHP.format(depositBalance)}
+            </span>
+          )}
+        </div>
+
+        {/* 4 Terms Buttons */}
+        <div className="grid grid-cols-4 gap-1">
+          {PAYMENT_TERMS.map((term) => {
+            const isSelected = paymentTerms === term.id
+            return (
+              <button
+                key={term.id}
+                type="button"
+                onClick={() => handleSelectPaymentTerms(term.id)}
+                className={cn(
+                  'rounded-lg border py-1.5 px-1 text-center transition-all active:scale-95 text-[10px] font-bold leading-tight flex flex-col items-center justify-center min-h-[38px]',
+                  isSelected
+                    ? 'border-indigo-600 bg-indigo-600 text-white shadow-2xs'
+                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100 hover:border-slate-300'
+                )}
+              >
+                <span className="truncate">{term.label}</span>
+                {term.id === 'downpayment_50' && totals.grandTotal > 0 && (
+                  <span className={cn('text-[9px] font-semibold tabular-nums', isSelected ? 'text-indigo-100' : 'text-slate-400')}>
+                    {PHP.format(Math.round(totals.grandTotal * 0.5))}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Custom Deposit Amount Input (when custom_deposit selected) */}
+        {paymentTerms === 'custom_deposit' && (
+          <div className="pt-1 space-y-1 animate-in fade-in duration-150">
+            <div className="relative">
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₱</span>
+              <input
+                type="number"
+                min="0"
+                max={totals.grandTotal}
+                placeholder="Custom deposit amount…"
+                value={customDeposit}
+                onChange={(e) => {
+                  setCustomDeposit(e.target.value)
+                  if (selectedMethod !== 'CASH') {
+                    setTenderedInput(e.target.value)
+                  }
+                }}
+                className="w-full rounded-lg border border-indigo-300 bg-white py-1.5 pl-6 pr-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 tabular-nums shadow-2xs"
+              />
+            </div>
+            {/* Quick deposit presets */}
+            <div className="grid grid-cols-4 gap-1">
+              {[0.2, 0.3, 0.5, 0.7].map((pct) => {
+                const amt = Math.round(totals.grandTotal * pct)
+                return (
+                  <button
+                    key={pct}
+                    type="button"
+                    onClick={() => {
+                      setCustomDeposit(String(amt))
+                      if (selectedMethod !== 'CASH') setTenderedInput(String(amt))
+                    }}
+                    className="py-1 text-[10px] font-semibold bg-white border border-slate-200 rounded text-slate-600 hover:bg-slate-50 transition"
+                  >
+                    {pct * 100}% ({PHP.format(amt)})
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Downpayment Live Breakdown Callout (if not full payment) */}
+        {paymentTerms !== 'full_payment' && totals.grandTotal > 0 && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-2 flex items-center justify-between text-xs animate-in fade-in duration-150 shadow-2xs">
+            <div className="flex flex-col">
+              <span className="text-[10px] text-amber-800 font-bold uppercase tracking-wider">Collect Today</span>
+              <span className="text-sm font-black text-amber-950 tabular-nums">{PHP.format(depositNow)}</span>
+            </div>
+            <div className="text-right flex flex-col">
+              <span className="text-[10px] text-rose-700 font-bold uppercase tracking-wider">Remaining Balance</span>
+              <span className="text-sm font-black text-rose-800 tabular-nums">{PHP.format(depositBalance)}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── TENDERED AMOUNT & DEFAULT TOUCH KEYPAD (FIRST TO BE TYPED) ─── */}
@@ -459,7 +583,7 @@ export default function POSCheckoutPanel({
               <input
                 type="number"
                 min="0"
-                placeholder="0.00"
+                placeholder={depositNow > 0 ? String(depositNow) : '0.00'}
                 value={tenderedInput}
                 onChange={(e) => setTenderedInput(e.target.value)}
                 onFocus={handlePosInputFocus}
@@ -471,7 +595,7 @@ export default function POSCheckoutPanel({
             <div
               className={cn(
                 'rounded-xl border px-3 py-2 flex justify-between items-center transition shadow-2xs',
-                isExactOrGreater
+                isCashSufficient
                   ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
                   : 'border-slate-200 bg-slate-50 text-slate-500'
               )}
@@ -489,7 +613,7 @@ export default function POSCheckoutPanel({
               type="button"
               onClick={handleExact}
               className="py-2 text-xs font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 active:scale-95 border border-indigo-200 rounded-xl transition shadow-2xs select-none flex items-center justify-center"
-              title="Pay exact grand total"
+              title={depositNow > 0 ? `Pay exact ${PHP.format(depositNow)}` : 'Pay exact'}
             >
               Exact
             </button>
@@ -562,12 +686,24 @@ export default function POSCheckoutPanel({
           </div>
         </div>
       ) : (
-        /* Digital / Card Terminal info */
-        <div className="p-3 border-b border-slate-100 flex flex-col justify-center items-center text-center text-slate-500 shrink-0 bg-slate-50/50">
-          <CreditCard className="h-6 w-6 text-indigo-600 mb-1" />
-          <p className="text-xs font-bold text-slate-800">Card / Digital Payment</p>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            Charge exact <span className="font-extrabold text-indigo-700">{PHP.format(totals.grandTotal)}</span> on terminal
+        /* Digital GCash / Bank Transfer details */
+        <div className="p-4 border-b border-slate-100 flex flex-col justify-center items-center text-center text-slate-500 shrink-0 bg-slate-50/50 space-y-1">
+          {selectedMethod === 'GCASH' ? (
+            <Smartphone className="h-7 w-7 text-indigo-600 mb-0.5" />
+          ) : (
+            <Building2 className="h-7 w-7 text-indigo-600 mb-0.5" />
+          )}
+          <p className="text-xs font-bold text-slate-800">
+            {selectedMethod === 'GCASH' ? 'GCash QR / Mobile Payment' : 'Bank Transfer Deposit'}
+          </p>
+          <p className="text-xs text-slate-600">
+            Collect {paymentTerms !== 'full_payment' ? 'Deposit of ' : 'Total of '}
+            <span className="font-extrabold text-indigo-700">{PHP.format(depositNow)}</span>
+          </p>
+          <p className="text-[10px] text-slate-400">
+            {selectedMethod === 'GCASH'
+              ? 'Scan merchant QR code or transfer to store GCash number'
+              : 'Direct bank deposit or online transfer (BDO, BPI, Metrobank)'}
           </p>
         </div>
       )}
@@ -597,7 +733,7 @@ export default function POSCheckoutPanel({
               <button
                 key={ft.id}
                 type="button"
-                onClick={() => { setFulfillmentType(ft.id); setPaymentTerms('full_payment') }}
+                onClick={() => setFulfillmentType(ft.id)}
                 className={cn(
                   'flex items-center justify-center gap-1 rounded-lg border py-1 px-1.5 text-center transition active:scale-95',
                   isActive
@@ -612,35 +748,46 @@ export default function POSCheckoutPanel({
           })}
         </div>
 
-        {/* Pickup / Delivery Extended Inputs if selected */}
+        {/* Customer Details input if balance due > 0 or pickup/delivery */}
         {needsCustomer && (
-          <div className="space-y-1.5 pt-1">
+          <div className="space-y-1.5 pt-1 border-t border-slate-200">
+            {hasBalance && (
+              <p className="text-[10px] text-amber-800 font-bold flex items-center gap-1">
+                <span>⚠️</span>
+                <span>Customer info required to track balance of {PHP.format(depositBalance)}</span>
+              </p>
+            )}
             <input
               type="text"
-              placeholder="Customer Name"
+              placeholder="Customer Name *"
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full rounded-lg border border-slate-200 bg-white py-1.5 px-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
             <input
               type="tel"
-              placeholder="Contact Phone #"
+              placeholder="Contact Phone # *"
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full rounded-lg border border-slate-200 bg-white py-1.5 px-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
-            {fulfillmentType === 'pickup' && (
-              <input
-                type="datetime-local"
-                value={pickupDate}
-                onChange={(e) => setPickupDate(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
+            {(fulfillmentType === 'pickup' || hasBalance) && (
+              <div className="space-y-0.5">
+                <label className="text-[9px] font-bold text-slate-400 uppercase">
+                  Target Pickup / Completion Date
+                </label>
+                <input
+                  type="datetime-local"
+                  value={pickupDate}
+                  onChange={(e) => setPickupDate(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
             )}
             {fulfillmentType === 'delivery' && (
               <div className="space-y-1">
                 <textarea
-                  placeholder="Delivery Address"
+                  placeholder="Delivery Address *"
                   value={shippingAddress}
                   onChange={(e) => setShippingAddress(e.target.value)}
                   rows={2}
@@ -696,23 +843,25 @@ export default function POSCheckoutPanel({
           onClick={triggerCheckout}
           disabled={
             totals.grandTotal <= 0 ||
-            (fulfillmentType === 'walk_in' && selectedMethod === 'CASH' && !isExactOrGreater)
+            (selectedMethod === 'CASH' && depositNow > 0 && !isCashSufficient)
           }
           className={cn(
             'w-full min-h-[50px] rounded-2xl flex items-center justify-center gap-2 font-black text-white shadow-modern transition-all duration-150 active:scale-[0.98]',
             totals.grandTotal <= 0 ||
-            (fulfillmentType === 'walk_in' && selectedMethod === 'CASH' && !isExactOrGreater)
+            (selectedMethod === 'CASH' && depositNow > 0 && !isCashSufficient)
               ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
               : 'bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-500/25 active:scale-95'
           )}
         >
           <CheckCircle2 className="h-5 w-5" />
           <span className="text-xs sm:text-sm uppercase tracking-wide">
-            {fulfillmentType === 'walk_in' && selectedMethod === 'CASH' && !isExactOrGreater && totals.grandTotal > 0
-              ? 'Enter Tendered Amount'
-              : fulfillmentType !== 'walk_in'
-                ? `Confirm Order (${PHP.format(depositNow)} deposit)`
-                : `Complete Sale (${PHP.format(totals.grandTotal)})`}
+            {totals.grandTotal <= 0
+              ? 'Cart is Empty'
+              : selectedMethod === 'CASH' && depositNow > 0 && !isCashSufficient
+                ? `Enter Tendered (Min ${PHP.format(depositNow)})`
+                : hasBalance
+                  ? `Confirm Downpayment (${PHP.format(depositNow)} · ${PHP.format(depositBalance)} Due)`
+                  : `Complete Sale (${PHP.format(totals.grandTotal)})`}
           </span>
         </button>
       </div>

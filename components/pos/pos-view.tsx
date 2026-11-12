@@ -245,7 +245,7 @@ export default function POSView() {
       vatAmount: totals.vatAmount,
       grandTotal: totals.grandTotal,
       amountTendered,
-      changeDue: Math.max(0, amountTendered - totals.grandTotal),
+      changeDue: Math.max(0, amountTendered - (fulfillmentData.amountPaid ?? totals.grandTotal)),
       paymentMethod,
       createdAt: new Date(),
       // Fulfillment

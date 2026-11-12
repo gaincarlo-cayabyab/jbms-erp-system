@@ -42,60 +42,86 @@ export default function POSReceiptModal({ transaction, onNewSale }: Props) {
       : ''
 
   // ── HTML5 Canvas Digital Receipt PNG Download ────────────────────────────
-  function handleDownloadPNG() {
+  async function handleDownloadPNG() {
     try {
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')
       if (!ctx) return
 
       canvas.width = 600
-      canvas.height = 1040
+      canvas.height = 1200 + transaction.items.length * 24
+
+      // Preload JAPA Logo
+      const logo = new Image()
+      logo.crossOrigin = 'anonymous'
+      await new Promise<void>((resolve) => {
+        logo.onload = () => resolve()
+        logo.onerror = () => resolve()
+        logo.src = '/assets/images/JAPA_logo.jpg'
+      })
 
       // Background
       ctx.fillStyle = '#FFFFFF'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
 
+      let startY = 30
+      if (logo.complete && logo.naturalWidth > 0) {
+        const logoSize = 72
+        ctx.drawImage(logo, (canvas.width - logoSize) / 2, startY, logoSize, logoSize)
+        startY += logoSize + 15
+      }
+
       // Header borders & title
       ctx.fillStyle = '#0F172A'
       ctx.textAlign = 'center'
       ctx.font = 'bold 22px Courier New, monospace'
-      ctx.fillText('=================================================', 300, 40)
+      ctx.fillText('=================================================', 300, startY)
+      startY += 30
       ctx.font = 'bold 24px Courier New, monospace'
-      ctx.fillText('JAPA GLOBAL DIGITAL', 300, 75)
+      ctx.fillText('JAPA GLOBAL DIGITAL', 300, startY)
+      startY += 26
       ctx.font = '16px Courier New, monospace'
-      ctx.fillText(transaction.branchName, 300, 105)
+      ctx.fillText(transaction.branchName, 300, startY)
+      startY += 24
       ctx.font = '13px Courier New, monospace'
       ctx.fillStyle = '#475569'
-      ctx.fillText(branchAddress, 300, 130)
-      ctx.fillText(`Tel: ${branchTel}`, 300, 150)
+      ctx.fillText(branchAddress, 300, startY)
+      startY += 20
+      ctx.fillText(`Tel: ${branchTel}`, 300, startY)
+      startY += 22
       ctx.fillStyle = '#0F172A'
       ctx.font = 'bold 22px Courier New, monospace'
-      ctx.fillText('=================================================', 300, 175)
+      ctx.fillText('=================================================', 300, startY)
+      startY += 30
 
       // Metadata
       ctx.textAlign = 'left'
       ctx.font = '14px Courier New, monospace'
-      ctx.fillText(`Invoice No: ${transaction.invoiceNo}`, 40, 205)
-      ctx.fillText(`Date/Time : ${dateStr} ${timeStr}`, 40, 225)
-      ctx.fillText(`Cashier   : ${transaction.cashierName} (POS-01)`, 40, 245)
-      ctx.fillText(`Branch    : ${transaction.branchName}`, 40, 265)
-      ctx.fillText(`Customer  : ${custName}${custTierBadge}`, 40, 285)
+      ctx.fillText(`Invoice No: ${transaction.invoiceNo}`, 40, startY)
+      startY += 20
+      ctx.fillText(`Date/Time : ${dateStr} ${timeStr}`, 40, startY)
+      startY += 20
+      ctx.fillText(`Cashier   : ${transaction.cashierName} (POS-01)`, 40, startY)
+      startY += 20
+      ctx.fillText(`Branch    : ${transaction.branchName}`, 40, startY)
+      startY += 20
+      ctx.fillText(`Customer  : ${custName}${custTierBadge}`, 40, startY)
+      startY += 20
 
-      let nextHeaderY = 305
       if (custPhone) {
-        ctx.fillText(`Contact   : ${custPhone}`, 40, 305)
-        nextHeaderY = 325
+        ctx.fillText(`Contact   : ${custPhone}`, 40, startY)
+        startY += 20
       }
 
       // Separator
-      ctx.fillText('-------------------------------------------------', 40, nextHeaderY + 15)
+      ctx.fillText('-------------------------------------------------', 40, startY + 10)
       ctx.font = 'bold 13px Courier New, monospace'
-      ctx.fillText('ITEM                          QTY   PRICE   TOTAL', 40, nextHeaderY + 35)
+      ctx.fillText('ITEM                          QTY   PRICE   TOTAL', 40, startY + 30)
       ctx.font = '14px Courier New, monospace'
-      ctx.fillText('-------------------------------------------------', 40, nextHeaderY + 50)
+      ctx.fillText('-------------------------------------------------', 40, startY + 45)
 
       // Items list
-      let y = nextHeaderY + 75
+      let y = startY + 70
       ctx.font = '13px Courier New, monospace'
       transaction.items.forEach((item) => {
         const parsed = parseProductPresentation(item.product)
@@ -124,6 +150,31 @@ export default function POSReceiptModal({ transaction, onNewSale }: Props) {
       ctx.font = 'bold 16px Courier New, monospace'
       ctx.fillText(`GRAND TOTAL                           PHP ${transaction.grandTotal.toFixed(2)}`, 40, y)
       y += 24
+
+      // Downpayment and Balance Due in PNG export
+      if (transaction.balanceDue && transaction.balanceDue > 0) {
+        ctx.font = 'bold 13px Courier New, monospace'
+        const termLabel = transaction.paymentTerms === 'downpayment_50'
+          ? '50% Downpayment'
+          : transaction.paymentTerms === 'custom_deposit'
+          ? 'Partial Deposit'
+          : transaction.paymentTerms === 'pay_on_pickup'
+          ? 'Pay on Pickup'
+          : 'Downpayment'
+        ctx.fillText(`PAYMENT TERMS : ${termLabel}`, 40, y)
+        y += 22
+        ctx.fillText(`DEPOSIT PAID                           PHP ${(transaction.amountPaid ?? 0).toFixed(2)}`, 40, y)
+        y += 22
+        ctx.fillStyle = '#BE123C'
+        ctx.fillText(`BALANCE DUE                            PHP ${transaction.balanceDue.toFixed(2)}`, 40, y)
+        ctx.fillStyle = '#0F172A'
+        y += 22
+        if (transaction.pickupDate) {
+          ctx.fillText(`TARGET PICKUP : ${new Date(transaction.pickupDate).toLocaleDateString()}`, 40, y)
+          y += 22
+        }
+      }
+
       ctx.font = '14px Courier New, monospace'
       ctx.fillText('-------------------------------------------------', 40, y)
       y += 22
@@ -200,7 +251,12 @@ export default function POSReceiptModal({ transaction, onNewSale }: Props) {
             ref={receiptRef}
             className="mx-auto max-w-md rounded-2xl border border-slate-300 bg-white p-6 shadow-sm font-mono text-xs leading-relaxed text-slate-800"
           >
-            <div className="text-center border-b border-slate-300 pb-3 mb-3">
+            <div className="flex flex-col items-center text-center border-b border-slate-300 pb-3 mb-3">
+              <img
+                src="/assets/images/JAPA_logo.jpg"
+                alt="JAPA Logo"
+                className="h-16 w-16 object-contain rounded-xl mb-2 p-1 border border-slate-200 bg-white shadow-2xs"
+              />
               <p className="font-extrabold text-sm tracking-widest text-slate-900">JAPA GLOBAL DIGITAL</p>
               <p className="font-semibold text-slate-700">{transaction.branchName}</p>
               <p className="text-[10px] text-slate-500">{branchAddress}</p>
@@ -293,6 +349,39 @@ export default function POSReceiptModal({ transaction, onNewSale }: Props) {
                 <span>GRAND TOTAL</span>
                 <span className="text-indigo-700">{PHP.format(transaction.grandTotal)}</span>
               </div>
+
+              {/* Downpayment & Balance Due Info */}
+              {transaction.balanceDue && transaction.balanceDue > 0 ? (
+                <div className="pt-2 border-t border-dashed border-slate-200 space-y-1">
+                  <div className="flex justify-between text-slate-600 font-semibold">
+                    <span>PAYMENT TERMS</span>
+                    <span className="uppercase text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                      {transaction.paymentTerms === 'downpayment_50'
+                        ? '50% Downpayment'
+                        : transaction.paymentTerms === 'custom_deposit'
+                        ? 'Partial Deposit'
+                        : transaction.paymentTerms === 'pay_on_pickup'
+                        ? 'Pay on Pickup'
+                        : 'Deposit'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-emerald-700 font-bold">
+                    <span>DEPOSIT PAID</span>
+                    <span>{PHP.format(transaction.amountPaid ?? 0)}</span>
+                  </div>
+                  <div className="flex justify-between text-rose-700 font-extrabold text-xs">
+                    <span>REMAINING BALANCE DUE</span>
+                    <span className="bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">{PHP.format(transaction.balanceDue)}</span>
+                  </div>
+                  {transaction.pickupDate && (
+                    <div className="flex justify-between text-slate-600 text-[10px]">
+                      <span>TARGET PICKUP</span>
+                      <span>{new Date(transaction.pickupDate).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
               <div className="flex justify-between text-slate-600 pt-1">
                 <span>TENDERED ({transaction.paymentMethod})</span>
                 <span>{PHP.format(transaction.amountTendered)}</span>
