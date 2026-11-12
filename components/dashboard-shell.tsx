@@ -71,16 +71,17 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   const canAccessSales = userRole === 'Admin' || userRole === 'Manager'
   const canAccessProduction = userRole === 'Admin' || userRole === 'Manager' || userRole === 'Staff' || userRole === 'Inventory'
 
-  // Detect screen size and initialize sidebar preference
+  // Whenever on the POS / Cashier terminal, always minimize the sidebar to maximize terminal width
   useEffect(() => {
-    const isTabletLandscapeOrSmaller = window.innerWidth <= 1280
-    // On POS page on tablet (e.g. Galaxy Tab A8 1280x800), default sidebar to collapsed to maximize terminal
-    if (pathname === '/pos' && isTabletLandscapeOrSmaller) {
+    if (pathname === '/pos') {
       setDesktopSidebarOpen(false)
+      setMobileDrawerOpen(false)
     } else {
       const stored = localStorage.getItem('japa_desktop_sidebar_open')
       if (stored !== null) {
         setDesktopSidebarOpen(stored === 'true')
+      } else {
+        setDesktopSidebarOpen(true)
       }
     }
   }, [pathname])
@@ -166,7 +167,11 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         )}
       >
         <div className="w-64 h-full">
-          <Sidebar />
+          <Sidebar onNavigate={(href) => {
+            if (href === '/pos') {
+              setDesktopSidebarOpen(false)
+            }
+          }} />
         </div>
       </div>
 
@@ -208,6 +213,8 @@ export default function DashboardShell({ children }: { children: React.ReactNode
                 href="/pos"
                 onClick={() => {
                   requestAppFullscreen()
+                  setDesktopSidebarOpen(false)
+                  setMobileDrawerOpen(false)
                 }}
                 className={cn(
                   'flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-bold transition active:scale-95 shadow-2xs',

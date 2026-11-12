@@ -146,7 +146,7 @@ const navItems: NavItem[] = [
 interface SidebarProps {
   userEmail?: string
   userInitial?: string
-  onNavigate?: () => void
+  onNavigate?: (href?: string) => void
 }
 
 export default function Sidebar({ userEmail, userInitial, onNavigate }: SidebarProps) {
@@ -264,7 +264,7 @@ export default function Sidebar({ userEmail, userInitial, onNavigate }: SidebarP
                       if (item.href === '/pos') {
                         requestAppFullscreen()
                       }
-                      onNavigate?.()
+                      onNavigate?.(item.href)
                     }}
                     className={cn(
                       'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
