@@ -475,103 +475,6 @@ export default function POSCheckoutPanel({
         </div>
       </div>
 
-      {/* ── Payment Terms / Downpayment Selector ──────────────────────── */}
-      <div className="px-3 py-2 border-b border-slate-100 bg-slate-50/70 shrink-0 space-y-1.5">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-            Payment Terms
-          </span>
-          {depositBalance > 0 && (
-            <span className="text-[10px] font-black text-amber-800 bg-amber-100/90 border border-amber-300 px-1.5 py-0.5 rounded-md">
-              Balance: {PHP.format(depositBalance)}
-            </span>
-          )}
-        </div>
-
-        {/* 4 Terms Buttons */}
-        <div className="grid grid-cols-4 gap-1">
-          {PAYMENT_TERMS.map((term) => {
-            const isSelected = paymentTerms === term.id
-            return (
-              <button
-                key={term.id}
-                type="button"
-                onClick={() => handleSelectPaymentTerms(term.id)}
-                className={cn(
-                  'rounded-lg border py-1.5 px-1 text-center transition-all active:scale-95 text-[10px] font-bold leading-tight flex flex-col items-center justify-center min-h-[38px]',
-                  isSelected
-                    ? 'border-indigo-600 bg-indigo-600 text-white shadow-2xs'
-                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100 hover:border-slate-300'
-                )}
-              >
-                <span className="truncate">{term.label}</span>
-                {term.id === 'downpayment_50' && totals.grandTotal > 0 && (
-                  <span className={cn('text-[9px] font-semibold tabular-nums', isSelected ? 'text-indigo-100' : 'text-slate-400')}>
-                    {PHP.format(Math.round(totals.grandTotal * 0.5))}
-                  </span>
-                )}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Custom Deposit Amount Input (when custom_deposit selected) */}
-        {paymentTerms === 'custom_deposit' && (
-          <div className="pt-1 space-y-1 animate-in fade-in duration-150">
-            <div className="relative">
-              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₱</span>
-              <input
-                type="number"
-                min="0"
-                max={totals.grandTotal}
-                placeholder="Custom deposit amount…"
-                value={customDeposit}
-                onChange={(e) => {
-                  setCustomDeposit(e.target.value)
-                  if (selectedMethod !== 'CASH') {
-                    setTenderedInput(e.target.value)
-                  }
-                }}
-                className="w-full rounded-lg border border-indigo-300 bg-white py-1.5 pl-6 pr-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 tabular-nums shadow-2xs"
-              />
-            </div>
-            {/* Quick deposit presets */}
-            <div className="grid grid-cols-4 gap-1">
-              {[0.2, 0.3, 0.5, 0.7].map((pct) => {
-                const amt = Math.round(totals.grandTotal * pct)
-                return (
-                  <button
-                    key={pct}
-                    type="button"
-                    onClick={() => {
-                      setCustomDeposit(String(amt))
-                      if (selectedMethod !== 'CASH') setTenderedInput(String(amt))
-                    }}
-                    className="py-1 text-[10px] font-semibold bg-white border border-slate-200 rounded text-slate-600 hover:bg-slate-50 transition"
-                  >
-                    {pct * 100}% ({PHP.format(amt)})
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Downpayment Live Breakdown Callout (if not full payment) */}
-        {paymentTerms !== 'full_payment' && totals.grandTotal > 0 && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-2 flex items-center justify-between text-xs animate-in fade-in duration-150 shadow-2xs">
-            <div className="flex flex-col">
-              <span className="text-[10px] text-amber-800 font-bold uppercase tracking-wider">Collect Today</span>
-              <span className="text-sm font-black text-amber-950 tabular-nums">{PHP.format(depositNow)}</span>
-            </div>
-            <div className="text-right flex flex-col">
-              <span className="text-[10px] text-rose-700 font-bold uppercase tracking-wider">Remaining Balance</span>
-              <span className="text-sm font-black text-rose-800 tabular-nums">{PHP.format(depositBalance)}</span>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* ── TENDERED AMOUNT & DEFAULT TOUCH KEYPAD (FIRST TO BE TYPED) ─── */}
       {selectedMethod === 'CASH' ? (
         <div className="px-3.5 py-2.5 border-b border-slate-100 space-y-2 shrink-0 bg-white">
@@ -746,6 +649,103 @@ export default function POSCheckoutPanel({
               </button>
             )
           })}
+        </div>
+
+        {/* ── Payment Terms / Downpayment Selector (Below Walk-in / Order Type) ── */}
+        <div className="pt-1.5 border-t border-slate-200/80 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              Payment Terms
+            </span>
+            {depositBalance > 0 && (
+              <span className="text-[10px] font-black text-amber-800 bg-amber-100/90 border border-amber-300 px-1.5 py-0.5 rounded-md">
+                Balance: {PHP.format(depositBalance)}
+              </span>
+            )}
+          </div>
+
+          {/* 4 Terms Buttons */}
+          <div className="grid grid-cols-4 gap-1">
+            {PAYMENT_TERMS.map((term) => {
+              const isSelected = paymentTerms === term.id
+              return (
+                <button
+                  key={term.id}
+                  type="button"
+                  onClick={() => handleSelectPaymentTerms(term.id)}
+                  className={cn(
+                    'rounded-lg border py-1.5 px-1 text-center transition-all active:scale-95 text-[10px] font-bold leading-tight flex flex-col items-center justify-center min-h-[38px]',
+                    isSelected
+                      ? 'border-indigo-600 bg-indigo-600 text-white shadow-2xs'
+                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100 hover:border-slate-300'
+                  )}
+                >
+                  <span className="truncate">{term.label}</span>
+                  {term.id === 'downpayment_50' && totals.grandTotal > 0 && (
+                    <span className={cn('text-[9px] font-semibold tabular-nums', isSelected ? 'text-indigo-100' : 'text-slate-400')}>
+                      {PHP.format(Math.round(totals.grandTotal * 0.5))}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Custom Deposit Amount Input (when custom_deposit selected) */}
+          {paymentTerms === 'custom_deposit' && (
+            <div className="pt-1 space-y-1 animate-in fade-in duration-150">
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₱</span>
+                <input
+                  type="number"
+                  min="0"
+                  max={totals.grandTotal}
+                  placeholder="Custom deposit amount…"
+                  value={customDeposit}
+                  onChange={(e) => {
+                    setCustomDeposit(e.target.value)
+                    if (selectedMethod !== 'CASH') {
+                      setTenderedInput(e.target.value)
+                    }
+                  }}
+                  className="w-full rounded-lg border border-indigo-300 bg-white py-1.5 pl-6 pr-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 tabular-nums shadow-2xs"
+                />
+              </div>
+              {/* Quick deposit presets */}
+              <div className="grid grid-cols-4 gap-1">
+                {[0.2, 0.3, 0.5, 0.7].map((pct) => {
+                  const amt = Math.round(totals.grandTotal * pct)
+                  return (
+                    <button
+                      key={pct}
+                      type="button"
+                      onClick={() => {
+                        setCustomDeposit(String(amt))
+                        if (selectedMethod !== 'CASH') setTenderedInput(String(amt))
+                      }}
+                      className="py-1 text-[10px] font-semibold bg-white border border-slate-200 rounded text-slate-600 hover:bg-slate-50 transition"
+                    >
+                      {pct * 100}% ({PHP.format(amt)})
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Downpayment Live Breakdown Callout (if not full payment) */}
+          {paymentTerms !== 'full_payment' && totals.grandTotal > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-2 flex items-center justify-between text-xs animate-in fade-in duration-150 shadow-2xs">
+              <div className="flex flex-col">
+                <span className="text-[10px] text-amber-800 font-bold uppercase tracking-wider">Collect Today</span>
+                <span className="text-sm font-black text-amber-950 tabular-nums">{PHP.format(depositNow)}</span>
+              </div>
+              <div className="text-right flex flex-col">
+                <span className="text-[10px] text-rose-700 font-bold uppercase tracking-wider">Remaining Balance</span>
+                <span className="text-sm font-black text-rose-800 tabular-nums">{PHP.format(depositBalance)}</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Customer Details input if balance due > 0 or pickup/delivery */}
