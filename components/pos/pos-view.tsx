@@ -454,7 +454,7 @@ export default function POSView() {
           </div>
 
           {/* Right: Order Summary & Checkout */}
-          <div className="w-72 xl:w-80 shrink-0 overflow-hidden flex flex-col">
+          <div className="w-80 xl:w-96 shrink-0 overflow-hidden flex flex-col">
             <POSCheckoutPanel
               totals={totals}
               itemCount={cartItems.length}
