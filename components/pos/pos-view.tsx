@@ -459,6 +459,7 @@ export default function POSView() {
               totals={totals}
               itemCount={cartItems.length}
               cartDiscount={cartDiscount}
+              onSetCartDiscount={setCartDiscount}
               selectedCustomer={selectedCustomer}
               onSelectCustomer={setSelectedCustomer}
               onCheckout={handleCheckout}
@@ -547,6 +548,7 @@ export default function POSView() {
                 totals={totals}
                 itemCount={cartItems.length}
                 cartDiscount={cartDiscount}
+                onSetCartDiscount={setCartDiscount}
                 selectedCustomer={selectedCustomer}
                 onSelectCustomer={setSelectedCustomer}
                 onCheckout={handleCheckout}

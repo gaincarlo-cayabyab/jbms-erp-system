@@ -103,8 +103,93 @@ export default function POSCart({
           <span className="text-sm font-bold text-slate-800 flex items-center gap-2">
             <ShoppingCart className="h-4 w-4 text-indigo-600" /> Active Cart
           </span>
-          <span className="text-xs text-slate-400 font-medium">0 items</span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowDiscountPanel(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100 transition"
+            >
+              <Tag className="h-3.5 w-3.5" /> Discount
+            </button>
+            <span className="text-xs text-slate-400 font-medium">0 items</span>
+          </div>
         </div>
+        {cartDiscount && (
+          <div className="px-4 py-2 bg-amber-50 border-b border-amber-200 flex items-center justify-between text-xs font-semibold text-amber-800 shrink-0">
+            <span className="flex items-center gap-1.5">
+              <Tag className="h-3.5 w-3.5 text-amber-600" />
+              Applied: {cartDiscount.label}
+            </span>
+            <button onClick={() => onSetCartDiscount(null)} className="text-amber-700 hover:text-amber-900 underline text-[11px]">
+              Remove
+            </button>
+          </div>
+        )}
+        {showDiscountPanel && (
+          <div className="border-b border-slate-200 bg-white p-4 shadow-sm shrink-0">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-bold text-slate-800">Apply Cart Discount</p>
+              <button onClick={() => { setShowDiscountPanel(false); setPinRequired(false) }} className="text-slate-400 hover:text-slate-600">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex gap-2 mb-3">
+              {([
+                { type: 'percentage' as DiscountType, icon: Percent, label: 'Percentage' },
+                { type: 'fixed' as DiscountType, icon: DollarSign, label: 'Fixed ₱' },
+                { type: 'senior_pwd' as DiscountType, icon: User, label: 'Senior/PWD' },
+              ]).map(({ type, icon: Icon, label }) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => { setDiscountType(type); if (type === 'senior_pwd') setDiscountValue('20') }}
+                  className={cn(
+                    'flex-1 flex items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-semibold transition',
+                    discountType === type
+                      ? 'border-indigo-400 bg-indigo-50 text-indigo-700'
+                      : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300'
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {discountType !== 'senior_pwd' && (
+              <input
+                type="number"
+                min="0"
+                max={discountType === 'percentage' ? '100' : undefined}
+                placeholder={discountType === 'percentage' ? 'Enter % (e.g. 10)' : 'Enter amount (e.g. 100)'}
+                value={discountValue}
+                onChange={(e) => setDiscountValue(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-2"
+              />
+            )}
+
+            {pinRequired && (
+              <div className="mb-2">
+                <p className="text-xs text-amber-700 font-semibold mb-1">⚠️ Manager PIN required for large discounts</p>
+                <input
+                  type="password"
+                  placeholder="Enter Manager PIN"
+                  value={managerPin}
+                  onChange={(e) => setManagerPin(e.target.value)}
+                  className="w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={applyCartDiscount}
+              className="w-full rounded-lg bg-indigo-600 py-2 text-sm font-bold text-white hover:bg-indigo-700 transition active:scale-[0.98]"
+            >
+              Apply Discount
+            </button>
+          </div>
+        )}
         {onSelectCustomer && (
           <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 shrink-0">
             <POSCustomerSelector
