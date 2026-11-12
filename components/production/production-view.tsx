@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/client'
 import { JobOrder, JobStageStatus, JobPriority } from '@/types/production'
 import { SalesOrder } from '@/types/sales'
 import { getLoyaltyBadge } from '@/components/pos/pos-customer-selector'
+import { requestAppFullscreen } from '@/components/ui/auto-fullscreen'
 import { cn } from '@/lib/utils'
 import {
   Layers,
@@ -362,6 +363,7 @@ export default function ProductionView() {
             {/* Direct Link to Cashier POS */}
             <Link
               href="/pos"
+              onClick={() => requestAppFullscreen()}
               className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 shadow-2xs hover:bg-rose-100 transition active:scale-95"
               title="Open POS Terminal for retail apparel & print checkout"
             >

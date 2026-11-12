@@ -6,7 +6,7 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import Sidebar from './sidebar'
 import { Menu, X, Bell, ChevronRight, Store, Receipt, AlertTriangle, Layers, Monitor, Tablet } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { FullscreenToggle } from '@/components/ui/auto-fullscreen'
+import { FullscreenToggle, requestAppFullscreen } from '@/components/ui/auto-fullscreen'
 import { useAuth } from '@/lib/auth-context'
 import { useBranch } from '@/lib/branch-context'
 import { useDeviceMode } from '@/lib/device-context'
@@ -206,6 +206,9 @@ export default function DashboardShell({ children }: { children: React.ReactNode
             {canAccessPos && (
               <Link
                 href="/pos"
+                onClick={() => {
+                  requestAppFullscreen()
+                }}
                 className={cn(
                   'flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-bold transition active:scale-95 shadow-2xs',
                   pathname === '/pos'
@@ -402,7 +405,10 @@ export default function DashboardShell({ children }: { children: React.ReactNode
                       {canAccessPos && (
                         <Link
                           href="/pos"
-                          onClick={() => setNotificationsOpen(false)}
+                          onClick={() => {
+                            setNotificationsOpen(false)
+                            requestAppFullscreen()
+                          }}
                           className="flex items-start gap-2.5 p-2 hover:bg-slate-50 rounded-xl transition group"
                         >
                           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 mt-0.5">

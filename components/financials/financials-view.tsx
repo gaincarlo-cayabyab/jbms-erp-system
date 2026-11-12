@@ -13,6 +13,7 @@ import { getExpenses, removeExpense } from '@/lib/financials/expense-service'
 import { Expense } from '@/types/financials'
 import { SalesOrder } from '@/types/sales'
 import { useConfirm } from '@/components/ui/confirm-dialog'
+import { requestAppFullscreen } from '@/components/ui/auto-fullscreen'
 import {
   DollarSign,
   TrendingUp,
@@ -281,6 +282,7 @@ export default function FinancialsView() {
             {/* Direct Link to Cashier POS Terminal */}
             <Link
               href="/pos"
+              onClick={() => requestAppFullscreen()}
               className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 shadow-2xs hover:bg-rose-100 transition active:scale-95"
               title="Launch Cashier POS Register"
             >

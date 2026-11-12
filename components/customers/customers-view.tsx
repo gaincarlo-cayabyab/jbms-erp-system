@@ -8,6 +8,7 @@ import DashboardShell from '@/components/dashboard-shell'
 import CustomerSummaryCards from './customer-summary-cards'
 import CustomerFormModal from './customer-form-modal'
 import { getLoyaltyBadge } from '@/components/pos/pos-customer-selector'
+import { requestAppFullscreen } from '@/components/ui/auto-fullscreen'
 import { createClient } from '@/lib/supabase/client'
 import { Customer, LoyaltyTier } from '@/types/customer'
 import {
@@ -200,6 +201,7 @@ export default function CustomersView() {
             {/* Direct Link to Cashier POS */}
             <Link
               href="/pos"
+              onClick={() => requestAppFullscreen()}
               className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 shadow-2xs hover:bg-rose-100 transition active:scale-95"
               title="Open POS Terminal for retail checkout"
             >
@@ -507,6 +509,7 @@ export default function CustomersView() {
                         <td className="px-6 py-4 text-center">
                           <Link
                             href="/pos"
+                            onClick={() => requestAppFullscreen()}
                             className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition shadow-2xs active:scale-95"
                             title={`Ring up counter sale for ${customer.name}`}
                           >

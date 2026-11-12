@@ -27,6 +27,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import { performSignOut } from '@/lib/auth'
 import { useAuth } from '@/lib/auth-context'
+import { requestAppFullscreen } from '@/components/ui/auto-fullscreen'
 
 interface NavItem {
   label: string
@@ -259,7 +260,12 @@ export default function Sidebar({ userEmail, userInitial, onNavigate }: SidebarP
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    onClick={onNavigate}
+                    onClick={() => {
+                      if (item.href === '/pos') {
+                        requestAppFullscreen()
+                      }
+                      onNavigate?.()
+                    }}
                     className={cn(
                       'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
                       isActive

@@ -16,6 +16,7 @@ import { DEFAULT_POS_PRODUCTS } from '@/types/pos'
 import { Package, ShoppingCart, CreditCard, ArrowRight, Plus, Wallet, Coins } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { requestAppFullscreen, FullscreenToggle } from '@/components/ui/auto-fullscreen'
 
 // ─── Currency Formatter (Non-VAT / Gross Pricing) ─────────────────────────────
 const PHP = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' })
@@ -99,6 +100,25 @@ export default function POSView() {
   useEffect(() => {
     loadProducts()
   }, [loadProducts])
+
+  // Automatically request fullscreen mode ASAP when POS mounts or on first interaction
+  useEffect(() => {
+    requestAppFullscreen()
+
+    const onUserInteraction = () => {
+      requestAppFullscreen()
+    }
+
+    window.addEventListener('pointerdown', onUserInteraction, { capture: true, passive: true })
+    window.addEventListener('touchstart', onUserInteraction, { capture: true, passive: true })
+    window.addEventListener('click', onUserInteraction, { capture: true, passive: true })
+
+    return () => {
+      window.removeEventListener('pointerdown', onUserInteraction, { capture: true })
+      window.removeEventListener('touchstart', onUserInteraction, { capture: true })
+      window.removeEventListener('click', onUserInteraction, { capture: true })
+    }
+  }, [])
 
   // Realtime sync — refresh POS catalog when inventory or branch stock changes (edits, deletions, stock adjustments, branch sales)
   useEffect(() => {
@@ -350,6 +370,8 @@ export default function POSView() {
               <Coins className="h-3.5 w-3.5 text-rose-600" />
               <span>Paid Out / In</span>
             </button>
+
+            <FullscreenToggle className="hidden md:inline-flex" />
           </div>
 
           {/* Quick Tablet Portrait View Selector (visible below lg: 1024px) */}

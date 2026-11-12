@@ -26,6 +26,7 @@ import { createClient } from '@/lib/supabase/client'
 import ManagerPinModal from '@/components/ui/manager-pin-modal'
 import DrawerCashInOutModal from './drawer-cash-in-out-modal'
 import PayoutSlipModal from './payout-slip-modal'
+import { requestAppFullscreen } from '@/components/ui/auto-fullscreen'
 import {
   Wallet,
   ArrowDownLeft,
@@ -639,6 +640,10 @@ export default function CashManagementView() {
             {/* Secondary Utilities */}
             <Link
               href="/pos"
+              onClick={() => {
+                soundEffects.keyClick()
+                requestAppFullscreen()
+              }}
               className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-bold text-zinc-700 shadow-2xs hover:bg-zinc-50 active:scale-95 transition"
               title="Open Cashier POS Terminal"
             >

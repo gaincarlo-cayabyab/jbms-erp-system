@@ -38,6 +38,7 @@ import type { JobOrder } from '@/types/production'
 import type { ProductItem } from '@/types/inventory'
 import type { Customer } from '@/types/customer'
 import type { PayrollRecord } from '@/types/payroll'
+import { requestAppFullscreen } from '@/components/ui/auto-fullscreen'
 import type { Expense } from '@/types/financials'
 import type { CashAccount } from '@/types/cash'
 
@@ -768,6 +769,11 @@ export default function ExecutiveDashboard() {
                   <Link
                     key={qa.label}
                     href={qa.href}
+                    onClick={() => {
+                      if (qa.href === '/pos') {
+                        requestAppFullscreen()
+                      }
+                    }}
                     className={cn(
                       'flex items-center justify-between rounded-xl border p-2.5 transition-all duration-150',
                       qa.color

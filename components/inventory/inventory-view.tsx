@@ -13,6 +13,7 @@ import { ProductItem, StockStatusTab } from '@/types/inventory'
 import { parseProductPresentation } from '@/lib/product-presentation'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import { useBranch } from '@/lib/branch-context'
+import { requestAppFullscreen } from '@/components/ui/auto-fullscreen'
 import {
   Package,
   Plus,
@@ -469,6 +470,7 @@ export default function InventoryView() {
             {/* Link to POS */}
             <Link
               href="/pos"
+              onClick={() => requestAppFullscreen()}
               className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-bold text-rose-700 shadow-2xs hover:bg-rose-100 transition active:scale-95"
             >
               <Receipt className="h-3.5 w-3.5" />
