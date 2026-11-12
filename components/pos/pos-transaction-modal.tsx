@@ -144,6 +144,7 @@ async function legacyFallback(
       fulfillment_status: transaction.fulfillmentStatus ?? 'handed_over',
       amount_paid:        transaction.amountPaid ?? transaction.grandTotal,
       balance_due:        transaction.balanceDue ?? 0,
+      customer_id:        transaction.customerInfo?.id ?? null,
       recipient_name:     transaction.deliveryDetails?.recipientName ?? transaction.customerInfo?.name ?? null,
       recipient_phone:    transaction.deliveryDetails?.recipientPhone ?? transaction.customerInfo?.phone ?? null,
       shipping_address:   transaction.deliveryDetails?.shippingAddress ?? null,

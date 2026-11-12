@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import {
   Banknote, CreditCard, Smartphone, Building2, CheckCircle2,
@@ -9,6 +9,8 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { PaymentMethod, CartDiscount } from '@/types/pos'
+import type { Customer } from '@/types/customer'
+import POSCustomerSelector from './pos-customer-selector'
 import { useDeviceMode, handlePosInputFocus } from '@/lib/device-context'
 import { TouchKeypad } from '@/components/ui/touch-keypad'
 
@@ -28,8 +30,10 @@ export interface FulfillmentData {
   amountPaid: number
   balanceDue: number
   pickupDate?: string | null
+  customerId?: string | null
   customerName?: string
   customerPhone?: string
+  customerLoyaltyTier?: string
   deliveryDetails?: {
     recipientName?: string
     recipientPhone?: string
@@ -44,6 +48,8 @@ interface Props {
   totals: Totals
   itemCount: number
   cartDiscount: CartDiscount | null
+  selectedCustomer?: Customer | null
+  onSelectCustomer?: (customer: Customer | null) => void
   onCheckout: (method: PaymentMethod, amountTendered: number, fulfillmentData: FulfillmentData) => void
   onSaveQuotation?: (fulfillmentData: FulfillmentData) => void
   onBackToCart?: () => void
@@ -106,6 +112,8 @@ export default function POSCheckoutPanel({
   totals,
   itemCount,
   cartDiscount,
+  selectedCustomer,
+  onSelectCustomer,
   onCheckout,
   onSaveQuotation,
   onBackToCart,
@@ -124,8 +132,22 @@ export default function POSCheckoutPanel({
   const [pickupDate, setPickupDate]           = useState('')
 
   // Customer
-  const [customerName, setCustomerName]   = useState('')
-  const [customerPhone, setCustomerPhone] = useState('')
+  const [customerName, setCustomerName]   = useState(selectedCustomer?.name || '')
+  const [customerPhone, setCustomerPhone] = useState(selectedCustomer?.contact_number || '')
+
+  // Sync when selectedCustomer changes from cart
+  useEffect(() => {
+    if (selectedCustomer) {
+      setCustomerName(selectedCustomer.name)
+      setCustomerPhone(selectedCustomer.contact_number || '')
+      if (selectedCustomer.address) {
+        setShippingAddress(selectedCustomer.address)
+      }
+    } else {
+      setCustomerName('')
+      setCustomerPhone('')
+    }
+  }, [selectedCustomer])
 
   // Delivery
   const [shippingAddress, setShippingAddress] = useState('')
@@ -163,6 +185,9 @@ export default function POSCheckoutPanel({
   function buildFulfillmentData(): FulfillmentData {
     const { amountPaid, balanceDue } = computePaymentAmounts()
     const ft = FULFILLMENT_TYPES.find((f) => f.id === fulfillmentType)!
+    const finalCustName = customerName.trim() || selectedCustomer?.name || (fulfillmentType === 'walk_in' ? 'Walk-in Customer' : undefined)
+    const finalCustPhone = customerPhone.trim() || selectedCustomer?.contact_number || undefined
+
     return {
       fulfillmentType,
       fulfillmentStatus: ft.status,
@@ -170,13 +195,15 @@ export default function POSCheckoutPanel({
       amountPaid,
       balanceDue,
       pickupDate: fulfillmentType === 'pickup' ? (pickupDate || null) : null,
-      customerName:  customerName  || undefined,
-      customerPhone: customerPhone || undefined,
+      customerId: selectedCustomer?.id || null,
+      customerName:  finalCustName,
+      customerPhone: finalCustPhone,
+      customerLoyaltyTier: selectedCustomer?.loyalty_tier,
       deliveryDetails:
         fulfillmentType === 'delivery'
           ? {
-              recipientName:   customerName  || undefined,
-              recipientPhone:  customerPhone || undefined,
+              recipientName:   finalCustName,
+              recipientPhone:  finalCustPhone,
               shippingAddress: shippingAddress || undefined,
               courierName:     courierName || undefined,
               shippingFee:     parseFloat(shippingFee) || 0,
@@ -254,6 +281,20 @@ export default function POSCheckoutPanel({
           </span>
         </div>
       </div>
+
+      {/* ── Customer / Loyalty Profile ──────────────────────────────── */}
+      {onSelectCustomer && (
+        <div className="px-3 py-2 border-b border-slate-100 bg-slate-50/50 shrink-0">
+          <label className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+            Customer / Loyalty Profile
+          </label>
+          <POSCustomerSelector
+            selectedCustomer={selectedCustomer ?? null}
+            onSelectCustomer={onSelectCustomer}
+            compact
+          />
+        </div>
+      )}
 
       {/* ── Fulfillment Type Selector ─────────────────────────────────── */}
       <div className="px-3 py-2.5 border-b border-slate-100 shrink-0">

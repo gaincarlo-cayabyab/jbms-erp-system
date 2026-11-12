@@ -70,6 +70,10 @@ export interface Transaction {
     phone?: string
     email?: string
     address?: string
+    loyaltyTier?: string
+    customerType?: string
+    totalOrders?: number
+    totalSpent?: number
   }
 }
 

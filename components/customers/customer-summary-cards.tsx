@@ -1,6 +1,6 @@
 'use client'
 
-import { Users, UserCheck, AlertCircle, CreditCard } from 'lucide-react'
+import { Users, Crown, Wallet, AlertCircle, ShoppingBag } from 'lucide-react'
 import { Customer } from '@/types/customer'
 
 interface CustomerSummaryCardsProps {
@@ -14,20 +14,23 @@ export default function CustomerSummaryCards({
 }: CustomerSummaryCardsProps) {
   const totalCustomers = customers.length
 
-  // Active accounts: customers with active credit line or balance
-  const activeAccounts = customers.filter(
-    (c) => Number(c.credit_limit) > 0 || Number(c.balance) > 0
+  // Repeat & Loyal accounts: 2+ orders or VIP / Repeat tier
+  const repeatLoyalAccounts = customers.filter(
+    (c) =>
+      c.loyalty_tier === 'VIP Loyal' ||
+      c.loyalty_tier === 'Repeat Buyer' ||
+      (Number(c.total_orders) || 0) >= 2
   ).length
 
-  // Total outstanding balance across all customers
-  const totalOutstandingBalance = customers.reduce(
-    (sum, c) => sum + (Number(c.balance) || 0),
+  // Total customer lifetime spend (real accumulated revenue)
+  const totalLifetimeSpend = customers.reduce(
+    (sum, c) => sum + (Number(c.total_spent) || 0),
     0
   )
 
-  // Total credit extended
-  const totalCreditLimit = customers.reduce(
-    (sum, c) => sum + (Number(c.credit_limit) || 0),
+  // Total outstanding balance across all customer job orders
+  const totalOutstandingBalance = customers.reduce(
+    (sum, c) => sum + (Number(c.balance) || 0),
     0
   )
 
@@ -41,36 +44,36 @@ export default function CustomerSummaryCards({
 
   const cards = [
     {
-      title: 'Total Customers',
+      title: 'Total Client Directory',
       value: totalCustomers.toString(),
-      subtitle: `${activeAccounts} actively transacting`,
+      subtitle: `${repeatLoyalAccounts} repeat & loyal regular buyers`,
       icon: Users,
       color: 'bg-blue-600',
-      badgeColor: 'text-blue-700 bg-blue-50',
     },
     {
-      title: 'Active Accounts',
-      value: activeAccounts.toString(),
-      subtitle: `${totalCustomers - activeAccounts} inactive / standard accounts`,
-      icon: UserCheck,
+      title: 'Repeat & VIP Buyers',
+      value: repeatLoyalAccounts.toString(),
+      subtitle: totalCustomers > 0
+        ? `${Math.round((repeatLoyalAccounts / totalCustomers) * 100)}% retention rate`
+        : 'Recognized at POS counter',
+      icon: Crown,
+      color: 'bg-amber-500',
+    },
+    {
+      title: 'Client Lifetime Spend',
+      value: formatCurrency(totalLifetimeSpend),
+      subtitle: 'Accumulated revenue from client profiles',
+      icon: Wallet,
       color: 'bg-emerald-600',
-      badgeColor: 'text-emerald-700 bg-emerald-50',
     },
     {
-      title: 'Total Outstanding Balance',
+      title: 'Uncollected Order Balances',
       value: formatCurrency(totalOutstandingBalance),
-      subtitle: 'Pending receivables across customers',
+      subtitle: totalOutstandingBalance > 0
+        ? 'Pending balance on downpayments & pickups'
+        : 'All customer balances fully settled',
       icon: AlertCircle,
-      color: totalOutstandingBalance > 0 ? 'bg-amber-600' : 'bg-zinc-600',
-      badgeColor: totalOutstandingBalance > 0 ? 'text-amber-700 bg-amber-50' : 'text-zinc-700 bg-zinc-50',
-    },
-    {
-      title: 'Total Credit Extended',
-      value: formatCurrency(totalCreditLimit),
-      subtitle: 'Cumulative approved credit limit',
-      icon: CreditCard,
-      color: 'bg-indigo-600',
-      badgeColor: 'text-indigo-700 bg-indigo-50',
+      color: totalOutstandingBalance > 0 ? 'bg-rose-600' : 'bg-slate-600',
     },
   ]
 
@@ -115,4 +118,3 @@ export default function CustomerSummaryCards({
     </div>
   )
 }
-

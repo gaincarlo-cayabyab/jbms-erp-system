@@ -6,6 +6,8 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import type { CartItem, CartDiscount, DiscountType } from '@/types/pos'
+import type { Customer } from '@/types/customer'
+import POSCustomerSelector from './pos-customer-selector'
 import { parseProductPresentation } from '@/lib/product-presentation'
 
 const PHP = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' })
@@ -13,6 +15,8 @@ const PHP = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' 
 interface Props {
   items: CartItem[]
   cartDiscount: CartDiscount | null
+  selectedCustomer?: Customer | null
+  onSelectCustomer?: (customer: Customer | null) => void
   onRemove: (productId: string) => void
   onUpdateQuantity: (productId: string, qty: number) => void
   onOverridePrice: (productId: string, newPrice: number) => void
@@ -32,6 +36,8 @@ interface InlineEdit {
 export default function POSCart({
   items,
   cartDiscount,
+  selectedCustomer,
+  onSelectCustomer,
   onRemove,
   onUpdateQuantity,
   onOverridePrice,
@@ -99,6 +105,14 @@ export default function POSCart({
           </span>
           <span className="text-xs text-slate-400 font-medium">0 items</span>
         </div>
+        {onSelectCustomer && (
+          <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 shrink-0">
+            <POSCustomerSelector
+              selectedCustomer={selectedCustomer ?? null}
+              onSelectCustomer={onSelectCustomer}
+            />
+          </div>
+        )}
         <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-400 p-8 text-center">
           <div className="h-16 w-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-2xs">
             <ShoppingCart className="h-8 w-8" />
@@ -153,6 +167,16 @@ export default function POSCart({
           </button>
         </div>
       </div>
+
+      {/* Customer Selector Ribbon */}
+      {onSelectCustomer && (
+        <div className="px-3 py-2 bg-slate-50/80 border-b border-slate-200 shrink-0">
+          <POSCustomerSelector
+            selectedCustomer={selectedCustomer ?? null}
+            onSelectCustomer={onSelectCustomer}
+          />
+        </div>
+      )}
 
       {/* Cart Items — min 56px row height per spec */}
       <div className="flex-1 overflow-y-auto">

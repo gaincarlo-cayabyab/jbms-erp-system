@@ -11,6 +11,7 @@ import POSReceiptModal from './pos-receipt-modal'
 import DrawerCashInOutModal from '@/components/cash-management/drawer-cash-in-out-modal'
 import { createClient } from '@/lib/supabase/client'
 import type { POSProduct, CartItem, CartDiscount, PaymentMethod, Transaction } from '@/types/pos'
+import type { Customer } from '@/types/customer'
 import { DEFAULT_POS_PRODUCTS } from '@/types/pos'
 import { Package, ShoppingCart, CreditCard, ArrowRight, Plus, Wallet, Coins } from 'lucide-react'
 import Link from 'next/link'
@@ -31,6 +32,7 @@ export default function POSView() {
   const [isLoading, setIsLoading] = useState(true)
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [cartDiscount, setCartDiscount] = useState<CartDiscount | null>(null)
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [activeBranch, setActiveBranch] = useState<'JAPA Dagupan (Main Branch)' | 'JAPA Manila'>('JAPA Dagupan (Main Branch)')
 
   // Tablet Portrait / Mobile Navigation State (< 1024px)
@@ -209,6 +211,9 @@ export default function POSView() {
   function handleCheckout(paymentMethod: PaymentMethod, amountTendered: number, fulfillmentData: FulfillmentData) {
     if (cartItems.length === 0) { toast.error('Cart is empty.'); return }
 
+    const custName = selectedCustomer?.name || fulfillmentData.customerName || (fulfillmentData.fulfillmentType === 'walk_in' ? 'Walk-in Customer' : undefined)
+    const custPhone = selectedCustomer?.contact_number || fulfillmentData.customerPhone || undefined
+
     const transaction: Transaction = {
       id: crypto.randomUUID(),
       invoiceNo: generateInvoiceNo(),
@@ -231,8 +236,16 @@ export default function POSView() {
       amountPaid:        fulfillmentData.amountPaid,
       balanceDue:        fulfillmentData.balanceDue,
       pickupDate:        fulfillmentData.pickupDate,
-      customerInfo: fulfillmentData.customerName
-        ? { name: fulfillmentData.customerName, phone: fulfillmentData.customerPhone }
+      customerInfo: custName
+        ? {
+            id: selectedCustomer?.id || fulfillmentData.customerId || undefined,
+            name: custName,
+            phone: custPhone,
+            loyaltyTier: selectedCustomer?.loyalty_tier || fulfillmentData.customerLoyaltyTier,
+            customerType: selectedCustomer?.customer_type,
+            totalOrders: selectedCustomer?.total_orders,
+            totalSpent: selectedCustomer?.total_spent,
+          }
         : undefined,
       deliveryDetails: fulfillmentData.deliveryDetails,
     }
@@ -260,14 +273,16 @@ export default function POSView() {
         payment_terms:      'quotation_unpaid',
         amount_paid:        0,
         balance_due:        totals.grandTotal,
-        recipient_name:     fulfillmentData.customerName ?? null,
-        recipient_phone:    fulfillmentData.customerPhone ?? null,
+        customer_id:        selectedCustomer?.id || fulfillmentData.customerId || null,
+        recipient_name:     selectedCustomer?.name || fulfillmentData.customerName || null,
+        recipient_phone:    selectedCustomer?.contact_number || fulfillmentData.customerPhone || null,
       })
       if (error) {
         toast.error('Failed to save quotation. Please try again.')
       } else {
         toast.success(`Quotation saved — ${qtNo}`, { duration: 4000 })
         clearCart()
+        setSelectedCustomer(null)
         setTabletTab('catalog')
       }
     } catch {
@@ -281,6 +296,7 @@ export default function POSView() {
     setCompletedTransaction(transaction)
     setShowReceiptModal(true)
     clearCart()
+    setSelectedCustomer(null)
     setTabletTab('catalog')
     // Refresh products to reflect deducted stock
     loadProducts()
@@ -406,6 +422,8 @@ export default function POSView() {
             <POSCart
               items={cartItems}
               cartDiscount={cartDiscount}
+              selectedCustomer={selectedCustomer}
+              onSelectCustomer={setSelectedCustomer}
               onRemove={removeFromCart}
               onUpdateQuantity={updateQuantity}
               onOverridePrice={overridePrice}
@@ -421,6 +439,8 @@ export default function POSView() {
               totals={totals}
               itemCount={cartItems.length}
               cartDiscount={cartDiscount}
+              selectedCustomer={selectedCustomer}
+              onSelectCustomer={setSelectedCustomer}
               onCheckout={handleCheckout}
               onSaveQuotation={handleSaveQuotation}
             />
@@ -486,6 +506,8 @@ export default function POSView() {
               <POSCart
                 items={cartItems}
                 cartDiscount={cartDiscount}
+                selectedCustomer={selectedCustomer}
+                onSelectCustomer={setSelectedCustomer}
                 onRemove={removeFromCart}
                 onUpdateQuantity={updateQuantity}
                 onOverridePrice={overridePrice}
@@ -505,6 +527,8 @@ export default function POSView() {
                 totals={totals}
                 itemCount={cartItems.length}
                 cartDiscount={cartDiscount}
+                selectedCustomer={selectedCustomer}
+                onSelectCustomer={setSelectedCustomer}
                 onCheckout={handleCheckout}
                 onSaveQuotation={handleSaveQuotation}
                 onBackToCart={() => setTabletTab('cart')}

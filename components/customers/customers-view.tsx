@@ -7,8 +7,9 @@ import { toast } from 'sonner'
 import DashboardShell from '@/components/dashboard-shell'
 import CustomerSummaryCards from './customer-summary-cards'
 import CustomerFormModal from './customer-form-modal'
+import { getLoyaltyBadge } from '@/components/pos/pos-customer-selector'
 import { createClient } from '@/lib/supabase/client'
-import { Customer } from '@/types/customer'
+import { Customer, LoyaltyTier } from '@/types/customer'
 import {
   Users,
   UserPlus,
@@ -22,9 +23,14 @@ import {
   CheckCircle2,
   SlidersHorizontal,
   X,
-  FileSpreadsheet,
   Receipt,
+  Crown,
+  Star,
+  Building2,
+  ShoppingBag,
+  ExternalLink,
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export default function CustomersView() {
   const searchParams = useSearchParams()
@@ -32,8 +38,9 @@ export default function CustomersView() {
   const [isLoading, setIsLoading] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [balanceFilter, setBalanceFilter] = useState<'all' | 'has_balance' | 'zero_balance' | 'over_limit'>('all')
-  const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'balance_desc' | 'newest'>('newest')
+  const [balanceFilter, setBalanceFilter] = useState<'all' | 'has_balance' | 'zero_balance'>('all')
+  const [tierFilter, setTierFilter] = useState<'all' | 'VIP Loyal' | 'Repeat Buyer' | 'New Customer' | 'Corporate'>('all')
+  const [sortBy, setSortBy] = useState<'highest_spend' | 'most_orders' | 'name_asc' | 'balance_desc' | 'newest'>('highest_spend')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
 
@@ -72,6 +79,23 @@ export default function CustomersView() {
     loadCustomers()
   }, [])
 
+  // Realtime subscription for customer profile updates from POS checkouts
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel('customers-realtime-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'customers' },
+        () => { loadCustomers() }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
   // Handle successful customer creation
   const handleCustomerCreated = async (newCustomer: Customer) => {
     toast.success(`Customer "${newCustomer.name}" registered successfully.`)
@@ -91,29 +115,35 @@ export default function CustomersView() {
 
       if (!matchesSearch) return false
 
+      // Loyalty tier filter
+      if (tierFilter !== 'all') {
+        if (tierFilter === 'Corporate') {
+          const isCorp = cust.customer_type === 'Corporate' || cust.customer_type === 'Reseller' || cust.customer_type === 'Government' || cust.loyalty_tier === 'Corporate'
+          if (!isCorp) return false
+        } else if (cust.loyalty_tier !== tierFilter) {
+          return false
+        }
+      }
+
       // Balance status filter
       const balance = Number(cust.balance) || 0
-      const limit = Number(cust.credit_limit) || 0
-
       if (balanceFilter === 'has_balance') {
         return balance > 0
       }
       if (balanceFilter === 'zero_balance') {
         return balance <= 0
       }
-      if (balanceFilter === 'over_limit') {
-        return limit > 0 && balance > limit
-      }
 
       return true
     }).sort((a, b) => {
+      if (sortBy === 'highest_spend') return (Number(b.total_spent) || 0) - (Number(a.total_spent) || 0)
+      if (sortBy === 'most_orders') return (Number(b.total_orders) || 0) - (Number(a.total_orders) || 0)
       if (sortBy === 'name_asc') return (a.name || '').localeCompare(b.name || '')
-      if (sortBy === 'name_desc') return (b.name || '').localeCompare(a.name || '')
       if (sortBy === 'balance_desc') return (Number(b.balance) || 0) - (Number(a.balance) || 0)
       // default newest
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     })
-  }, [customers, searchQuery, balanceFilter, sortBy])
+  }, [customers, searchQuery, tierFilter, balanceFilter, sortBy])
 
   const formatCurrency = (val: number | string) => {
     return new Intl.NumberFormat('en-PH', {
@@ -123,7 +153,7 @@ export default function CustomersView() {
     }).format(Number(val) || 0)
   }
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = (dateStr?: string | null) => {
     if (!dateStr) return '—'
     return new Date(dateStr).toLocaleDateString('en-US', {
       month: 'short',
@@ -147,7 +177,7 @@ export default function CustomersView() {
               </span>
             </div>
             <p className="mt-1 text-sm text-zinc-500">
-              Manage client records, contact directories, credit limits, and outstanding account balances.
+              Manage client records, repeat buyer loyalty tiers, purchase history, and uncollected order balances.
             </p>
           </div>
 
@@ -174,7 +204,7 @@ export default function CustomersView() {
               title="Open POS Terminal for retail checkout"
             >
               <Receipt className="h-3.5 w-3.5" />
-              <span>🛒 New POS Sale</span>
+              <span>🛒 Open POS Cashier</span>
             </Link>
 
             <button
@@ -198,9 +228,6 @@ export default function CustomersView() {
             <div className="flex-1">
               <p className="font-semibold">Unable to fetch customer records from Supabase</p>
               <p className="mt-0.5 text-xs text-red-700">{fetchError}</p>
-              <p className="mt-2 text-xs text-red-600">
-                Make sure you have run the initial schema migration in your Supabase SQL editor.
-              </p>
             </div>
           </div>
         )}
@@ -232,6 +259,22 @@ export default function CustomersView() {
 
             {/* Filters & Sorting */}
             <div className="flex flex-wrap items-center gap-2">
+              {/* Loyalty Tier Filter */}
+              <div className="flex items-center gap-1.5">
+                <Crown className="h-3.5 w-3.5 text-amber-500" />
+                <select
+                  value={tierFilter}
+                  onChange={(e) => setTierFilter(e.target.value as any)}
+                  className="rounded-lg border border-zinc-300 bg-white py-1.5 px-2.5 text-xs font-semibold text-zinc-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                >
+                  <option value="all">All Loyalty Tiers</option>
+                  <option value="VIP Loyal">⭐ VIP Loyal (10+ orders / ₱25k+)</option>
+                  <option value="Repeat Buyer">🔁 Repeat Buyer (2-9 orders / ₱5k+)</option>
+                  <option value="New Customer">🌱 New Customer (1st order)</option>
+                  <option value="Corporate">🏢 Corporate & Resellers</option>
+                </select>
+              </div>
+
               {/* Balance Filter */}
               <div className="flex items-center gap-1.5">
                 <Filter className="h-3.5 w-3.5 text-zinc-400" />
@@ -240,10 +283,9 @@ export default function CustomersView() {
                   onChange={(e) => setBalanceFilter(e.target.value as any)}
                   className="rounded-lg border border-zinc-300 bg-white py-1.5 px-2.5 text-xs font-medium text-zinc-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 >
-                  <option value="all">All Accounts</option>
-                  <option value="has_balance">With Balance (&gt; ₱0)</option>
-                  <option value="zero_balance">Zero Balance</option>
-                  <option value="over_limit">Over Credit Limit</option>
+                  <option value="all">All Balance Statuses</option>
+                  <option value="has_balance">With Unpaid Balance (&gt; ₱0)</option>
+                  <option value="zero_balance">Fully Paid / Settled (₱0)</option>
                 </select>
               </div>
 
@@ -255,21 +297,23 @@ export default function CustomersView() {
                   onChange={(e) => setSortBy(e.target.value as any)}
                   className="rounded-lg border border-zinc-300 bg-white py-1.5 px-2.5 text-xs font-medium text-zinc-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 >
-                  <option value="newest">Newest First</option>
+                  <option value="highest_spend">Highest Lifetime Spend</option>
+                  <option value="most_orders">Most Orders Placed</option>
                   <option value="name_asc">Name (A-Z)</option>
-                  <option value="name_desc">Name (Z-A)</option>
-                  <option value="balance_desc">Highest Balance</option>
+                  <option value="balance_desc">Highest Balance Due</option>
+                  <option value="newest">Newest Registered</option>
                 </select>
               </div>
 
               {/* Reset filter button if active */}
-              {(searchQuery || balanceFilter !== 'all' || sortBy !== 'newest') && (
+              {(searchQuery || tierFilter !== 'all' || balanceFilter !== 'all' || sortBy !== 'highest_spend') && (
                 <button
                   type="button"
                   onClick={() => {
                     setSearchQuery('')
+                    setTierFilter('all')
                     setBalanceFilter('all')
-                    setSortBy('newest')
+                    setSortBy('highest_spend')
                   }}
                   className="text-xs text-blue-600 hover:text-blue-800 font-medium px-2 py-1"
                 >
@@ -288,19 +332,22 @@ export default function CustomersView() {
                     Customer / Client
                   </th>
                   <th scope="col" className="px-6 py-3.5">
-                    Contact & Location
-                  </th>
-                  <th scope="col" className="px-6 py-3.5 text-right">
-                    Credit Limit
-                  </th>
-                  <th scope="col" className="px-6 py-3.5 text-right">
-                    Outstanding Balance
+                    Contact & Type
                   </th>
                   <th scope="col" className="px-6 py-3.5">
-                    Account Status
+                    Loyalty Standing
                   </th>
                   <th scope="col" className="px-6 py-3.5 text-right">
-                    Registered
+                    Orders & Lifetime Spend
+                  </th>
+                  <th scope="col" className="px-6 py-3.5 text-right">
+                    Pending Balance
+                  </th>
+                  <th scope="col" className="px-6 py-3.5 text-right">
+                    Last Visit
+                  </th>
+                  <th scope="col" className="px-6 py-3.5 text-center">
+                    Action
                   </th>
                 </tr>
               </thead>
@@ -317,25 +364,30 @@ export default function CustomersView() {
                         <div className="h-4 w-28 rounded bg-zinc-200 mb-1.5" />
                         <div className="h-3 w-32 rounded bg-zinc-100" />
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="h-4 w-16 rounded bg-zinc-200 ml-auto" />
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="h-4 w-16 rounded bg-zinc-200 ml-auto" />
-                      </td>
                       <td className="px-6 py-4">
-                        <div className="h-6 w-20 rounded-full bg-zinc-200" />
+                        <div className="h-6 w-24 rounded-full bg-zinc-200" />
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="h-4 w-20 rounded bg-zinc-200 ml-auto mb-1" />
+                        <div className="h-3 w-16 rounded bg-zinc-100 ml-auto" />
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="h-4 w-16 rounded bg-zinc-200 ml-auto" />
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="h-3 w-20 rounded bg-zinc-200 ml-auto" />
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="h-6 w-16 rounded bg-zinc-200 mx-auto" />
                       </td>
                     </tr>
                   ))
                 ) : filteredCustomers.length > 0 ? (
                   filteredCustomers.map((customer) => {
                     const balance = Number(customer.balance) || 0
-                    const creditLimit = Number(customer.credit_limit) || 0
-                    const isOverLimit = creditLimit > 0 && balance > creditLimit
+                    const totalSpent = Number(customer.total_spent) || 0
+                    const totalOrders = Number(customer.total_orders) || 0
+                    const badgeInfo = getLoyaltyBadge(customer.loyalty_tier, customer.customer_type)
 
                     return (
                       <tr
@@ -345,11 +397,11 @@ export default function CustomersView() {
                         {/* Name & Email */}
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-xs font-bold text-blue-700 shadow-2xs">
                               {customer.name?.charAt(0).toUpperCase() || 'C'}
                             </div>
                             <div className="min-w-0">
-                              <p className="font-semibold text-zinc-900 truncate">
+                              <p className="font-bold text-zinc-900 truncate">
                                 {customer.name}
                               </p>
                               {customer.email ? (
@@ -361,28 +413,37 @@ export default function CustomersView() {
                                   <span className="truncate">{customer.email}</span>
                                 </a>
                               ) : (
-                                <span className="text-[11px] text-zinc-400">No email</span>
+                                <span className="text-[11px] text-zinc-400">No email registered</span>
                               )}
                             </div>
                           </div>
                         </td>
 
-                        {/* Contact & Address */}
+                        {/* Contact & Classification */}
                         <td className="px-6 py-4">
-                          <div className="text-xs">
-                            {customer.contact_number ? (
-                              <a
-                                href={`tel:${customer.contact_number}`}
-                                className="flex items-center gap-1.5 font-medium text-zinc-800 hover:text-blue-600"
-                              >
-                                <Phone className="h-3 w-3 text-zinc-400" />
-                                <span>{customer.contact_number}</span>
-                              </a>
-                            ) : (
-                              <span className="text-zinc-400">No phone</span>
-                            )}
+                          <div className="text-xs space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              {customer.contact_number ? (
+                                <a
+                                  href={`tel:${customer.contact_number}`}
+                                  className="flex items-center gap-1 font-mono font-medium text-zinc-800 hover:text-blue-600"
+                                >
+                                  <Phone className="h-3 w-3 text-zinc-400" />
+                                  <span>{customer.contact_number}</span>
+                                </a>
+                              ) : (
+                                <span className="text-zinc-400">No phone</span>
+                              )}
+
+                              {customer.customer_type && (
+                                <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-zinc-100 text-zinc-600 border border-zinc-200">
+                                  {customer.customer_type}
+                                </span>
+                              )}
+                            </div>
+
                             {customer.address && (
-                              <p className="flex items-center gap-1.5 text-zinc-500 truncate max-w-xs mt-0.5">
+                              <p className="flex items-center gap-1.5 text-zinc-500 truncate max-w-xs text-[11px]">
                                 <MapPin className="h-3 w-3 text-zinc-400 shrink-0" />
                                 <span className="truncate">{customer.address}</span>
                               </p>
@@ -390,48 +451,68 @@ export default function CustomersView() {
                           </div>
                         </td>
 
-                        {/* Credit Limit */}
-                        <td className="px-6 py-4 text-right font-medium text-zinc-700">
-                          {formatCurrency(creditLimit)}
+                        {/* Loyalty Tier Badge */}
+                        <td className="px-6 py-4">
+                          <span
+                            className={cn(
+                              'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold border',
+                              badgeInfo.badgeClass
+                            )}
+                          >
+                            <badgeInfo.icon className={cn('h-3.5 w-3.5', badgeInfo.iconColor)} />
+                            <span>{badgeInfo.label}</span>
+                          </span>
+                        </td>
+
+                        {/* Orders & Lifetime Spend */}
+                        <td className="px-6 py-4 text-right">
+                          <p className="font-extrabold text-zinc-900">
+                            {formatCurrency(totalSpent)}
+                          </p>
+                          <p className="text-[11px] text-zinc-500 font-medium">
+                            {totalOrders} {totalOrders === 1 ? 'completed order' : 'completed orders'}
+                          </p>
                         </td>
 
                         {/* Outstanding Balance */}
                         <td className="px-6 py-4 text-right">
-                          <span
-                            className={`font-semibold ${
-                              isOverLimit
-                                ? 'text-red-600'
-                                : balance > 0
-                                ? 'text-amber-700'
-                                : 'text-zinc-700'
-                            }`}
-                          >
-                            {formatCurrency(balance)}
-                          </span>
-                        </td>
-
-                        {/* Account Status Badge */}
-                        <td className="px-6 py-4">
-                          {isOverLimit ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-800">
-                              <AlertTriangle className="h-3 w-3" />
-                              Over Limit
-                            </span>
-                          ) : balance > 0 ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
-                              With Balance
-                            </span>
+                          {balance > 0 ? (
+                            <div>
+                              <span className="font-bold text-rose-600">
+                                {formatCurrency(balance)}
+                              </span>
+                              <p className="text-[10px] text-rose-500 font-semibold">
+                                Pending pickup / release
+                              </p>
+                            </div>
                           ) : (
                             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
                               <CheckCircle2 className="h-3 w-3" />
-                              Clear / Paid
+                              Clear / Settled
                             </span>
                           )}
                         </td>
 
-                        {/* Date Registered */}
+                        {/* Date Registered / Last Visit */}
                         <td className="px-6 py-4 text-right text-xs text-zinc-500">
-                          {formatDate(customer.created_at)}
+                          <p className="font-medium text-zinc-700">
+                            {customer.last_order_date ? formatDate(customer.last_order_date) : formatDate(customer.created_at)}
+                          </p>
+                          <p className="text-[10px] text-zinc-400">
+                            Reg: {formatDate(customer.created_at)}
+                          </p>
+                        </td>
+
+                        {/* Quick POS Action */}
+                        <td className="px-6 py-4 text-center">
+                          <Link
+                            href="/pos"
+                            className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition shadow-2xs active:scale-95"
+                            title={`Ring up counter sale for ${customer.name}`}
+                          >
+                            <ShoppingBag className="h-3 w-3" />
+                            <span>POS</span>
+                          </Link>
                         </td>
                       </tr>
                     )
@@ -439,7 +520,7 @@ export default function CustomersView() {
                 ) : (
                   // Empty State
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center">
+                    <td colSpan={7} className="px-6 py-12 text-center">
                       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 text-zinc-400">
                         {searchQuery ? (
                           <Search className="h-6 w-6" />
@@ -453,7 +534,7 @@ export default function CustomersView() {
                       <p className="mt-1 text-xs text-zinc-500 max-w-sm mx-auto">
                         {searchQuery
                           ? `No customer profiles match "${searchQuery}". Try searching with a different name or phone number.`
-                          : 'Get started by creating your first client record with contact information and credit terms.'}
+                          : 'Register clients or ring up counter sales with loyalty tracking in the Cashier POS.'}
                       </p>
                       <div className="mt-4">
                         {searchQuery ? (
@@ -486,11 +567,11 @@ export default function CustomersView() {
           <div className="border-t border-zinc-200 px-6 py-3 bg-zinc-50/50 flex items-center justify-between text-xs text-zinc-500">
             <span>
               Showing <span className="font-semibold text-zinc-700">{filteredCustomers.length}</span> of{' '}
-              <span className="font-semibold text-zinc-700">{customers.length}</span> customer accounts
+              <span className="font-semibold text-zinc-700">{customers.length}</span> client accounts
             </span>
             {filteredCustomers.length > 0 && (
               <span className="text-[11px] text-zinc-400">
-                JAPA Core CRM • Real-time Supabase sync
+                JAPA Core CRM • Real-time POS Loyalty Sync
               </span>
             )}
           </div>
@@ -506,4 +587,3 @@ export default function CustomersView() {
     </DashboardShell>
   )
 }
-

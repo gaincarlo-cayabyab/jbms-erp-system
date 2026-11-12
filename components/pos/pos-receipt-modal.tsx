@@ -27,6 +27,20 @@ export default function POSReceiptModal({ transaction, onNewSale }: Props) {
       ? '(075) 555-0199 / 0917-000-0000'
       : '(02) 8888-0199 / 0918-000-0000'
 
+  const custName =
+    transaction.customerInfo?.name ||
+    transaction.deliveryDetails?.recipientName ||
+    'Walk-in Customer'
+  const custPhone =
+    transaction.customerInfo?.phone ||
+    transaction.deliveryDetails?.recipientPhone ||
+    ''
+  const custTierBadge =
+    transaction.customerInfo?.loyaltyTier &&
+    transaction.customerInfo.loyaltyTier !== 'New Customer'
+      ? ` (${transaction.customerInfo.loyaltyTier})`
+      : ''
+
   // ── HTML5 Canvas Digital Receipt PNG Download ────────────────────────────
   function handleDownloadPNG() {
     try {
@@ -35,7 +49,7 @@ export default function POSReceiptModal({ transaction, onNewSale }: Props) {
       if (!ctx) return
 
       canvas.width = 600
-      canvas.height = 950
+      canvas.height = 1040
 
       // Background
       ctx.fillStyle = '#FFFFFF'
@@ -65,16 +79,23 @@ export default function POSReceiptModal({ transaction, onNewSale }: Props) {
       ctx.fillText(`Date/Time : ${dateStr} ${timeStr}`, 40, 225)
       ctx.fillText(`Cashier   : ${transaction.cashierName} (POS-01)`, 40, 245)
       ctx.fillText(`Branch    : ${transaction.branchName}`, 40, 265)
+      ctx.fillText(`Customer  : ${custName}${custTierBadge}`, 40, 285)
+
+      let nextHeaderY = 305
+      if (custPhone) {
+        ctx.fillText(`Contact   : ${custPhone}`, 40, 305)
+        nextHeaderY = 325
+      }
 
       // Separator
-      ctx.fillText('-------------------------------------------------', 40, 290)
+      ctx.fillText('-------------------------------------------------', 40, nextHeaderY + 15)
       ctx.font = 'bold 13px Courier New, monospace'
-      ctx.fillText('ITEM                          QTY   PRICE   TOTAL', 40, 310)
+      ctx.fillText('ITEM                          QTY   PRICE   TOTAL', 40, nextHeaderY + 35)
       ctx.font = '14px Courier New, monospace'
-      ctx.fillText('-------------------------------------------------', 40, 325)
+      ctx.fillText('-------------------------------------------------', 40, nextHeaderY + 50)
 
       // Items list
-      let y = 350
+      let y = nextHeaderY + 75
       ctx.font = '13px Courier New, monospace'
       transaction.items.forEach((item) => {
         const parsed = parseProductPresentation(item.product)
@@ -118,7 +139,7 @@ export default function POSReceiptModal({ transaction, onNewSale }: Props) {
       ctx.fillText('=================================================', 300, y)
       y += 30
       ctx.font = 'bold 14px Courier New, monospace'
-      ctx.fillText('Thank you for shopping at JAPA Core!', 300, y)
+      ctx.fillText(custName !== 'Walk-in Customer' ? `Thank you for your loyalty, ${custName.split(' ')[0]}!` : 'Thank you for shopping at JAPA Core!', 300, y)
       y += 22
       ctx.font = '13px Courier New, monospace'
       ctx.fillStyle = '#64748B'
@@ -203,6 +224,27 @@ export default function POSReceiptModal({ transaction, onNewSale }: Props) {
                 <span className="text-slate-500">Branch:</span>
                 <span>{transaction.branchName}</span>
               </div>
+              <div className="flex justify-between items-baseline pt-1.5 border-t border-dashed border-slate-200">
+                <span className="text-slate-500">Customer:</span>
+                <span className="font-bold text-slate-900 text-right">
+                  {custName}
+                  {transaction.customerInfo?.loyaltyTier && transaction.customerInfo.loyaltyTier !== 'New Customer' && (
+                    <span className="ml-1 text-[9px] font-bold px-1.5 py-0.2 rounded-full border bg-amber-50 text-amber-800 border-amber-300">
+                      {transaction.customerInfo.loyaltyTier === 'VIP Loyal'
+                        ? '⭐ VIP Loyal'
+                        : transaction.customerInfo.loyaltyTier === 'Repeat Buyer'
+                        ? '🔁 Repeat'
+                        : transaction.customerInfo.loyaltyTier}
+                    </span>
+                  )}
+                </span>
+              </div>
+              {custPhone && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Contact:</span>
+                  <span className="font-mono text-slate-700">{custPhone}</span>
+                </div>
+              )}
             </div>
 
             {/* Line items table */}
@@ -262,7 +304,11 @@ export default function POSReceiptModal({ transaction, onNewSale }: Props) {
             </div>
 
             <div className="text-center pt-3 text-[10px] text-slate-500 space-y-0.5">
-              <p className="font-bold text-slate-700">Thank you for shopping at JAPA Core!</p>
+              <p className="font-bold text-slate-700">
+                {custName !== 'Walk-in Customer'
+                  ? `Thank you for your loyalty, ${custName.split(' ')[0]}!`
+                  : 'Thank you for shopping at JAPA Core!'}
+              </p>
               <p>This serves as an Official Receipt</p>
             </div>
           </div>

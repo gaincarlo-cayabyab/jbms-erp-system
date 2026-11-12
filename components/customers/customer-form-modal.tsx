@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { X, User, Phone, Mail, MapPin, CreditCard, Loader2, AlertCircle } from 'lucide-react'
+import { X, User, Phone, Mail, MapPin, Building2, CreditCard, Loader2, AlertCircle, Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { Customer, CustomerFormData } from '@/types/customer'
+import { Customer, CustomerFormData, CustomerType } from '@/types/customer'
 
 interface CustomerFormModalProps {
   isOpen: boolean
@@ -21,6 +21,8 @@ export default function CustomerFormModal({
     contact_number: '',
     email: '',
     address: '',
+    customer_type: 'Individual',
+    allow_credit_terms: false,
     credit_limit: '0',
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -29,10 +31,15 @@ export default function CustomerFormModal({
   if (!isOpen) return null
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
+    const { name, value, type } = e.target
+    if (type === 'checkbox') {
+      const checked = (e.target as HTMLInputElement).checked
+      setFormData((prev) => ({ ...prev, [name]: checked }))
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }))
+    }
     if (errorMessage) setErrorMessage(null)
   }
 
@@ -45,7 +52,7 @@ export default function CustomerFormModal({
       return
     }
 
-    const creditLimitNum = parseFloat(String(formData.credit_limit)) || 0
+    const creditLimitNum = formData.allow_credit_terms ? parseFloat(String(formData.credit_limit)) || 0 : 0
     if (creditLimitNum < 0) {
       setErrorMessage('Credit limit cannot be negative.')
       return
@@ -55,14 +62,23 @@ export default function CustomerFormModal({
 
     try {
       const supabase = createClient()
+      const newType = formData.customer_type || 'Individual'
+      const initialTier = (newType === 'Corporate' || newType === 'Reseller' || newType === 'Government')
+        ? 'Corporate'
+        : 'New Customer'
 
       const payload = {
         name: formData.name.trim(),
         contact_number: formData.contact_number.trim() || null,
         email: formData.email.trim() || null,
         address: formData.address.trim() || null,
+        customer_type: newType,
+        loyalty_tier: initialTier,
+        allow_credit_terms: Boolean(formData.allow_credit_terms),
         credit_limit: creditLimitNum,
         balance: 0.00,
+        total_orders: 0,
+        total_spent: 0.00,
       }
 
       const { data, error } = await supabase
@@ -72,11 +88,6 @@ export default function CustomerFormModal({
         .single()
 
       if (error) {
-        if (error.code === '42501') {
-          throw new Error(
-            'Supabase Row-Level Security policy blocked this insert. If testing in development without auth, run the script "supabase/migrations/02_crm_dev_policies.sql" in your Supabase SQL Editor.'
-          )
-        }
         if (error.code === '23505') {
           throw new Error('A customer with this email address already exists.')
         }
@@ -91,6 +102,8 @@ export default function CustomerFormModal({
         contact_number: '',
         email: '',
         address: '',
+        customer_type: 'Individual',
+        allow_credit_terms: false,
         credit_limit: '0',
       })
       onClose()
@@ -113,7 +126,7 @@ export default function CustomerFormModal({
           <div>
             <h2 className="text-lg font-bold text-zinc-900">Add New Customer</h2>
             <p className="text-xs text-zinc-500">
-              Register a client profile, credit terms, and contact details.
+              Register a client profile, contact directory, and loyalty tracking.
             </p>
           </div>
           <button
@@ -152,9 +165,32 @@ export default function CustomerFormModal({
                 required
                 value={formData.name}
                 onChange={handleChange}
-                placeholder="e.g. Apex Prints & Graphics Co."
+                placeholder="e.g. Juan Dela Cruz or Apex Prints Co."
                 className="w-full rounded-lg border border-zinc-300 py-2 pl-9 pr-3 text-sm text-zinc-900 placeholder-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 transition"
               />
+            </div>
+          </div>
+
+          {/* Customer Classification */}
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
+              Account Classification
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {(['Individual', 'Corporate', 'Reseller', 'Government'] as CustomerType[]).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setFormData((prev) => ({ ...prev, customer_type: type }))}
+                  className={`py-1.5 px-2 text-xs font-semibold rounded-lg border text-center transition ${
+                    formData.customer_type === type
+                      ? 'bg-blue-600 text-white border-blue-700 shadow-2xs'
+                      : 'bg-zinc-50 text-zinc-700 border-zinc-200 hover:bg-zinc-100'
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -172,7 +208,7 @@ export default function CustomerFormModal({
                   value={formData.contact_number}
                   onChange={handleChange}
                   placeholder="+63 912 345 6789"
-                  className="w-full rounded-lg border border-zinc-300 py-2 pl-9 pr-3 text-sm text-zinc-900 placeholder-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 transition"
+                  className="w-full rounded-lg border border-zinc-300 py-2 pl-9 pr-3 text-sm text-zinc-900 placeholder-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 transition font-mono"
                 />
               </div>
             </div>
@@ -213,27 +249,49 @@ export default function CustomerFormModal({
             </div>
           </div>
 
-          {/* Credit Limit */}
-          <div>
-            <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
-              Credit Limit (PHP ₱)
-            </label>
-            <div className="relative">
-              <CreditCard className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
-              <input
-                type="number"
-                name="credit_limit"
-                min="0"
-                step="500"
-                value={formData.credit_limit}
-                onChange={handleChange}
-                placeholder="0.00"
-                className="w-full rounded-lg border border-zinc-300 py-2 pl-9 pr-3 text-sm text-zinc-900 placeholder-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 transition"
-              />
+          {/* Optional B2B Credit Terms Toggle */}
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50/60 p-3.5 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-zinc-800">
+                  Allow B2B Terms / Purchase Order Credit
+                </p>
+                <p className="text-[11px] text-zinc-500">
+                  Optional for verified corporate & government billing terms. Default is standard Downpayment + Pickup.
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="allow_credit_terms"
+                  checked={Boolean(formData.allow_credit_terms)}
+                  onChange={handleChange}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-zinc-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
             </div>
-            <p className="mt-1 text-[11px] text-zinc-500">
-              Set max credit allowed before orders require full advance payment. Default is 0.00.
-            </p>
+
+            {formData.allow_credit_terms && (
+              <div className="pt-2 border-t border-zinc-200/80 animate-in fade-in duration-150">
+                <label className="block text-xs font-semibold text-zinc-700 mb-1">
+                  Credit Limit Ceiling (PHP ₱)
+                </label>
+                <div className="relative">
+                  <CreditCard className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
+                  <input
+                    type="number"
+                    name="credit_limit"
+                    min="0"
+                    step="500"
+                    value={formData.credit_limit}
+                    onChange={handleChange}
+                    placeholder="e.g. 50000"
+                    className="w-full rounded-lg border border-zinc-300 py-2 pl-9 pr-3 text-sm text-zinc-900 placeholder-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 transition"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Action buttons */}
@@ -266,4 +324,3 @@ export default function CustomerFormModal({
     </div>
   )
 }
-
