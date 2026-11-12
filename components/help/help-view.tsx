@@ -490,7 +490,7 @@ export default function HelpView() {
               System Help & Knowledge Base
             </h1>
             <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
-              Module 10 · Knowledge Base
+              Module 11 · Knowledge Base
             </span>
             <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold border ${activeRoleInfo.badgeClass}`}>
               {activeRoleInfo.label}

@@ -227,7 +227,7 @@ export default function ProductionView() {
                 Production Queue & Job Orders
               </h1>
               <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
-                Module 3
+                Module 8
               </span>
             </div>
             <p className="mt-1 text-sm text-zinc-500">

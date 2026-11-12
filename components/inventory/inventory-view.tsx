@@ -416,7 +416,7 @@ export default function InventoryView() {
                 Multi-Store Inventory & Products
               </h1>
               <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
-                Module 4 · Standardized
+                Module 6 · Standardized
               </span>
               <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
                 📍 {activeBranch.shortCode} — {activeBranch.name.split('(')[0].trim()}

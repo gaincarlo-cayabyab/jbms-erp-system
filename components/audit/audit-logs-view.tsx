@@ -197,7 +197,7 @@ export default function AuditLogsView() {
               System Audit &amp; Compliance Ledger
             </h1>
             <span className="rounded-full bg-slate-900 px-2.5 py-0.5 text-xs font-semibold text-white">
-              Module 9 · Audit Ledger
+              Module 10 · Audit Ledger
             </span>
             <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
               Immutable Chronological Trail · Level 1

@@ -537,10 +537,13 @@ export default function CashManagementView() {
         {/* ── Page Header ────────────────────────────────────────── */}
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-2xl font-black tracking-tight text-zinc-900">
                 Cash Management & Liquidity
               </h1>
+              <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
+                Module 3
+              </span>
               <span className="rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 text-xs font-bold text-emerald-800 shadow-2xs">
                 Live Treasury Monitor
               </span>

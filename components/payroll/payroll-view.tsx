@@ -125,7 +125,7 @@ export default function PayrollView() {
         <div>
           <div className="mb-1 flex items-center gap-2">
             <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
-              Module 6
+              Module 9
             </span>
             <Briefcase className="h-4 w-4 text-zinc-400" />
           </div>

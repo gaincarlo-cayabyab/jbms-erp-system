@@ -64,7 +64,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   const rawRole = authUser?.role || 'Staff'
   const userRole =
     rawRole === 'Production_Staff' ? 'Staff' :
-    rawRole === 'Store_Manager' ? 'Manager' : rawRole
+      rawRole === 'Store_Manager' ? 'Manager' : rawRole
 
   const canAccessPos = userRole === 'Admin' || userRole === 'Manager' || userRole === 'Cashier'
   const canAccessInventory = userRole === 'Admin' || userRole === 'Manager' || userRole === 'Inventory' || userRole === 'Staff'
@@ -227,8 +227,8 @@ export default function DashboardShell({ children }: { children: React.ReactNode
               impersonatedBranchId
                 ? "border-amber-300 bg-amber-50 text-amber-900"
                 : isBranchLocked
-                ? "border-slate-200 bg-slate-100/70 text-slate-700"
-                : "border-slate-200 bg-slate-50 text-slate-700 hover:border-indigo-300"
+                  ? "border-slate-200 bg-slate-100/70 text-slate-700"
+                  : "border-slate-200 bg-slate-50 text-slate-700 hover:border-indigo-300"
             )}>
               <Store className={cn(
                 "h-3.5 w-3.5 shrink-0",

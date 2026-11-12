@@ -143,7 +143,7 @@ export default function CustomersView() {
                 CRM & Customer Management
               </h1>
               <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
-                Module 1
+                Module 5
               </span>
             </div>
             <p className="mt-1 text-sm text-zinc-500">

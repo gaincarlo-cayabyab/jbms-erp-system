@@ -411,7 +411,7 @@ export default function StockTransfersView() {
               Inter-Branch Stock Transfers (STO)
             </h1>
             <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
-              Module 6 · Logistics & STO
+              Module 7 · Logistics & STO
             </span>
             <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
               📍 Dagupan Main ↔ Manila Hub
