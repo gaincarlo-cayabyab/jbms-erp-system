@@ -16,7 +16,7 @@ import { DEFAULT_POS_PRODUCTS } from '@/types/pos'
 import { Package, ShoppingCart, CreditCard, ArrowRight, Plus, Wallet, Coins } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { requestAppFullscreen, FullscreenToggle } from '@/components/ui/auto-fullscreen'
+import { requestAppFullscreen } from '@/components/ui/auto-fullscreen'
 
 // ─── Currency Formatter (Non-VAT / Gross Pricing) ─────────────────────────────
 const PHP = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' })
@@ -370,8 +370,6 @@ export default function POSView() {
               <Coins className="h-3.5 w-3.5 text-rose-600" />
               <span>Paid Out / In</span>
             </button>
-
-            <FullscreenToggle className="hidden md:inline-flex" />
           </div>
 
           {/* Quick Tablet Portrait View Selector (visible below lg: 1024px) */}
