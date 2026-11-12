@@ -1,7 +1,8 @@
 'use client'
 
-import { Layers, AlertTriangle, CheckCircle2, Clock, Calendar } from 'lucide-react'
+import { Layers, AlertTriangle, Zap, Package } from 'lucide-react'
 import { JobOrder } from '@/types/production'
+import { cn } from '@/lib/utils'
 
 interface ProductionSummaryCardsProps {
   jobs: JobOrder[]
@@ -17,64 +18,71 @@ export default function ProductionSummaryCards({
     (j) => j.stage_status !== 'Done' && j.stage_status !== 'Completed' && j.stage_status !== 'Cancelled'
   )
 
-  // 2. Jobs Near Deadline (within 48 hours or overdue, and still active)
-  const now = new Date()
-  const todayStr = now.toISOString().split('T')[0]
-  const twoDaysLater = new Date(now.getTime() + 48 * 60 * 60 * 1000)
-
-  const nearDeadlineJobs = activeJobs.filter((j) => {
-    if (!j.deadline) return false
-    const d = new Date(j.deadline)
-    return d <= twoDaysLater
-  })
-
-  // 3. Completed Today (or Completed Total)
-  const completedToday = jobs.filter((j) => {
-    const isDone = j.stage_status === 'Done' || j.stage_status === 'Completed'
-    if (!isDone) return false
-    const createdDate = j.created_at ? new Date(j.created_at).toISOString().split('T')[0] : ''
-    return createdDate === todayStr || isDone
-  })
-
-  // 4. In Active Press / Production
-  const inProductionJobs = jobs.filter(
+  // In active machine / press / finishing stages
+  const inProductionJobs = activeJobs.filter(
     (j) =>
       j.stage_status === 'Printing' ||
       j.stage_status === 'In_Production' ||
       j.stage_status === 'Finishing'
   )
 
+  // 2. Rush / High Priority Jobs (active)
+  const rushJobs = activeJobs.filter(
+    (j) => j.priority === 'Rush' || j.priority === 'High'
+  )
+
+  // 3. Overdue Jobs (deadline past midnight today, still active)
+  const todayMidnight = new Date(new Date().setHours(0, 0, 0, 0))
+  const overdueJobs = activeJobs.filter((j) => {
+    if (!j.deadline) return false
+    return new Date(j.deadline) < todayMidnight
+  })
+
+  // 4. Ready for Pickup / Released
+  const readyJobs = jobs.filter(
+    (j) => j.stage_status === 'Ready' || j.stage_status === 'Ready_For_Pickup'
+  )
+
   const cards = [
     {
-      title: 'Active Jobs in Queue',
+      title: 'Active in Queue',
       value: activeJobs.length.toString(),
-      subtitle: `${inProductionJobs.length} currently on machine / assembly`,
+      subtitle: `${inProductionJobs.length} currently printing or in finishing`,
       icon: Layers,
       color: 'bg-blue-600',
+      isAlert: false,
     },
     {
-      title: 'Near Deadline / Urgent',
-      value: nearDeadlineJobs.length.toString(),
+      title: '⚡ Rush & High Priority',
+      value: rushJobs.length.toString(),
       subtitle:
-        nearDeadlineJobs.length > 0
-          ? `${nearDeadlineJobs.length} jobs due within 48h or overdue`
-          : 'All jobs on schedule',
+        rushJobs.length > 0
+          ? `${rushJobs.length} expedited orders requiring focus`
+          : 'Normal schedule, no expedited jobs',
+      icon: Zap,
+      color: rushJobs.length > 0 ? 'bg-red-600' : 'bg-emerald-600',
+      isAlert: rushJobs.length > 0,
+      alertBorder: 'border-red-300 ring-1 ring-red-200 bg-red-50/20',
+    },
+    {
+      title: 'Overdue Deadlines',
+      value: overdueJobs.length.toString(),
+      subtitle:
+        overdueJobs.length > 0
+          ? `${overdueJobs.length} orders past scheduled date!`
+          : 'All job schedules on track',
       icon: AlertTriangle,
-      color: nearDeadlineJobs.length > 0 ? 'bg-rose-600' : 'bg-emerald-600',
+      color: overdueJobs.length > 0 ? 'bg-rose-600' : 'bg-emerald-600',
+      isAlert: overdueJobs.length > 0,
+      alertBorder: 'border-rose-300 ring-1 ring-rose-200 bg-rose-50/20',
     },
     {
-      title: 'Completed Jobs',
-      value: completedToday.length.toString(),
-      subtitle: `${jobs.length - activeJobs.length} finished or released`,
-      icon: CheckCircle2,
-      color: 'bg-emerald-600',
-    },
-    {
-      title: 'Active Production Areas',
-      value: inProductionJobs.length.toString(),
-      subtitle: 'Jobs in Printing & Finishing stages',
-      icon: Clock,
-      color: 'bg-indigo-600',
+      title: 'Ready for Pickup',
+      value: readyJobs.length.toString(),
+      subtitle: 'Awaiting customer claim or delivery',
+      icon: Package,
+      color: 'bg-orange-500',
+      isAlert: false,
     },
   ]
 
@@ -85,7 +93,10 @@ export default function ProductionSummaryCards({
         return (
           <div
             key={card.title}
-            className="flex flex-col justify-between rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:shadow-md"
+            className={cn(
+              'flex flex-col justify-between rounded-xl border bg-white p-5 shadow-sm transition hover:shadow-md',
+              card.isAlert && card.alertBorder ? card.alertBorder : 'border-zinc-200'
+            )}
           >
             <div className="flex items-start justify-between">
               <div className="min-w-0 flex-1 pr-2">
@@ -95,13 +106,21 @@ export default function ProductionSummaryCards({
                 {isLoading ? (
                   <div className="mt-2 h-8 w-20 animate-pulse rounded bg-zinc-200" />
                 ) : (
-                  <p className="mt-2 text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl truncate">
+                  <p
+                    className={cn(
+                      'mt-2 text-2xl font-bold tracking-tight sm:text-3xl truncate',
+                      card.isAlert ? 'text-red-700' : 'text-zinc-900'
+                    )}
+                  >
                     {card.value}
                   </p>
                 )}
               </div>
               <div
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-sm ${card.color}`}
+                className={cn(
+                  'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-sm',
+                  card.color
+                )}
               >
                 <Icon className="h-5 w-5" />
               </div>
@@ -111,7 +130,14 @@ export default function ProductionSummaryCards({
               {isLoading ? (
                 <div className="h-3 w-32 animate-pulse rounded bg-zinc-100" />
               ) : (
-                <p className="text-xs text-zinc-500 truncate">{card.subtitle}</p>
+                <p
+                  className={cn(
+                    'text-xs truncate',
+                    card.isAlert ? 'font-semibold text-red-600' : 'text-zinc-500'
+                  )}
+                >
+                  {card.subtitle}
+                </p>
               )}
             </div>
           </div>
@@ -120,4 +146,3 @@ export default function ProductionSummaryCards({
     </div>
   )
 }
-

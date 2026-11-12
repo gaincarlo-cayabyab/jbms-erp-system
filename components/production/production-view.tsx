@@ -7,29 +7,32 @@ import { toast } from 'sonner'
 import DashboardShell from '@/components/dashboard-shell'
 import ProductionSummaryCards from './production-summary-cards'
 import JobOrderFormModal from './job-order-form-modal'
+import JobTicketModal from './job-ticket-modal'
 import { createClient } from '@/lib/supabase/client'
-import { JobOrder, JobStageStatus } from '@/types/production'
+import { JobOrder, JobStageStatus, JobPriority } from '@/types/production'
 import { SalesOrder } from '@/types/sales'
+import { getLoyaltyBadge } from '@/components/pos/pos-customer-selector'
+import { cn } from '@/lib/utils'
 import {
   Layers,
   Plus,
   Search,
-  Filter,
   RefreshCw,
   Calendar,
   AlertTriangle,
-  CheckCircle2,
   X,
   LayoutGrid,
   Table as TableIcon,
   ChevronRight,
   ChevronLeft,
-  ArrowRight,
   ExternalLink,
-  Clock,
   Building,
   Check,
   Receipt,
+  Zap,
+  User2,
+  FileText,
+  Package,
 } from 'lucide-react'
 
 const KANBAN_STAGES: Array<{
@@ -37,13 +40,15 @@ const KANBAN_STAGES: Array<{
   title: string
   color: string
   badgeBg: string
+  dotColor: string
 }> = [
-  { id: 'Queued', title: 'Pending / Queued', color: 'border-zinc-400 bg-zinc-50', badgeBg: 'bg-zinc-200 text-zinc-800' },
-  { id: 'Pre_Press', title: 'Pre-Press / Design', color: 'border-amber-400 bg-amber-50/30', badgeBg: 'bg-amber-100 text-amber-800' },
-  { id: 'Printing', title: 'In Production', color: 'border-blue-400 bg-blue-50/30', badgeBg: 'bg-blue-100 text-blue-800' },
-  { id: 'Finishing', title: 'Finishing / Assembly', color: 'border-purple-400 bg-purple-50/30', badgeBg: 'bg-purple-100 text-purple-800' },
-  { id: 'Quality_Check', title: 'Quality Check', color: 'border-teal-400 bg-teal-50/30', badgeBg: 'bg-teal-100 text-teal-800' },
-  { id: 'Done', title: 'Completed', color: 'border-emerald-400 bg-emerald-50/30', badgeBg: 'bg-emerald-100 text-emerald-800' },
+  { id: 'Queued', title: '📋 Queued', color: 'border-zinc-300 bg-zinc-50/70', badgeBg: 'bg-zinc-200 text-zinc-700', dotColor: 'bg-zinc-400' },
+  { id: 'Pre_Press', title: '🎨 Pre-Press', color: 'border-amber-300 bg-amber-50/40', badgeBg: 'bg-amber-100 text-amber-800', dotColor: 'bg-amber-500' },
+  { id: 'Printing', title: '🖨️ Printing', color: 'border-blue-300 bg-blue-50/40', badgeBg: 'bg-blue-100 text-blue-800', dotColor: 'bg-blue-500' },
+  { id: 'Finishing', title: '✂️ Finishing', color: 'border-purple-300 bg-purple-50/40', badgeBg: 'bg-purple-100 text-purple-800', dotColor: 'bg-purple-500' },
+  { id: 'Quality_Check', title: '🔍 Quality Check', color: 'border-teal-300 bg-teal-50/40', badgeBg: 'bg-teal-100 text-teal-800', dotColor: 'bg-teal-500' },
+  { id: 'Ready', title: '📦 Ready / Pickup', color: 'border-orange-300 bg-orange-50/40', badgeBg: 'bg-orange-100 text-orange-800', dotColor: 'bg-orange-500' },
+  { id: 'Done', title: '✅ Completed', color: 'border-emerald-300 bg-emerald-50/40', badgeBg: 'bg-emerald-100 text-emerald-800', dotColor: 'bg-emerald-500' },
 ]
 
 export default function ProductionView() {
@@ -54,9 +59,13 @@ export default function ProductionView() {
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [areaFilter, setAreaFilter] = useState('all')
+  const [branchFilter, setBranchFilter] = useState<'all' | 'dagupan_main' | 'manila_branch'>('all')
+  const [priorityFilter, setPriorityFilter] = useState<string>('all')
   const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban')
   const [activeTabStage, setActiveTabStage] = useState<string>('all')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedJob, setSelectedJob] = useState<JobOrder | null>(null)
+  const [showTicketModal, setShowTicketModal] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   // URL query params: e.g. /production?new=true
@@ -103,6 +112,21 @@ export default function ProductionView() {
     loadData()
   }, [])
 
+  // Supabase Realtime Subscription for automatic multi-device sync
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel('production_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'job_orders' }, () => {
+        loadData()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
   const handleJobCreated = (newJob: JobOrder) => {
     setJobs((prev) => [newJob, ...prev])
     toast.success(`Job Order "${newJob.job_number}" scheduled successfully.`)
@@ -115,6 +139,9 @@ export default function ProductionView() {
       setJobs((prev) =>
         prev.map((j) => (j.id === jobId ? { ...j, stage_status: nextStage } : j))
       )
+      if (selectedJob && selectedJob.id === jobId) {
+        setSelectedJob((prev) => (prev ? { ...prev, stage_status: nextStage } : null))
+      }
 
       const supabase = createClient()
       const { error } = await supabase
@@ -126,7 +153,7 @@ export default function ProductionView() {
         throw new Error(error.message)
       }
 
-      toast.success(`Job stage moved to ${nextStage.replace('_', ' ')}.`)
+      toast.success(`Job stage moved to ${nextStage.replace(/_/g, ' ')}.`)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to update stage'
       toast.error(`Error updating stage: ${msg}`)
@@ -139,7 +166,29 @@ export default function ProductionView() {
     return jobs.filter((job) => {
       // Tab stage filter for table view
       if (viewMode === 'table' && activeTabStage !== 'all') {
-        if (job.stage_status !== activeTabStage) return false
+        if (activeTabStage === 'Queued') {
+          if (job.stage_status !== 'Queued' && job.stage_status !== 'Pending') return false
+        } else if (activeTabStage === 'Printing') {
+          if (job.stage_status !== 'Printing' && job.stage_status !== 'In_Production') return false
+        } else if (activeTabStage === 'Ready') {
+          if (job.stage_status !== 'Ready' && job.stage_status !== 'Ready_For_Pickup') return false
+        } else if (activeTabStage === 'Done') {
+          if (job.stage_status !== 'Done' && job.stage_status !== 'Completed') return false
+        } else if (job.stage_status !== activeTabStage) {
+          return false
+        }
+      }
+
+      // Branch Filter
+      if (branchFilter !== 'all') {
+        const jBranch = job.branch_id || 'dagupan_main'
+        if (jBranch !== branchFilter) return false
+      }
+
+      // Priority Filter
+      if (priorityFilter !== 'all') {
+        const jPriority = job.priority || 'Normal'
+        if (jPriority !== priorityFilter) return false
       }
 
       // Production Area filter
@@ -155,15 +204,19 @@ export default function ProductionView() {
       const orderNum = job.sales_orders?.order_number?.toLowerCase() || ''
       const custName = job.sales_orders?.customers?.name?.toLowerCase() || ''
       const area = job.production_area?.toLowerCase() || ''
+      const operator = job.assigned_operator?.toLowerCase() || ''
+      const specs = job.specifications?.toLowerCase() || ''
 
       return (
         jobNum.includes(q) ||
         orderNum.includes(q) ||
         custName.includes(q) ||
-        area.includes(q)
+        area.includes(q) ||
+        operator.includes(q) ||
+        specs.includes(q)
       )
     })
-  }, [jobs, searchQuery, areaFilter, viewMode, activeTabStage])
+  }, [jobs, searchQuery, areaFilter, branchFilter, priorityFilter, viewMode, activeTabStage])
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return 'No deadline'
@@ -191,6 +244,9 @@ export default function ProductionView() {
       case 'Finishing':
         return 'Quality_Check'
       case 'Quality_Check':
+        return 'Ready'
+      case 'Ready':
+      case 'Ready_For_Pickup':
         return 'Done'
       default:
         return null
@@ -208,11 +264,63 @@ export default function ProductionView() {
         return 'Printing'
       case 'Quality_Check':
         return 'Finishing'
+      case 'Ready':
+      case 'Ready_For_Pickup':
+        return 'Quality_Check'
       case 'Done':
       case 'Completed':
-        return 'Quality_Check'
+        return 'Ready'
       default:
         return null
+    }
+  }
+
+  const getPriorityBadge = (priority?: JobPriority | string) => {
+    switch (priority) {
+      case 'Rush':
+        return {
+          label: '⚡ Rush',
+          className: 'bg-red-100 text-red-700 border-red-300 font-bold animate-pulse',
+        }
+      case 'High':
+        return {
+          label: '🔺 High',
+          className: 'bg-amber-100 text-amber-800 border-amber-300 font-semibold',
+        }
+      case 'Low':
+        return {
+          label: 'Low',
+          className: 'bg-zinc-100 text-zinc-600 border-zinc-200',
+        }
+      default:
+        return null
+    }
+  }
+
+  const getStageBadgeColor = (stage: string) => {
+    switch (stage) {
+      case 'Queued':
+      case 'Pending':
+        return 'bg-zinc-100 text-zinc-700 border-zinc-300'
+      case 'Pre_Press':
+        return 'bg-amber-100 text-amber-800 border-amber-300'
+      case 'Printing':
+      case 'In_Production':
+        return 'bg-blue-100 text-blue-800 border-blue-300'
+      case 'Finishing':
+        return 'bg-purple-100 text-purple-800 border-purple-300'
+      case 'Quality_Check':
+        return 'bg-teal-100 text-teal-800 border-teal-300'
+      case 'Ready':
+      case 'Ready_For_Pickup':
+        return 'bg-orange-100 text-orange-800 border-orange-300'
+      case 'Done':
+      case 'Completed':
+        return 'bg-emerald-100 text-emerald-800 border-emerald-300'
+      case 'Cancelled':
+        return 'bg-red-100 text-red-700 border-red-300'
+      default:
+        return 'bg-zinc-100 text-zinc-700 border-zinc-300'
     }
   }
 
@@ -231,7 +339,7 @@ export default function ProductionView() {
               </span>
             </div>
             <p className="mt-1 text-sm text-zinc-500">
-              Track active manufacturing stages, machine queues, artwork proofs, and fulfillment deadlines.
+              Track manufacturing stages, machine scheduling, operator dispatch, and fulfillment deadlines.
             </p>
           </div>
 
@@ -283,7 +391,7 @@ export default function ProductionView() {
               <p className="font-semibold">Unable to fetch job orders from Supabase</p>
               <p className="mt-0.5 text-xs text-red-700">{fetchError}</p>
               <p className="mt-2 text-xs text-red-600">
-                Run the script at &quot;supabase/migrations/04_job_orders_policies.sql&quot; in your Supabase SQL Editor if testing in dev mode.
+                Run the script at &quot;supabase/migrations/22_production_queue_enhancements.sql&quot; in your Supabase SQL Editor if testing in dev mode.
               </p>
             </div>
           </div>
@@ -298,7 +406,7 @@ export default function ProductionView() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by job #, sales order #, customer, area..."
+              placeholder="Search by JO#, SO#, client, specs, operator..."
               className="w-full rounded-lg border border-zinc-300 py-2 pl-9 pr-9 text-sm text-zinc-900 placeholder-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 transition"
             />
             {searchQuery && (
@@ -313,6 +421,62 @@ export default function ProductionView() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {/* Branch Filter Segment */}
+            <div className="flex rounded-lg border border-zinc-200 p-0.5 bg-zinc-50 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setBranchFilter('all')}
+                className={cn(
+                  'px-3 py-1.5 rounded-md transition',
+                  branchFilter === 'all'
+                    ? 'bg-white text-blue-700 shadow-xs'
+                    : 'text-zinc-600 hover:text-zinc-900'
+                )}
+              >
+                All Branches
+              </button>
+              <button
+                type="button"
+                onClick={() => setBranchFilter('dagupan_main')}
+                className={cn(
+                  'px-3 py-1.5 rounded-md transition',
+                  branchFilter === 'dagupan_main'
+                    ? 'bg-white text-blue-700 shadow-xs'
+                    : 'text-zinc-600 hover:text-zinc-900'
+                )}
+              >
+                🏢 Dagupan
+              </button>
+              <button
+                type="button"
+                onClick={() => setBranchFilter('manila_branch')}
+                className={cn(
+                  'px-3 py-1.5 rounded-md transition',
+                  branchFilter === 'manila_branch'
+                    ? 'bg-white text-blue-700 shadow-xs'
+                    : 'text-zinc-600 hover:text-zinc-900'
+                )}
+              >
+                🏙️ Manila
+              </button>
+            </div>
+
+            {/* Priority Filter */}
+            <div className="flex items-center gap-1.5">
+              <Zap className="h-3.5 w-3.5 text-zinc-400" />
+              <select
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value)}
+                className="rounded-lg border border-zinc-300 bg-white py-1.5 px-2.5 text-xs font-medium text-zinc-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              >
+                <option value="all">All Priorities</option>
+                <option value="Rush">⚡ Rush Only</option>
+                <option value="High">🔺 High</option>
+                <option value="Normal">Normal</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+
             {/* Area Filter */}
             <div className="flex items-center gap-1.5">
               <Building className="h-3.5 w-3.5 text-zinc-400" />
@@ -335,11 +499,12 @@ export default function ProductionView() {
               <button
                 type="button"
                 onClick={() => setViewMode('kanban')}
-                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition',
                   viewMode === 'kanban'
                     ? 'bg-white text-blue-700 shadow-sm'
                     : 'text-zinc-600 hover:text-zinc-900'
-                }`}
+                )}
               >
                 <LayoutGrid className="h-3.5 w-3.5" />
                 <span>Kanban Board</span>
@@ -347,11 +512,12 @@ export default function ProductionView() {
               <button
                 type="button"
                 onClick={() => setViewMode('table')}
-                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition',
                   viewMode === 'table'
                     ? 'bg-white text-blue-700 shadow-sm'
                     : 'text-zinc-600 hover:text-zinc-900'
-                }`}
+                )}
               >
                 <TableIcon className="h-3.5 w-3.5" />
                 <span>Tabbed Table</span>
@@ -360,14 +526,15 @@ export default function ProductionView() {
           </div>
         </div>
 
-        {/* View Mode 1: KANBAN BOARD */}
+        {/* View Mode 1: 7-STAGE KANBAN BOARD */}
         {viewMode === 'kanban' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-start">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3.5 items-start">
             {KANBAN_STAGES.map((col) => {
               // Group jobs for this column
               const colJobs = filteredJobs.filter((j) => {
                 if (col.id === 'Queued') return j.stage_status === 'Queued' || j.stage_status === 'Pending'
                 if (col.id === 'Printing') return j.stage_status === 'Printing' || j.stage_status === 'In_Production'
+                if (col.id === 'Ready') return j.stage_status === 'Ready' || j.stage_status === 'Ready_For_Pickup'
                 if (col.id === 'Done') return j.stage_status === 'Done' || j.stage_status === 'Completed'
                 return j.stage_status === col.id
               })
@@ -375,113 +542,204 @@ export default function ProductionView() {
               return (
                 <div
                   key={col.id}
-                  className="flex flex-col rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 min-h-[460px]"
+                  className={cn(
+                    'flex flex-col rounded-xl border p-2.5 min-h-[500px]',
+                    col.color
+                  )}
                 >
                   {/* Column Header */}
-                  <div className="flex items-center justify-between pb-3 border-b border-zinc-200/80 mb-3">
-                    <span className="text-xs font-bold text-zinc-800 tracking-tight">
-                      {col.title}
-                    </span>
+                  <div className="flex items-center justify-between pb-2.5 border-b border-zinc-200/80 mb-2.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className={cn('h-2 w-2 rounded-full shrink-0', col.dotColor)} />
+                      <span className="text-xs font-bold text-zinc-800 tracking-tight truncate">
+                        {col.title}
+                      </span>
+                    </div>
                     <span
-                      className={`inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-bold ${col.badgeBg}`}
+                      className={cn(
+                        'inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-bold shrink-0',
+                        col.badgeBg
+                      )}
                     >
                       {colJobs.length}
                     </span>
                   </div>
 
                   {/* Cards Container */}
-                  <div className="space-y-3 flex-1 overflow-y-auto max-h-[650px] pr-0.5">
+                  <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[720px] pr-0.5">
                     {colJobs.length > 0 ? (
                       colJobs.map((job) => {
                         const next = getStageNext(job.stage_status)
                         const prev = getStagePrev(job.stage_status)
                         const overdue = isOverdue(job.deadline)
+                        const priorityBadge = getPriorityBadge(job.priority)
+                        const customer = job.sales_orders?.customers
+                        const loyaltyInfo = customer
+                          ? getLoyaltyBadge(customer.loyalty_tier, customer.customer_type)
+                          : null
+
+                        const isCompletedStage = job.stage_status === 'Done' || job.stage_status === 'Completed'
 
                         return (
                           <div
                             key={job.id}
-                            className="rounded-lg border border-zinc-200 bg-white p-3.5 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between gap-2.5"
+                            className={cn(
+                              'rounded-xl border bg-white p-3 shadow-xs hover:shadow-md transition-all flex flex-col gap-2',
+                              overdue && !isCompletedStage
+                                ? 'ring-2 ring-red-400 ring-offset-1 border-red-300'
+                                : job.priority === 'Rush'
+                                ? 'ring-1 ring-red-300 border-red-200'
+                                : 'border-zinc-200'
+                            )}
                           >
-                            {/* Card Header: Job Number & Urgent Badge */}
-                            <div className="flex items-start justify-between">
+                            {/* Card Header: Job Number & Priority/Overdue Badges */}
+                            <div className="flex items-start justify-between gap-1">
                               <span className="font-mono text-xs font-bold text-blue-700">
                                 {job.job_number}
                               </span>
-                              {overdue && job.stage_status !== 'Done' && (
-                                <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">
-                                  <AlertTriangle className="h-3 w-3" />
-                                  Overdue
-                                </span>
-                              )}
+                              <div className="flex flex-wrap items-center gap-1 justify-end">
+                                {priorityBadge && (
+                                  <span
+                                    className={cn(
+                                      'text-[10px] px-1.5 py-0.5 rounded border',
+                                      priorityBadge.className
+                                    )}
+                                  >
+                                    {priorityBadge.label}
+                                  </span>
+                                )}
+                                {overdue && !isCompletedStage && (
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-1 py-0.5 rounded">
+                                    <AlertTriangle className="h-2.5 w-2.5" />
+                                    OVERDUE
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
-                            {/* Linked Sales Order & Customer */}
+                            {/* Customer & Loyalty Badge */}
                             <div>
-                              <p className="text-xs font-semibold text-zinc-900 truncate">
-                                {job.sales_orders?.customers?.name || 'Walk-in Customer'}
+                              <p className="text-xs font-semibold text-zinc-900 truncate flex items-center gap-1">
+                                <span className="truncate">
+                                  {customer?.name || 'Walk-in Customer'}
+                                </span>
                               </p>
+                              {loyaltyInfo && (
+                                <div className="mt-0.5">
+                                  <span
+                                    className={cn(
+                                      'inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.2 rounded border',
+                                      loyaltyInfo.badgeClass
+                                    )}
+                                  >
+                                    {loyaltyInfo.label}
+                                  </span>
+                                </div>
+                              )}
                               {job.sales_orders && (
-                                <p className="text-[11px] text-zinc-500 font-mono mt-0.5">
+                                <p className="text-[10px] text-zinc-400 font-mono mt-0.5">
                                   SO: {job.sales_orders.order_number}
                                 </p>
                               )}
                             </div>
 
                             {/* Production Area */}
-                            <div className="text-[11px] text-zinc-600 bg-zinc-50 rounded px-2 py-1 border border-zinc-100 flex items-center gap-1">
-                              <Layers className="h-3 w-3 text-zinc-400 shrink-0" />
+                            <div className="text-[10px] text-zinc-600 bg-zinc-50 rounded px-2 py-1 border border-zinc-100 flex items-center gap-1">
+                              <Layers className="h-2.5 w-2.5 text-zinc-400 shrink-0" />
                               <span className="truncate">{job.production_area || 'General Printing'}</span>
                             </div>
 
+                            {/* Specifications snippet */}
+                            {job.specifications && (
+                              <p className="text-[10px] text-zinc-500 italic line-clamp-2 bg-amber-50/40 p-1 rounded border border-amber-100">
+                                📐 {job.specifications}
+                              </p>
+                            )}
+
+                            {/* Operator + Branch */}
+                            <div className="flex items-center justify-between text-[10px] text-zinc-500">
+                              {job.assigned_operator ? (
+                                <span className="flex items-center gap-0.5 truncate max-w-[110px]" title={job.assigned_operator}>
+                                  <User2 className="h-2.5 w-2.5 shrink-0 text-zinc-400" />
+                                  <span className="truncate">{job.assigned_operator}</span>
+                                </span>
+                              ) : (
+                                <span className="text-zinc-400 italic">Unassigned</span>
+                              )}
+                              <span className="font-medium shrink-0">
+                                {job.branch_id === 'manila_branch' ? '🏙️ Manila' : '🏢 Dagupan'}
+                              </span>
+                            </div>
+
                             {/* Deadline & Artwork */}
-                            <div className="flex items-center justify-between text-[11px] text-zinc-500 pt-1 border-t border-zinc-100">
-                              <span className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3 text-zinc-400" />
+                            <div className="flex items-center justify-between text-[10px] text-zinc-500 pt-1 border-t border-zinc-100">
+                              <span
+                                className={cn(
+                                  'flex items-center gap-1',
+                                  overdue && !isCompletedStage ? 'text-red-600 font-bold' : ''
+                                )}
+                              >
+                                <Calendar className="h-2.5 w-2.5 text-zinc-400" />
                                 {formatDate(job.deadline)}
                               </span>
 
-                              {job.artwork_url && (
+                              {job.artwork_url ? (
                                 <a
                                   href={job.artwork_url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-blue-600 hover:text-blue-800 flex items-center gap-0.5 text-[11px] font-medium"
+                                  className="text-blue-600 hover:text-blue-800 flex items-center gap-0.5 font-medium"
                                   title="View Artwork Asset"
                                 >
-                                  Proof <ExternalLink className="h-2.5 w-2.5" />
+                                  Proof <ExternalLink className="h-2 w-2" />
                                 </a>
+                              ) : (
+                                <span className="text-[9px] text-zinc-300">No proof</span>
                               )}
                             </div>
 
-                            {/* Move Stage Quick Action Buttons */}
-                            <div className="flex items-center justify-between pt-2 border-t border-zinc-100">
-                              {prev ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdateStage(job.id, prev)}
-                                  className="inline-flex items-center gap-0.5 rounded px-2 py-1 text-[10px] font-semibold text-zinc-600 hover:bg-zinc-100"
-                                  title={`Move back to ${prev}`}
-                                >
-                                  <ChevronLeft className="h-3 w-3" /> Back
-                                </button>
-                              ) : (
-                                <span />
-                              )}
+                            {/* Footer Actions: Ticket Modal & Progression */}
+                            <div className="flex items-center justify-between pt-2 border-t border-zinc-100 gap-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedJob(job)
+                                  setShowTicketModal(true)
+                                }}
+                                className="inline-flex items-center gap-0.5 rounded px-2 py-1 text-[10px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition border border-indigo-200"
+                                title="Open Printable Job Ticket"
+                              >
+                                <FileText className="h-2.5 w-2.5" /> Ticket
+                              </button>
 
-                              {next ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdateStage(job.id, next)}
-                                  className="inline-flex items-center gap-0.5 rounded bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700 hover:bg-blue-100 transition"
-                                  title={`Advance to ${next}`}
-                                >
-                                  Advance <ChevronRight className="h-3 w-3" />
-                                </button>
-                              ) : (
-                                <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                                  <Check className="h-3 w-3" /> Done
-                                </span>
-                              )}
+                              <div className="flex items-center gap-1">
+                                {prev && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateStage(job.id, prev)}
+                                    className="inline-flex items-center gap-0.5 rounded px-1.5 py-1 text-[10px] font-semibold text-zinc-600 hover:bg-zinc-100 border border-zinc-200 transition"
+                                    title={`Move back to ${prev.replace(/_/g, ' ')}`}
+                                  >
+                                    <ChevronLeft className="h-3 w-3" />
+                                  </button>
+                                )}
+
+                                {next ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateStage(job.id, next)}
+                                    className="inline-flex items-center gap-0.5 rounded bg-blue-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-blue-700 transition"
+                                    title={`Advance to ${next.replace(/_/g, ' ')}`}
+                                  >
+                                    <span>Next</span>
+                                    <ChevronRight className="h-3 w-3" />
+                                  </button>
+                                ) : (
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                    <Check className="h-3 w-3" /> Done
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         )
@@ -504,37 +762,40 @@ export default function ProductionView() {
               <button
                 type="button"
                 onClick={() => setActiveTabStage('all')}
-                className={`border-b-2 px-4 py-2.5 text-xs font-semibold whitespace-nowrap transition ${
+                className={cn(
+                  'border-b-2 px-4 py-2.5 text-xs font-semibold whitespace-nowrap transition',
                   activeTabStage === 'all'
                     ? 'border-blue-600 text-blue-600'
                     : 'border-transparent text-zinc-500 hover:text-zinc-800'
-                }`}
+                )}
               >
                 All Jobs ({jobs.length})
               </button>
-              {KANBAN_STAGES.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setActiveTabStage(s.id)}
-                  className={`border-b-2 px-4 py-2.5 text-xs font-semibold whitespace-nowrap transition ${
-                    activeTabStage === s.id
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-zinc-500 hover:text-zinc-800'
-                  }`}
-                >
-                  {s.title} (
-                  {
-                    jobs.filter((j) => {
-                      if (s.id === 'Queued') return j.stage_status === 'Queued' || j.stage_status === 'Pending'
-                      if (s.id === 'Printing') return j.stage_status === 'Printing' || j.stage_status === 'In_Production'
-                      if (s.id === 'Done') return j.stage_status === 'Done' || j.stage_status === 'Completed'
-                      return j.stage_status === s.id
-                    }).length
-                  }
-                  )
-                </button>
-              ))}
+              {KANBAN_STAGES.map((s) => {
+                const count = jobs.filter((j) => {
+                  if (s.id === 'Queued') return j.stage_status === 'Queued' || j.stage_status === 'Pending'
+                  if (s.id === 'Printing') return j.stage_status === 'Printing' || j.stage_status === 'In_Production'
+                  if (s.id === 'Ready') return j.stage_status === 'Ready' || j.stage_status === 'Ready_For_Pickup'
+                  if (s.id === 'Done') return j.stage_status === 'Done' || j.stage_status === 'Completed'
+                  return j.stage_status === s.id
+                }).length
+
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setActiveTabStage(s.id)}
+                    className={cn(
+                      'border-b-2 px-4 py-2.5 text-xs font-semibold whitespace-nowrap transition',
+                      activeTabStage === s.id
+                        ? 'border-blue-600 text-blue-600'
+                        : 'border-transparent text-zinc-500 hover:text-zinc-800'
+                    )}
+                  >
+                    {s.title} ({count})
+                  </button>
+                )
+              })}
             </div>
 
             {/* Table */}
@@ -542,26 +803,32 @@ export default function ProductionView() {
               <table className="w-full text-left text-sm text-zinc-600">
                 <thead className="border-b border-zinc-200 bg-zinc-50 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
                   <tr>
-                    <th scope="col" className="px-6 py-3.5">Job Order #</th>
-                    <th scope="col" className="px-6 py-3.5">Customer / Sales Order</th>
-                    <th scope="col" className="px-6 py-3.5">Production Area</th>
-                    <th scope="col" className="px-6 py-3.5">Current Stage</th>
-                    <th scope="col" className="px-6 py-3.5">Deadline</th>
-                    <th scope="col" className="px-6 py-3.5">Artwork</th>
-                    <th scope="col" className="px-6 py-3.5 text-center">Stage Progression</th>
+                    <th scope="col" className="px-5 py-3.5">Job Order #</th>
+                    <th scope="col" className="px-4 py-3.5">Priority</th>
+                    <th scope="col" className="px-5 py-3.5">Customer & Loyalty</th>
+                    <th scope="col" className="px-4 py-3.5">Sales Order</th>
+                    <th scope="col" className="px-4 py-3.5">Production Area & Branch</th>
+                    <th scope="col" className="px-4 py-3.5">Operator</th>
+                    <th scope="col" className="px-4 py-3.5">Current Stage</th>
+                    <th scope="col" className="px-4 py-3.5">Deadline</th>
+                    <th scope="col" className="px-4 py-3.5">Artwork</th>
+                    <th scope="col" className="px-5 py-3.5 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-200">
                   {isLoading ? (
                     Array.from({ length: 4 }).map((_, i) => (
                       <tr key={i} className="animate-pulse">
-                        <td className="px-6 py-4"><div className="h-4 w-24 rounded bg-zinc-200" /></td>
-                        <td className="px-6 py-4"><div className="h-4 w-36 rounded bg-zinc-200" /></td>
-                        <td className="px-6 py-4"><div className="h-4 w-28 rounded bg-zinc-200" /></td>
-                        <td className="px-6 py-4"><div className="h-5 w-20 rounded-full bg-zinc-200" /></td>
-                        <td className="px-6 py-4"><div className="h-4 w-20 rounded bg-zinc-200" /></td>
-                        <td className="px-6 py-4"><div className="h-4 w-12 rounded bg-zinc-200" /></td>
-                        <td className="px-6 py-4"><div className="h-6 w-24 rounded bg-zinc-200 mx-auto" /></td>
+                        <td className="px-5 py-4"><div className="h-4 w-24 rounded bg-zinc-200" /></td>
+                        <td className="px-4 py-4"><div className="h-4 w-12 rounded bg-zinc-200" /></td>
+                        <td className="px-5 py-4"><div className="h-4 w-36 rounded bg-zinc-200" /></td>
+                        <td className="px-4 py-4"><div className="h-4 w-20 rounded bg-zinc-200" /></td>
+                        <td className="px-4 py-4"><div className="h-4 w-28 rounded bg-zinc-200" /></td>
+                        <td className="px-4 py-4"><div className="h-4 w-20 rounded bg-zinc-200" /></td>
+                        <td className="px-4 py-4"><div className="h-5 w-20 rounded-full bg-zinc-200" /></td>
+                        <td className="px-4 py-4"><div className="h-4 w-20 rounded bg-zinc-200" /></td>
+                        <td className="px-4 py-4"><div className="h-4 w-12 rounded bg-zinc-200" /></td>
+                        <td className="px-5 py-4"><div className="h-6 w-24 rounded bg-zinc-200 mx-auto" /></td>
                       </tr>
                     ))
                   ) : filteredJobs.length > 0 ? (
@@ -569,58 +836,101 @@ export default function ProductionView() {
                       const next = getStageNext(job.stage_status)
                       const prev = getStagePrev(job.stage_status)
                       const overdue = isOverdue(job.deadline)
+                      const priorityBadge = getPriorityBadge(job.priority)
+                      const customer = job.sales_orders?.customers
+                      const loyaltyInfo = customer
+                        ? getLoyaltyBadge(customer.loyalty_tier, customer.customer_type)
+                        : null
+                      const isCompletedStage = job.stage_status === 'Done' || job.stage_status === 'Completed'
 
                       return (
                         <tr key={job.id} className="hover:bg-zinc-50/70 transition-colors">
-                          <td className="px-6 py-4">
+                          <td className="px-5 py-4">
                             <span className="font-mono text-xs font-bold text-blue-700">
                               {job.job_number}
                             </span>
                           </td>
-                          <td className="px-6 py-4">
-                            <p className="font-semibold text-zinc-900 truncate">
-                              {job.sales_orders?.customers?.name || 'Walk-in Customer'}
-                            </p>
-                            {job.sales_orders && (
-                              <p className="text-xs text-zinc-500 font-mono">
-                                SO: {job.sales_orders.order_number}
-                              </p>
+                          <td className="px-4 py-4">
+                            {priorityBadge ? (
+                              <span className={cn('text-xs px-2 py-0.5 rounded border font-semibold', priorityBadge.className)}>
+                                {priorityBadge.label}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-zinc-500">Normal</span>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-xs text-zinc-700 font-medium">
-                            {job.production_area || 'General Printing'}
+                          <td className="px-5 py-4">
+                            <p className="font-semibold text-zinc-900 truncate">
+                              {customer?.name || 'Walk-in Customer'}
+                            </p>
+                            {loyaltyInfo && (
+                              <span className={cn('inline-block text-[10px] font-semibold px-1.5 py-0.2 rounded border mt-0.5', loyaltyInfo.badgeClass)}>
+                                {loyaltyInfo.label}
+                              </span>
+                            )}
                           </td>
-                          <td className="px-6 py-4">
-                            <span className="inline-flex items-center rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
-                              {job.stage_status.replace('_', ' ')}
+                          <td className="px-4 py-4">
+                            {job.sales_orders ? (
+                              <span className="text-xs text-zinc-600 font-mono">
+                                {job.sales_orders.order_number}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-zinc-400 italic">None</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-4 text-xs">
+                            <p className="text-zinc-800 font-medium">{job.production_area || 'General Printing'}</p>
+                            <p className="text-zinc-500 text-[11px]">
+                              {job.branch_id === 'manila_branch' ? '🏙️ Manila' : '🏢 Dagupan'}
+                            </p>
+                          </td>
+                          <td className="px-4 py-4 text-xs text-zinc-600">
+                            {job.assigned_operator || <span className="text-zinc-400 italic">Unassigned</span>}
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold', getStageBadgeColor(job.stage_status))}>
+                              {job.stage_status.replace(/_/g, ' ')}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-xs">
-                            <span className={overdue && job.stage_status !== 'Done' ? 'text-red-600 font-bold' : 'text-zinc-600'}>
+                          <td className="px-4 py-4 text-xs">
+                            <span className={cn(overdue && !isCompletedStage ? 'text-red-600 font-bold' : 'text-zinc-600')}>
                               {formatDate(job.deadline)}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-xs">
+                          <td className="px-4 py-4 text-xs">
                             {job.artwork_url ? (
                               <a
                                 href={job.artwork_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline flex items-center gap-1"
+                                className="text-blue-600 hover:underline flex items-center gap-1 font-medium"
                               >
-                                View File <ExternalLink className="h-3 w-3" />
+                                Proof <ExternalLink className="h-3 w-3" />
                               </a>
                             ) : (
-                              <span className="text-zinc-400">None</span>
+                              <span className="text-zinc-400 text-xs">None</span>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-center">
+                          <td className="px-5 py-4 text-center">
                             <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedJob(job)
+                                  setShowTicketModal(true)
+                                }}
+                                className="rounded border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100 transition flex items-center gap-1"
+                                title="Open Job Ticket"
+                              >
+                                <FileText className="h-3 w-3" /> Ticket
+                              </button>
+
                               {prev && (
                                 <button
                                   type="button"
                                   onClick={() => handleUpdateStage(job.id, prev)}
                                   className="rounded border border-zinc-200 bg-white px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
+                                  title={`Back to ${prev.replace(/_/g, ' ')}`}
                                 >
                                   Back
                                 </button>
@@ -631,7 +941,7 @@ export default function ProductionView() {
                                   onClick={() => handleUpdateStage(job.id, next)}
                                   className="rounded bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700 transition"
                                 >
-                                  Advance to {next.replace('_', ' ')}
+                                  Advance to {next.replace(/_/g, ' ')}
                                 </button>
                               ) : (
                                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700">
@@ -645,7 +955,7 @@ export default function ProductionView() {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center text-zinc-500 text-xs">
+                      <td colSpan={10} className="px-6 py-12 text-center text-zinc-500 text-xs">
                         No job orders in this view. Create a new job order above.
                       </td>
                     </tr>
@@ -669,8 +979,19 @@ export default function ProductionView() {
         onClose={() => setIsModalOpen(false)}
         onSuccess={handleJobCreated}
         salesOrders={salesOrders}
+        defaultBranch={branchFilter !== 'all' ? branchFilter : 'dagupan_main'}
+      />
+
+      {/* Printable Job Ticket Modal */}
+      <JobTicketModal
+        job={selectedJob}
+        isOpen={showTicketModal}
+        onClose={() => {
+          setShowTicketModal(false)
+          setSelectedJob(null)
+        }}
+        onUpdateStage={handleUpdateStage}
       />
     </DashboardShell>
   )
 }
-
